@@ -149,3 +149,68 @@ function ner_michoel_get_speaker_photo_url( $term_id ) {
 function ner_michoel_get_series_cover_url( $term_id ) {
 	return ner_michoel_get_term_image_url( $term_id, 'nm_series_cover' );
 }
+
+/**
+ * Optional email address on a `speaker` term — where "Email a Magid
+ * Shiur" submissions for that speaker get sent (see
+ * ner_michoel_handle_email_magid_submit() in forms.php).
+ */
+function ner_michoel_speaker_email_field( $term = null ) {
+	$email   = $term ? get_term_meta( $term->term_id, '_speaker_email', true ) : '';
+	$is_edit = (bool) $term;
+	?>
+	<?php if ( $is_edit ) : ?>
+	<tr class="form-field">
+		<th scope="row"><label for="ner_michoel_speaker_email"><?php esc_html_e( 'Email', 'ner-michoel-core' ); ?></label></th>
+		<td>
+			<input type="email" name="ner_michoel_speaker_email" id="ner_michoel_speaker_email" value="<?php echo esc_attr( $email ); ?>" class="regular-text" />
+			<p class="description"><?php esc_html_e( '"Email a Magid Shiur" messages for this speaker are sent here. Leave blank to send them to the site admin instead.', 'ner-michoel-core' ); ?></p>
+		</td>
+	</tr>
+	<?php else : ?>
+	<div class="form-field">
+		<label for="ner_michoel_speaker_email"><?php esc_html_e( 'Email', 'ner-michoel-core' ); ?></label>
+		<input type="email" name="ner_michoel_speaker_email" id="ner_michoel_speaker_email" value="" />
+		<p class="description"><?php esc_html_e( '"Email a Magid Shiur" messages for this speaker are sent here. Leave blank to send them to the site admin instead.', 'ner-michoel-core' ); ?></p>
+	</div>
+	<?php endif; ?>
+	<?php
+}
+
+/**
+ * 'speaker_add_form_fields' passes the taxonomy name (a string) as its
+ * one argument, not a term — this wrapper keeps that string from ever
+ * reaching $term in the shared render function above, where it would
+ * be treated as a truthy "editing" value and `$term->term_id` would
+ * run on a string.
+ */
+function ner_michoel_speaker_email_add_field() {
+	ner_michoel_speaker_email_field( null );
+}
+add_action( 'speaker_add_form_fields', 'ner_michoel_speaker_email_add_field' );
+add_action( 'speaker_edit_form_fields', 'ner_michoel_speaker_email_field' );
+
+function ner_michoel_save_speaker_email( $term_id ) {
+	if ( ! current_user_can( 'manage_categories' ) ) {
+		return;
+	}
+	if ( isset( $_POST['ner_michoel_speaker_email'] ) ) {
+		$email = sanitize_email( wp_unslash( $_POST['ner_michoel_speaker_email'] ) );
+		if ( $email ) {
+			update_term_meta( $term_id, '_speaker_email', $email );
+		} else {
+			delete_term_meta( $term_id, '_speaker_email' );
+		}
+	}
+}
+add_action( 'created_speaker', 'ner_michoel_save_speaker_email' );
+add_action( 'edited_speaker', 'ner_michoel_save_speaker_email' );
+
+/**
+ * Front-end accessor: a speaker's forwarding email, or '' if none is
+ * set (caller falls back to the site admin — see forms.php).
+ */
+function ner_michoel_get_speaker_email( $term_id ) {
+	$email = get_term_meta( $term_id, '_speaker_email', true );
+	return $email ? sanitize_email( $email ) : '';
+}

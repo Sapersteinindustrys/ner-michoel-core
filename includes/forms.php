@@ -63,3 +63,62 @@ function ner_michoel_handle_contact_submit() {
 }
 add_action( 'admin_post_nm_contact_submit', 'ner_michoel_handle_contact_submit' );
 add_action( 'admin_post_nopriv_nm_contact_submit', 'ner_michoel_handle_contact_submit' );
+
+/**
+ * "Email a Magid Shiur" submission — posts to
+ * admin-post.php?action=nm_email_magid_submit (see
+ * page-templates/email-magid-shiur.php in the theme). Sent to the
+ * chosen speaker's email (ner_michoel_get_speaker_email()) if one is
+ * set, otherwise to the site admin with a note that no direct email
+ * is configured, so a message never just silently vanishes.
+ */
+function ner_michoel_handle_email_magid_submit() {
+	$redirect = wp_get_referer() ? wp_get_referer() : home_url( '/' );
+
+	if ( ! isset( $_POST['nm_email_magid_nonce'] ) || ! wp_verify_nonce( $_POST['nm_email_magid_nonce'], 'nm_email_magid_submit' ) ) {
+		wp_safe_redirect( esc_url_raw( add_query_arg( 'nm_magid', 'error', $redirect ) ) );
+		exit;
+	}
+
+	// Honeypot: redirect as if it succeeded so a bot doesn't learn to adapt.
+	if ( ! empty( $_POST['nm_magid_hp'] ) ) {
+		wp_safe_redirect( esc_url_raw( add_query_arg( 'nm_magid', 'sent', $redirect ) ) );
+		exit;
+	}
+
+	$speaker_id = isset( $_POST['nm_speaker_id'] ) ? absint( $_POST['nm_speaker_id'] ) : 0;
+	$name       = isset( $_POST['nm_name'] ) ? sanitize_text_field( wp_unslash( $_POST['nm_name'] ) ) : '';
+	$email      = isset( $_POST['nm_email'] ) ? sanitize_email( wp_unslash( $_POST['nm_email'] ) ) : '';
+	$message    = isset( $_POST['nm_message'] ) ? sanitize_textarea_field( wp_unslash( $_POST['nm_message'] ) ) : '';
+
+	$speaker = $speaker_id ? get_term( $speaker_id, 'speaker' ) : null;
+
+	if ( ! $speaker_id || ! $speaker || is_wp_error( $speaker ) || '' === $name || '' === $message || ! is_email( $email ) ) {
+		wp_safe_redirect( esc_url_raw( add_query_arg( 'nm_magid', 'error', $redirect ) ) );
+		exit;
+	}
+
+	$speaker_email = ner_michoel_get_speaker_email( $speaker_id );
+	$to            = $speaker_email ? $speaker_email : get_option( 'admin_email' );
+	$subject       = $speaker_email
+		? sprintf( '[%s] Message for %s from %s', get_bloginfo( 'name' ), $speaker->name, $name )
+		: sprintf( '[%s] Message for %s from %s (no direct email configured for this speaker)', get_bloginfo( 'name' ), $speaker->name, $name );
+
+	$body = implode(
+		"\n",
+		array(
+			sprintf( 'Speaker: %s', $speaker->name ),
+			sprintf( 'From: %s', $name ),
+			sprintf( 'Email: %s', $email ),
+			'',
+			$message,
+		)
+	);
+
+	$sent = wp_mail( $to, $subject, $body, array( 'Reply-To: ' . $name . ' <' . $email . '>' ) );
+
+	wp_safe_redirect( esc_url_raw( add_query_arg( 'nm_magid', $sent ? 'sent' : 'error', $redirect ) ) );
+	exit;
+}
+add_action( 'admin_post_nm_email_magid_submit', 'ner_michoel_handle_email_magid_submit' );
+add_action( 'admin_post_nopriv_nm_email_magid_submit', 'ner_michoel_handle_email_magid_submit' );
