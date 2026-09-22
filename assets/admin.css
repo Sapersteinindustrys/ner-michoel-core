@@ -1,0 +1,106 @@
+/**
+ * Site Control Panel — admin-only styling, loaded solely on the
+ * plugin's own dashboard screens (see ner_michoel_dashboard_admin_assets()
+ * in includes/admin-dashboard.php).
+ */
+
+.nm-dashboard__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: 16px;
+	margin-top: 20px;
+	max-width: 1100px;
+}
+
+.nm-dashboard__card {
+	display: block;
+	background: #fff;
+	border: 1px solid #ccd0d4;
+	border-radius: 6px;
+	padding: 20px;
+	text-decoration: none;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+	transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.nm-dashboard__card:hover,
+.nm-dashboard__card:focus {
+	border-color: #2271b1;
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.nm-dashboard__card h2 {
+	margin: 0 0 8px;
+	font-size: 1.1rem;
+	color: #1d2327;
+}
+
+.nm-dashboard__card p {
+	margin: 0;
+	color: #646970;
+}
+
+#nm-slider-list {
+	margin-top: 16px;
+	max-width: 900px;
+}
+
+.nm-slide-row {
+	display: grid;
+	grid-template-columns: 24px 160px 1fr 110px;
+	gap: 16px;
+	align-items: start;
+	background: #fff;
+	border: 1px solid #ccd0d4;
+	border-radius: 6px;
+	padding: 16px;
+	margin-bottom: 12px;
+}
+
+.nm-slide-row__drag {
+	cursor: move;
+	color: #a7aaad;
+	text-align: center;
+	padding-top: 8px;
+	font-size: 18px;
+}
+
+.nm-slide-row__preview {
+	width: 160px;
+	height: 90px;
+	background: #f0f0f1;
+	border-radius: 4px;
+	overflow: hidden;
+	margin-bottom: 8px;
+}
+
+.nm-slide-row__preview img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.nm-slide-row__fields {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.nm-slide-row__fields label {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-weight: 600;
+	font-size: 0.85rem;
+}
+
+.nm-slide-row__fields input,
+.nm-slide-row__fields textarea {
+	font-weight: 400;
+}
+
+.nm-slide-remove {
+	color: #b32d2e;
+	white-space: nowrap;
+}
