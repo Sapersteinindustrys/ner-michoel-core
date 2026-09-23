@@ -27,6 +27,7 @@ function ner_michoel_register_dashboard_menu() {
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Overview', 'ner-michoel-core' ), __( 'Overview', 'ner-michoel-core' ), 'edit_posts', NER_MICHOEL_DASHBOARD_SLUG, 'ner_michoel_render_dashboard_home' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Homepage Slider', 'ner-michoel-core' ), __( 'Homepage Slider', 'ner-michoel-core' ), 'edit_posts', 'nm-homepage-slider', 'ner_michoel_render_homepage_slider_page' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Live Shiur / Zoom', 'ner-michoel-core' ), __( 'Live Shiur / Zoom', 'ner-michoel-core' ), 'edit_posts', 'nm-live-shiur', 'ner_michoel_render_live_shiur_page' );
+	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Appearance', 'ner-michoel-core' ), __( 'Appearance', 'ner-michoel-core' ), 'edit_posts', 'nm-appearance', 'ner_michoel_render_appearance_settings_page' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Shiurim', 'ner-michoel-core' ), __( 'Shiurim', 'ner-michoel-core' ), 'edit_posts', 'edit.php?post_type=shiur' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Speakers', 'ner-michoel-core' ), __( 'Speakers', 'ner-michoel-core' ), 'edit_posts', 'edit-tags.php?taxonomy=speaker&post_type=shiur' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Series', 'ner-michoel-core' ), __( 'Series', 'ner-michoel-core' ), 'edit_posts', 'edit-tags.php?taxonomy=series&post_type=shiur' );
@@ -47,6 +48,8 @@ function ner_michoel_register_dashboard_menu() {
 	// manage_options (not the panel's usual edit_posts) — this is a
 	// one-time migration action, not routine editing.
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Import Sample Content', 'ner-michoel-core' ), __( 'Import Sample Content', 'ner-michoel-core' ), 'manage_options', 'nm-import-sample-content', 'ner_michoel_render_sample_content_page' );
+	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Full Library Import', 'ner-michoel-core' ), __( 'Full Library Import', 'ner-michoel-core' ), 'manage_options', 'nm-library-import', 'ner_michoel_render_library_import_page' );
+	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Storage (Bunny)', 'ner-michoel-core' ), __( 'Storage', 'ner-michoel-core' ), 'manage_options', 'nm-storage', 'ner_michoel_render_storage_settings_page' );
 
 	// Registered under the same parent (so its screen ID still matches
 	// NER_MICHOEL_DASHBOARD_SLUG for asset-loading below) but hidden from
@@ -119,6 +122,11 @@ function ner_michoel_render_dashboard_home() {
 			'url'   => admin_url( 'admin.php?page=nm-live-shiur' ),
 		),
 		array(
+			'title' => __( 'Appearance', 'ner-michoel-core' ),
+			'desc'  => __( 'Colors and font for the Shiurim app and player bar.', 'ner-michoel-core' ),
+			'url'   => admin_url( 'admin.php?page=nm-appearance' ),
+		),
+		array(
 			'title' => __( 'Upload Pictures', 'ner-michoel-core' ),
 			'desc'  => __( 'Add new photos to the media library, to use anywhere on the site.', 'ner-michoel-core' ),
 			'url'   => admin_url( 'upload.php' ),
@@ -135,6 +143,16 @@ function ner_michoel_render_dashboard_home() {
 			'title' => __( 'Import Sample Content', 'ner-michoel-core' ),
 			'desc'  => __( 'One-time: seed this site with real sample shiurim, speakers, and a series.', 'ner-michoel-core' ),
 			'url'   => admin_url( 'admin.php?page=nm-import-sample-content' ),
+		);
+		$cards[] = array(
+			'title' => __( 'Full Library Import', 'ner-michoel-core' ),
+			'desc'  => __( 'Background import of the entire nermichoel.org shiur archive (16,756 items).', 'ner-michoel-core' ),
+			'url'   => admin_url( 'admin.php?page=nm-library-import' ),
+		);
+		$cards[] = array(
+			'title' => __( 'Storage (Bunny)', 'ner-michoel-core' ),
+			'desc'  => __( 'Offload new media uploads to Bunny Storage instead of local disk.', 'ner-michoel-core' ),
+			'url'   => admin_url( 'admin.php?page=nm-storage' ),
 		);
 		$cards[] = array(
 			'title' => __( 'Site Statistics', 'ner-michoel-core' ),

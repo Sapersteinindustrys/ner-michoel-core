@@ -100,6 +100,7 @@ function ner_michoel_handle_email_magid_submit() {
 	$name       = isset( $_POST['nm_name'] ) ? sanitize_text_field( wp_unslash( $_POST['nm_name'] ) ) : '';
 	$email      = isset( $_POST['nm_email'] ) ? sanitize_email( wp_unslash( $_POST['nm_email'] ) ) : '';
 	$message    = isset( $_POST['nm_message'] ) ? sanitize_textarea_field( wp_unslash( $_POST['nm_message'] ) ) : '';
+	$shiur_id   = isset( $_POST['nm_shiur_id'] ) ? absint( $_POST['nm_shiur_id'] ) : 0;
 
 	$speaker = $speaker_id ? get_term( $speaker_id, 'speaker' ) : null;
 
@@ -108,13 +109,23 @@ function ner_michoel_handle_email_magid_submit() {
 		exit;
 	}
 
+	/*
+	 * Optional — tagging a shiur is not required to send a message.
+	 * Deliberately not filtered by media type: an audio or video shiur
+	 * is equally valid to tag, so this only checks post_type/status.
+	 */
+	$shiur = ( $shiur_id && 'shiur' === get_post_type( $shiur_id ) && 'publish' === get_post_status( $shiur_id ) )
+		? get_post( $shiur_id )
+		: null;
+
 	ner_michoel_record_submission(
 		'magid',
 		array(
-			'name'    => $name,
-			'email'   => $email,
-			'message' => $message,
-			'speaker' => $speaker->name,
+			'name'        => $name,
+			'email'       => $email,
+			'message'     => $message,
+			'speaker'     => $speaker->name,
+			'shiur_title' => $shiur ? $shiur->post_title : '',
 		)
 	);
 
@@ -124,16 +135,18 @@ function ner_michoel_handle_email_magid_submit() {
 		? sprintf( '[%s] Message for %s from %s', get_bloginfo( 'name' ), $speaker->name, $name )
 		: sprintf( '[%s] Message for %s from %s (no direct email configured for this speaker)', get_bloginfo( 'name' ), $speaker->name, $name );
 
-	$body = implode(
-		"\n",
-		array(
-			sprintf( 'Speaker: %s', $speaker->name ),
-			sprintf( 'From: %s', $name ),
-			sprintf( 'Email: %s', $email ),
-			'',
-			$message,
-		)
+	$body_lines = array(
+		sprintf( 'Speaker: %s', $speaker->name ),
 	);
+	if ( $shiur ) {
+		$body_lines[] = sprintf( 'Regarding shiur: %s (%s)', $shiur->post_title, get_permalink( $shiur ) );
+	}
+	$body_lines[] = sprintf( 'From: %s', $name );
+	$body_lines[] = sprintf( 'Email: %s', $email );
+	$body_lines[] = '';
+	$body_lines[] = $message;
+
+	$body = implode( "\n", $body_lines );
 
 	$sent = wp_mail( $to, $subject, $body, array( 'Reply-To: ' . $name . ' <' . $email . '>' ) );
 

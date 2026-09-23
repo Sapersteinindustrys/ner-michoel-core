@@ -51,7 +51,8 @@ add_action( 'init', 'ner_michoel_register_submission_post_type' );
  * name, email, phone (optional), message, speaker (magid only, the
  * speaker term's display name — stored as a plain string snapshot so
  * the record still reads correctly if that speaker is later renamed
- * or deleted).
+ * or deleted), shiur_title (magid only, optional — same snapshot
+ * reasoning as speaker, for a tagged shiur of either media type).
  */
 function ner_michoel_record_submission( $type, array $data ) {
 	$name = isset( $data['name'] ) ? $data['name'] : '';
@@ -92,6 +93,9 @@ function ner_michoel_record_submission( $type, array $data ) {
 	if ( ! empty( $data['speaker'] ) ) {
 		update_post_meta( $post_id, '_nm_submission_speaker', sanitize_text_field( $data['speaker'] ) );
 	}
+	if ( ! empty( $data['shiur_title'] ) ) {
+		update_post_meta( $post_id, '_nm_submission_shiur_title', sanitize_text_field( $data['shiur_title'] ) );
+	}
 }
 
 /**
@@ -123,6 +127,10 @@ function ner_michoel_submission_column_content( $column, $post_id ) {
 				$speaker = get_post_meta( $post_id, '_nm_submission_speaker', true );
 				if ( $speaker ) {
 					echo '<br /><span class="description">' . esc_html( $speaker ) . '</span>';
+				}
+				$shiur_title = get_post_meta( $post_id, '_nm_submission_shiur_title', true );
+				if ( $shiur_title ) {
+					echo '<br /><span class="description">' . esc_html__( 'Re:', 'ner-michoel-core' ) . ' ' . esc_html( $shiur_title ) . '</span>';
 				}
 			}
 			break;

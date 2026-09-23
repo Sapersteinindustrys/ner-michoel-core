@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.3.0
+Stable tag: 0.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,22 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.4.0 =
+* Add the ability to tag a shiur on "Email a Magid Shiur" submissions,
+  including video shiurim (previously audio-only wasn't a restriction, but
+  now explicitly supported end-to-end).
+* Add an Appearance settings screen (colors + font) for the Shiurim/
+  Galleries/News app and player bar.
+* Add a self-hosted Bunny Storage adapter — new media uploads (including
+  the library import below) offload to Bunny Storage instead of local
+  disk, with every existing URL accessor updated transparently.
+* Add a full-library import from nermichoel.org (background crawler +
+  batched importer, ~16,756 items, pauseable/resumable) with a REST
+  control endpoint for starting/pausing it programmatically.
+* Extend the shiur media-type model with a 'video-embed' type
+  (`_shiur_vimeo_id`) for externally-hosted (Vimeo) video shiurim, found
+  during the library import to be a real, common case.
 
 = 0.3.0 =
 * Add Contact-submission records (private `nm_submission` post type) and a

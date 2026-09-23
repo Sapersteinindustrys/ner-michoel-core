@@ -115,16 +115,33 @@ add_action( 'admin_enqueue_scripts', 'ner_michoel_shiur_meta_box_assets' );
 
 /**
  * 'audio' (default — every shiur created before video support existed
- * keeps working unchanged) or 'video', detected from the actual
- * uploaded file's MIME type rather than a separately-stored flag, so
- * it can never drift out of sync with what's actually attached.
+ * keeps working unchanged), 'video' (a self-hosted video file,
+ * detected from the actual uploaded file's MIME type rather than a
+ * separately-stored flag, so it can never drift out of sync with
+ * what's actually attached), or 'video-embed' (no file at all —
+ * externally hosted, e.g. Vimeo, via `_shiur_vimeo_id`; this exists
+ * because the nermichoel.org library import found video shiurim that
+ * were never self-hosted files to begin with — see dev-notes.md).
  */
 function ner_michoel_get_shiur_media_type( $post_id ) {
+	if ( get_post_meta( $post_id, '_shiur_vimeo_id', true ) ) {
+		return 'video-embed';
+	}
 	$attachment_id = get_post_meta( $post_id, '_shiur_audio_id', true );
 	if ( ! $attachment_id ) {
 		return 'audio';
 	}
 	return wp_attachment_is( 'video', $attachment_id ) ? 'video' : 'audio';
+}
+
+/**
+ * The shiur's Vimeo video ID, or '' if it has none (i.e. it's not a
+ * 'video-embed' type shiur — see ner_michoel_get_shiur_media_type()).
+ * Theme renders this as an <iframe src="https://player.vimeo.com/video/{id}">.
+ */
+function ner_michoel_get_shiur_vimeo_id( $post_id ) {
+	$vimeo_id = get_post_meta( $post_id, '_shiur_vimeo_id', true );
+	return $vimeo_id ? sanitize_text_field( $vimeo_id ) : '';
 }
 
 /**
