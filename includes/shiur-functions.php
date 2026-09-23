@@ -123,6 +123,7 @@ function ner_michoel_build_track_queue( $shiurim ) {
 			'src'      => $audio_url,
 			'duration' => ner_michoel_get_shiur_duration( $shiur->ID ),
 			'cover'    => get_the_post_thumbnail_url( $shiur, 'thumbnail' ),
+			'url'      => get_permalink( $shiur ),
 		);
 	}
 	return $queue;

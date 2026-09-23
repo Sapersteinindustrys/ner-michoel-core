@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.5.0
+Stable tag: 0.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,14 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.6.0 =
+* Add a diagnostic hook for the GitHub update checker — captures the
+  actual API error (if any) the next time a check fails, instead of a
+  failed check silently looking identical to "already up to date".
+  Readable via `GET /wp-json/ner-michoel/v1/update-check-debug`
+  (`manage_options`), which also forces a fresh check and reports
+  whatever update it finds.
 
 = 0.5.0 =
 * Add an "Admin Login Shortcut" — /admin can now be reached with a single
