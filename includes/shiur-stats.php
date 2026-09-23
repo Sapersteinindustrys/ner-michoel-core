@@ -80,6 +80,49 @@ function ner_michoel_get_shiur_complete_count( $post_id ) {
 }
 
 /**
+ * "Trending" for the theme's badge — an honest heuristic, not real
+ * recent-window analytics: only `_shiur_play_count` (a lifetime
+ * running total, no timestamps) exists to work with, not a per-play
+ * event log, so this can't actually detect "played a lot in the last
+ * week" for an old shiur suddenly getting attention. What it can do:
+ * plays-per-day-since-publish, restricted to recently-published shiurim
+ * so an old high-total post doesn't count as "trending" forever.
+ *
+ * Thresholds are filterable rather than hardcoded, since these are
+ * genuinely arbitrary judgment calls a site owner may want to tune:
+ * `ner_michoel_trending_max_age_days` (default 60), `_min_plays`
+ * (default 10), `_min_plays_per_day` (default 3).
+ *
+ * If "actually trending right now" (regardless of publish age) turns
+ * out to matter, that needs real event-level play tracking (a table
+ * like site-stats.php's pageviews, not this meta counter) — a bigger
+ * build than this badge warranted on its own.
+ */
+function ner_michoel_is_shiur_trending( $post_id ) {
+	$post = get_post( $post_id );
+	if ( ! $post || 'shiur' !== $post->post_type || 'publish' !== $post->post_status ) {
+		return false;
+	}
+
+	$max_age_days    = (int) apply_filters( 'ner_michoel_trending_max_age_days', 60 );
+	$min_plays       = (int) apply_filters( 'ner_michoel_trending_min_plays', 10 );
+	$min_per_day     = (float) apply_filters( 'ner_michoel_trending_min_plays_per_day', 3 );
+
+	$days_since_publish = ( time() - get_post_time( 'U', true, $post ) ) / DAY_IN_SECONDS;
+	if ( $days_since_publish > $max_age_days ) {
+		return false;
+	}
+
+	$plays = ner_michoel_get_shiur_play_count( $post_id );
+	if ( $plays < $min_plays ) {
+		return false;
+	}
+
+	$plays_per_day = $plays / max( 1, $days_since_publish );
+	return $plays_per_day >= $min_per_day;
+}
+
+/**
  * Admin: "Plays" / "Completed" columns on the existing Shiurim list
  * table, Plays sortable so "Most Listened" is just that column sorted
  * descending — no separate report screen needed.

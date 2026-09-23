@@ -50,6 +50,7 @@ function ner_michoel_register_dashboard_menu() {
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Import Sample Content', 'ner-michoel-core' ), __( 'Import Sample Content', 'ner-michoel-core' ), 'manage_options', 'nm-import-sample-content', 'ner_michoel_render_sample_content_page' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Full Library Import', 'ner-michoel-core' ), __( 'Full Library Import', 'ner-michoel-core' ), 'manage_options', 'nm-library-import', 'ner_michoel_render_library_import_page' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Storage (Bunny)', 'ner-michoel-core' ), __( 'Storage', 'ner-michoel-core' ), 'manage_options', 'nm-storage', 'ner_michoel_render_storage_settings_page' );
+	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Admin Login Shortcut', 'ner-michoel-core' ), __( 'Admin Login Shortcut', 'ner-michoel-core' ), 'manage_options', 'nm-admin-login', 'ner_michoel_render_admin_panel_login_settings_page' );
 
 	// Registered under the same parent (so its screen ID still matches
 	// NER_MICHOEL_DASHBOARD_SLUG for asset-loading below) but hidden from
@@ -155,6 +156,11 @@ function ner_michoel_render_dashboard_home() {
 			'url'   => admin_url( 'admin.php?page=nm-storage' ),
 		);
 		$cards[] = array(
+			'title' => __( 'Admin Login Shortcut', 'ner-michoel-core' ),
+			'desc'  => __( 'Let /admin be reached with a single password instead of the full login.', 'ner-michoel-core' ),
+			'url'   => admin_url( 'admin.php?page=nm-admin-login' ),
+		);
+		$cards[] = array(
 			'title' => __( 'Site Statistics', 'ner-michoel-core' ),
 			'desc'  => __( 'Traffic, top pages, referrers, and page load time — self-hosted, no third party.', 'ner-michoel-core' ),
 			'url'   => admin_url( 'admin.php?page=nm-site-stats' ),
@@ -202,10 +208,14 @@ function ner_michoel_dashboard_admin_assets() {
 add_action( 'admin_enqueue_scripts', 'ner_michoel_dashboard_admin_assets' );
 
 /**
- * Makes site-url/admin redirect into the dashboard — straight there
- * if already logged in with edit access, otherwise to the normal
- * login screen (which then lands here after signing in). Note: this
- * will shadow any actual page/post whose slug happens to be "admin".
+ * Makes site-url/admin redirect into the dashboard — straight there if
+ * already logged in with edit access; otherwise, if a shortcut
+ * password has been configured (see includes/admin-panel-login.php), a
+ * plain one-field password form instead of the full WP login; if no
+ * shortcut password was ever set, falls back to the normal login
+ * screen unchanged (which then lands here after signing in). Note:
+ * this will shadow any actual page/post whose slug happens to be
+ * "admin".
  */
 function ner_michoel_admin_shortcut_redirect() {
 	if ( is_admin() || wp_doing_ajax() || wp_doing_cron() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
@@ -223,9 +233,14 @@ function ner_michoel_admin_shortcut_redirect() {
 
 	if ( is_user_logged_in() && current_user_can( 'edit_posts' ) ) {
 		wp_safe_redirect( $dashboard_url );
-	} else {
-		wp_safe_redirect( wp_login_url( $dashboard_url ) );
+		exit;
 	}
+
+	if ( get_option( 'nm_admin_panel_password' ) && function_exists( 'ner_michoel_render_admin_panel_login' ) ) {
+		ner_michoel_render_admin_panel_login( $dashboard_url ); // Always exits.
+	}
+
+	wp_safe_redirect( wp_login_url( $dashboard_url ) );
 	exit;
 }
 add_action( 'template_redirect', 'ner_michoel_admin_shortcut_redirect' );

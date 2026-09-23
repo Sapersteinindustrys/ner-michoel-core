@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.4.0
+Stable tag: 0.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,17 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.5.0 =
+* Add an "Admin Login Shortcut" — /admin can now be reached with a single
+  shared password instead of the full WordPress login, once configured
+  from the Site Control Panel. Falls back to the normal login unchanged
+  until set up; the real WordPress login always still works either way.
+* Add `ner_michoel_is_shiur_trending()` for the theme's "Trending" badge.
+* Tune the full-library importer to run more slowly/politely (smaller
+  batches, longer pauses between requests and between items) and add a
+  REST control endpoint for starting/pausing/checking status
+  programmatically.
 
 = 0.4.0 =
 * Add the ability to tag a shiur on "Email a Magid Shiur" submissions,
