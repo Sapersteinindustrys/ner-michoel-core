@@ -41,6 +41,16 @@ function ner_michoel_handle_contact_submit() {
 		exit;
 	}
 
+	ner_michoel_record_submission(
+		'contact',
+		array(
+			'name'    => $name,
+			'email'   => $email,
+			'phone'   => $phone,
+			'message' => $message,
+		)
+	);
+
 	$body_lines = array(
 		sprintf( 'Name: %s', $name ),
 		sprintf( 'Email: %s', $email ),
@@ -97,6 +107,16 @@ function ner_michoel_handle_email_magid_submit() {
 		wp_safe_redirect( esc_url_raw( add_query_arg( 'nm_magid', 'error', $redirect ) ) );
 		exit;
 	}
+
+	ner_michoel_record_submission(
+		'magid',
+		array(
+			'name'    => $name,
+			'email'   => $email,
+			'message' => $message,
+			'speaker' => $speaker->name,
+		)
+	);
 
 	$speaker_email = ner_michoel_get_speaker_email( $speaker_id );
 	$to            = $speaker_email ? $speaker_email : get_option( 'admin_email' );

@@ -1,9 +1,9 @@
 <?php
 /**
- * Lets a visitor download a shiur's audio file directly, with a
- * friendly "{Speaker} - {Title}.mp3" filename, instead of relying on
- * the <a download> attribute — which browsers silently ignore for
- * cross-origin file URLs (e.g. if uploads ever move to a CDN) and
+ * Lets a visitor download a shiur's media file directly (audio or
+ * video), with a friendly "{Speaker} - {Title}.ext" filename, instead
+ * of relying on the <a download> attribute — which browsers silently
+ * ignore for cross-origin file URLs (e.g. if uploads ever move to a CDN) and
  * which can't rename the downloaded file away from whatever it was
  * called in the media library.
  *
@@ -80,11 +80,12 @@ function ner_michoel_build_shiur_download_filename( $post_id, $ext ) {
 
 /**
  * Front-end accessor: the download URL for a shiur, or '' if it has
- * no audio attached (same "no audio yet" contract as
- * ner_michoel_get_shiur_audio_url()).
+ * no media attached. Checked against the raw attachment meta (not
+ * ner_michoel_get_shiur_audio_url(), which now only returns a value
+ * for the audio case) so this works for both audio and video shiurim.
  */
 function ner_michoel_get_shiur_download_url( $post_id ) {
-	if ( ! ner_michoel_get_shiur_audio_url( $post_id ) ) {
+	if ( ! get_post_meta( $post_id, '_shiur_audio_id', true ) ) {
 		return '';
 	}
 	return add_query_arg( 'nm_download', '1', get_permalink( $post_id ) );

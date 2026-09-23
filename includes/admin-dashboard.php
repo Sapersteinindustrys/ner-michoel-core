@@ -26,12 +26,33 @@ function ner_michoel_register_dashboard_menu() {
 
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Overview', 'ner-michoel-core' ), __( 'Overview', 'ner-michoel-core' ), 'edit_posts', NER_MICHOEL_DASHBOARD_SLUG, 'ner_michoel_render_dashboard_home' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Homepage Slider', 'ner-michoel-core' ), __( 'Homepage Slider', 'ner-michoel-core' ), 'edit_posts', 'nm-homepage-slider', 'ner_michoel_render_homepage_slider_page' );
+	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Live Shiur / Zoom', 'ner-michoel-core' ), __( 'Live Shiur / Zoom', 'ner-michoel-core' ), 'edit_posts', 'nm-live-shiur', 'ner_michoel_render_live_shiur_page' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Shiurim', 'ner-michoel-core' ), __( 'Shiurim', 'ner-michoel-core' ), 'edit_posts', 'edit.php?post_type=shiur' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Speakers', 'ner-michoel-core' ), __( 'Speakers', 'ner-michoel-core' ), 'edit_posts', 'edit-tags.php?taxonomy=speaker&post_type=shiur' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Series', 'ner-michoel-core' ), __( 'Series', 'ner-michoel-core' ), 'edit_posts', 'edit-tags.php?taxonomy=series&post_type=shiur' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Photo & Video Galleries', 'ner-michoel-core' ), __( 'Galleries', 'ner-michoel-core' ), 'edit_posts', 'edit.php?post_type=gallery' );
+	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Post News', 'ner-michoel-core' ), __( 'Post News', 'ner-michoel-core' ), 'edit_posts', 'nm-post-news', 'ner_michoel_render_post_news_page' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Mazal Tov Announcements', 'ner-michoel-core' ), __( 'Mazal Tov', 'ner-michoel-core' ), 'edit_posts', 'edit.php?post_type=mazal_tov' );
+	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Post a Mazal Tov', 'ner-michoel-core' ), __( 'Post a Mazal Tov', 'ner-michoel-core' ), 'edit_posts', 'nm-mazal-tov-quick-add', 'ner_michoel_render_mazal_tov_quick_add_page' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Upload Pictures', 'ner-michoel-core' ), __( 'Upload Pictures', 'ner-michoel-core' ), 'upload_files', 'upload.php' );
+	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Recent Submissions', 'ner-michoel-core' ), __( 'Submissions', 'ner-michoel-core' ), 'edit_posts', 'edit.php?post_type=nm_submission' );
+	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Bulk Upload Shiurim', 'ner-michoel-core' ), __( 'Bulk Upload', 'ner-michoel-core' ), 'edit_posts', 'nm-bulk-upload', 'ner_michoel_render_bulk_upload_page' );
+	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Most Listened Shiurim', 'ner-michoel-core' ), __( 'Most Listened', 'ner-michoel-core' ), 'edit_posts', 'edit.php?post_type=shiur&orderby=nm_plays&order=desc' );
+
+	// manage_options — traffic data reads more like site-operator info
+	// than day-to-day content editing, same reasoning as Import Sample
+	// Content above.
+	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Site Statistics', 'ner-michoel-core' ), __( 'Site Statistics', 'ner-michoel-core' ), 'manage_options', 'nm-site-stats', 'ner_michoel_render_site_stats_page' );
+
+	// manage_options (not the panel's usual edit_posts) — this is a
+	// one-time migration action, not routine editing.
+	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Import Sample Content', 'ner-michoel-core' ), __( 'Import Sample Content', 'ner-michoel-core' ), 'manage_options', 'nm-import-sample-content', 'ner_michoel_render_sample_content_page' );
+
+	// Registered under the same parent (so its screen ID still matches
+	// NER_MICHOEL_DASHBOARD_SLUG for asset-loading below) but hidden from
+	// the nav — only reachable by the redirect at the end of that flow.
+	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Assign Batch', 'ner-michoel-core' ), __( 'Assign Batch', 'ner-michoel-core' ), 'edit_posts', 'nm-bulk-assign', 'ner_michoel_render_bulk_assign_page' );
+	remove_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, 'nm-bulk-assign' );
 }
 add_action( 'admin_menu', 'ner_michoel_register_dashboard_menu' );
 
@@ -41,6 +62,16 @@ function ner_michoel_render_dashboard_home() {
 			'title' => __( 'Shiurim', 'ner-michoel-core' ),
 			'desc'  => __( 'Add or edit audio shiurim, and assign a speaker and series.', 'ner-michoel-core' ),
 			'url'   => admin_url( 'edit.php?post_type=shiur' ),
+		),
+		array(
+			'title' => __( 'Bulk Upload Shiurim', 'ner-michoel-core' ),
+			'desc'  => __( 'Upload several audio or video files at once, then assign a speaker and series to the whole batch.', 'ner-michoel-core' ),
+			'url'   => admin_url( 'admin.php?page=nm-bulk-upload' ),
+		),
+		array(
+			'title' => __( 'Most Listened Shiurim', 'ner-michoel-core' ),
+			'desc'  => __( 'See play counts and how many listeners finished each shiur.', 'ner-michoel-core' ),
+			'url'   => admin_url( 'edit.php?post_type=shiur&orderby=nm_plays&order=desc' ),
 		),
 		array(
 			'title' => __( 'Speakers', 'ner-michoel-core' ),
@@ -58,9 +89,24 @@ function ner_michoel_render_dashboard_home() {
 			'url'   => admin_url( 'edit.php?post_type=gallery' ),
 		),
 		array(
+			'title' => __( 'Post News', 'ner-michoel-core' ),
+			'desc'  => __( 'Start a News & Events post — filed under the right category automatically.', 'ner-michoel-core' ),
+			'url'   => admin_url( 'admin.php?page=nm-post-news' ),
+		),
+		array(
+			'title' => __( 'Missing Audio', 'ner-michoel-core' ),
+			'desc'  => __( 'See which Shiurim have no audio or video file attached yet.', 'ner-michoel-core' ),
+			'url'   => admin_url( 'edit.php?post_type=shiur&nm_missing_audio=1' ),
+		),
+		array(
 			'title' => __( 'Mazal Tov Announcements', 'ner-michoel-core' ),
 			'desc'  => __( 'Post engagement, birth, and other simcha announcements.', 'ner-michoel-core' ),
 			'url'   => admin_url( 'edit.php?post_type=mazal_tov' ),
+		),
+		array(
+			'title' => __( 'Post a Mazal Tov (Quick)', 'ner-michoel-core' ),
+			'desc'  => __( 'A 4-field shortcut for the common case: honoree, relationship, type, years.', 'ner-michoel-core' ),
+			'url'   => admin_url( 'admin.php?page=nm-mazal-tov-quick-add' ),
 		),
 		array(
 			'title' => __( 'Homepage Slider', 'ner-michoel-core' ),
@@ -68,11 +114,34 @@ function ner_michoel_render_dashboard_home() {
 			'url'   => admin_url( 'admin.php?page=nm-homepage-slider' ),
 		),
 		array(
+			'title' => __( 'Live Shiur / Zoom', 'ner-michoel-core' ),
+			'desc'  => __( 'Update the Zoom link, meeting ID, and schedule shown on the site.', 'ner-michoel-core' ),
+			'url'   => admin_url( 'admin.php?page=nm-live-shiur' ),
+		),
+		array(
 			'title' => __( 'Upload Pictures', 'ner-michoel-core' ),
 			'desc'  => __( 'Add new photos to the media library, to use anywhere on the site.', 'ner-michoel-core' ),
 			'url'   => admin_url( 'upload.php' ),
 		),
+		array(
+			'title' => __( 'Recent Submissions', 'ner-michoel-core' ),
+			'desc'  => __( 'See Contact and Email-a-Magid-Shiur form submissions, in case an email never arrives.', 'ner-michoel-core' ),
+			'url'   => admin_url( 'edit.php?post_type=nm_submission' ),
+		),
 	);
+
+	if ( current_user_can( 'manage_options' ) ) {
+		$cards[] = array(
+			'title' => __( 'Import Sample Content', 'ner-michoel-core' ),
+			'desc'  => __( 'One-time: seed this site with real sample shiurim, speakers, and a series.', 'ner-michoel-core' ),
+			'url'   => admin_url( 'admin.php?page=nm-import-sample-content' ),
+		);
+		$cards[] = array(
+			'title' => __( 'Site Statistics', 'ner-michoel-core' ),
+			'desc'  => __( 'Traffic, top pages, referrers, and page load time — self-hosted, no third party.', 'ner-michoel-core' ),
+			'url'   => admin_url( 'admin.php?page=nm-site-stats' ),
+		);
+	}
 	?>
 	<div class="wrap nm-dashboard">
 		<h1><?php esc_html_e( 'Site Control Panel', 'ner-michoel-core' ); ?></h1>
@@ -102,10 +171,14 @@ function ner_michoel_dashboard_admin_assets() {
 
 	wp_enqueue_style( 'ner-michoel-admin', NER_MICHOEL_CORE_URL . 'assets/admin.css', array(), NER_MICHOEL_CORE_VERSION );
 
-	if ( isset( $_GET['page'] ) && 'nm-homepage-slider' === $_GET['page'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$page = isset( $_GET['page'] ) ? sanitize_key( $_GET['page'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+	if ( 'nm-homepage-slider' === $page ) {
 		wp_enqueue_media();
 		wp_enqueue_script( 'jquery-ui-sortable' );
 		wp_enqueue_script( 'ner-michoel-admin', NER_MICHOEL_CORE_URL . 'assets/admin.js', array( 'jquery', 'jquery-ui-sortable' ), NER_MICHOEL_CORE_VERSION, true );
+	} elseif ( 'nm-bulk-upload' === $page ) {
+		wp_enqueue_media();
 	}
 }
 add_action( 'admin_enqueue_scripts', 'ner_michoel_dashboard_admin_assets' );
