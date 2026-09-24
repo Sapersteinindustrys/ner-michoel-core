@@ -73,8 +73,9 @@ function ner_michoel_render_hero_slider_tab() {
 		$saved = true;
 	}
 
-	$slides   = ner_michoel_get_homepage_slider();
-	$interval = ner_michoel_get_homepage_slider_interval_seconds();
+	$slides      = ner_michoel_get_homepage_slider();
+	$interval    = ner_michoel_get_homepage_slider_interval_seconds();
+	$button_style = ner_michoel_get_homepage_slider_button_style();
 	?>
 	<p><?php esc_html_e( 'These images rotate at the top of the homepage. Add, remove, or drag to reorder slides below.', 'ner-michoel-core' ); ?></p>
 
@@ -90,6 +91,33 @@ function ner_michoel_render_hero_slider_tab() {
 			<input type="number" id="nm-slider-interval" name="nm_homepage_slider_interval" value="<?php echo esc_attr( $interval ); ?>" min="2" max="60" step="1" style="width:80px;" />
 			<span class="description"><?php esc_html_e( 'How long each slide stays up before auto-advancing to the next one.', 'ner-michoel-core' ); ?></span>
 		</p>
+
+		<div class="nm-slider-bulk-button">
+			<strong><?php esc_html_e( 'Slide button design', 'ner-michoel-core' ); ?></strong>
+			<p class="description"><?php esc_html_e( 'Applies to every slide\'s button link (e.g. "Learn More").', 'ner-michoel-core' ); ?></p>
+			<table class="form-table">
+				<tr>
+					<th scope="row"><label for="nm_slider_button_color"><?php esc_html_e( 'Color', 'ner-michoel-core' ); ?></label></th>
+					<td><input type="color" id="nm_slider_button_color" name="nm_slider_button_color" value="<?php echo esc_attr( $button_style['color'] ); ?>" /></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="nm_slider_button_shape"><?php esc_html_e( 'Shape', 'ner-michoel-core' ); ?></label></th>
+					<td>
+						<select id="nm_slider_button_shape" name="nm_slider_button_shape">
+							<option value="pill" <?php selected( $button_style['shape'], 'pill' ); ?>><?php esc_html_e( 'Pill (fully rounded)', 'ner-michoel-core' ); ?></option>
+							<option value="rounded" <?php selected( $button_style['shape'], 'rounded' ); ?>><?php esc_html_e( 'Rounded corners', 'ner-michoel-core' ); ?></option>
+							<option value="square" <?php selected( $button_style['shape'], 'square' ); ?>><?php esc_html_e( 'Square corners', 'ner-michoel-core' ); ?></option>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="nm_slider_button_opacity"><?php esc_html_e( 'Opacity', 'ner-michoel-core' ); ?></label></th>
+					<td>
+						<input type="number" id="nm_slider_button_opacity" name="nm_slider_button_opacity" value="<?php echo esc_attr( $button_style['opacity'] ); ?>" min="10" max="100" step="5" style="width:80px;" />%
+					</td>
+				</tr>
+			</table>
+		</div>
 
 		<div id="nm-slider-list">
 			<?php foreach ( $slides as $i => $slide ) : ?>
@@ -249,6 +277,18 @@ function ner_michoel_save_homepage_slider() {
 
 	$interval = isset( $_POST['nm_homepage_slider_interval'] ) ? absint( $_POST['nm_homepage_slider_interval'] ) : 0;
 	update_option( 'nm_homepage_slider_interval', $interval ? max( 2, min( 60, $interval ) ) : 6 );
+
+	$valid_shapes = array( 'pill', 'rounded', 'square' );
+	$shape        = isset( $_POST['nm_slider_button_shape'] ) ? sanitize_key( wp_unslash( $_POST['nm_slider_button_shape'] ) ) : 'pill';
+	$opacity      = isset( $_POST['nm_slider_button_opacity'] ) ? absint( $_POST['nm_slider_button_opacity'] ) : 100;
+	update_option(
+		'nm_homepage_slider_button_style',
+		array(
+			'color'   => isset( $_POST['nm_slider_button_color'] ) ? sanitize_hex_color( wp_unslash( $_POST['nm_slider_button_color'] ) ) : '#2f8f5b',
+			'shape'   => in_array( $shape, $valid_shapes, true ) ? $shape : 'pill',
+			'opacity' => max( 10, min( 100, $opacity ) ),
+		)
+	);
 }
 
 /**
@@ -258,6 +298,53 @@ function ner_michoel_save_homepage_slider() {
  */
 function ner_michoel_get_homepage_slider_interval_seconds() {
 	return (int) get_option( 'nm_homepage_slider_interval', 6 );
+}
+
+/**
+ * Raw color/shape/opacity for every slide's button link, as set on
+ * the Home Page settings screen.
+ */
+function ner_michoel_get_homepage_slider_button_style() {
+	return wp_parse_args(
+		get_option( 'nm_homepage_slider_button_style', array() ),
+		array(
+			'color'   => '#2f8f5b',
+			'shape'   => 'pill',
+			'opacity' => 100,
+		)
+	);
+}
+
+/**
+ * The button's background as a ready-to-use rgba() string — opacity
+ * is applied to the color itself (not a plain CSS `opacity`, which
+ * would fade the button's text/label too), computed here so the
+ * theme just outputs the result rather than re-doing hex/alpha math
+ * itself.
+ */
+function ner_michoel_get_homepage_slider_button_background() {
+	$style = ner_michoel_get_homepage_slider_button_style();
+	$hex   = ltrim( $style['color'], '#' );
+	if ( 6 !== strlen( $hex ) ) {
+		$hex = '2f8f5b';
+	}
+	$r = hexdec( substr( $hex, 0, 2 ) );
+	$g = hexdec( substr( $hex, 2, 2 ) );
+	$b = hexdec( substr( $hex, 4, 2 ) );
+	return sprintf( 'rgba(%d, %d, %d, %s)', $r, $g, $b, $style['opacity'] / 100 );
+}
+
+/**
+ * The button's border-radius for its chosen shape.
+ */
+function ner_michoel_get_homepage_slider_button_radius() {
+	$style = ner_michoel_get_homepage_slider_button_style();
+	$map   = array(
+		'pill'    => '999px',
+		'rounded' => '8px',
+		'square'  => '3px',
+	);
+	return isset( $map[ $style['shape'] ] ) ? $map[ $style['shape'] ] : '999px';
 }
 
 /**

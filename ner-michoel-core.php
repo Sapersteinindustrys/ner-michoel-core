@@ -3,7 +3,7 @@
  * Plugin Name:       Ner Michoel Core
  * Plugin URI:
  * Description:       Site functionality (custom post types, forms, integrations) for the Ner Michoel rebuild. Kept independent of the theme so content/data survive a future redesign.
- * Version:           0.8.12
+ * Version:           0.8.13
  * Requires at least: 6.0
  * Requires PHP:       7.4
  * Author:             Tomo
