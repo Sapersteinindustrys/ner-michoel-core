@@ -73,7 +73,8 @@ function ner_michoel_render_hero_slider_tab() {
 		$saved = true;
 	}
 
-	$slides = ner_michoel_get_homepage_slider();
+	$slides   = ner_michoel_get_homepage_slider();
+	$interval = ner_michoel_get_homepage_slider_interval_seconds();
 	?>
 	<p><?php esc_html_e( 'These images rotate at the top of the homepage. Add, remove, or drag to reorder slides below.', 'ner-michoel-core' ); ?></p>
 
@@ -83,6 +84,12 @@ function ner_michoel_render_hero_slider_tab() {
 
 	<form method="post" id="nm-slider-form">
 		<?php wp_nonce_field( 'nm_save_homepage_slider', 'nm_homepage_slider_nonce' ); ?>
+
+		<p>
+			<label for="nm-slider-interval"><strong><?php esc_html_e( 'Seconds per slide', 'ner-michoel-core' ); ?></strong></label><br />
+			<input type="number" id="nm-slider-interval" name="nm_homepage_slider_interval" value="<?php echo esc_attr( $interval ); ?>" min="2" max="60" step="1" style="width:80px;" />
+			<span class="description"><?php esc_html_e( 'How long each slide stays up before auto-advancing to the next one.', 'ner-michoel-core' ); ?></span>
+		</p>
 
 		<div id="nm-slider-list">
 			<?php foreach ( $slides as $i => $slide ) : ?>
@@ -237,6 +244,18 @@ function ner_michoel_save_homepage_slider() {
 	}
 
 	update_option( 'nm_homepage_slider', $slides );
+
+	$interval = isset( $_POST['nm_homepage_slider_interval'] ) ? absint( $_POST['nm_homepage_slider_interval'] ) : 0;
+	update_option( 'nm_homepage_slider_interval', $interval ? max( 2, min( 60, $interval ) ) : 6 );
+}
+
+/**
+ * Seconds each slide stays up before auto-advancing, as set on the
+ * Home Page settings screen. Defaults to 6 (this feature's original
+ * hardcoded value) if never saved.
+ */
+function ner_michoel_get_homepage_slider_interval_seconds() {
+	return (int) get_option( 'nm_homepage_slider_interval', 6 );
 }
 
 /**
