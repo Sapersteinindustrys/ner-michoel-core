@@ -180,70 +180,10 @@ function ner_michoel_render_gallery_meta_box( $post ) {
 	<input type="hidden" name="ner_michoel_gallery_image_ids" id="ner_michoel_gallery_image_ids" value="<?php echo esc_attr( implode( ',', $ids ) ); ?>" />
 	<button type="button" class="button" id="ner_michoel_gallery_add"><?php esc_html_e( 'Add Images', 'ner-michoel-core' ); ?></button>
 	<p class="description"><?php esc_html_e( 'Drag thumbnails to reorder. This order is used for the grid and slider.', 'ner-michoel-core' ); ?></p>
-	<script>
-	( function( $ ) {
-		var frame;
-		var $list  = $( '#ner_michoel_gallery_images' );
-		var $input = $( '#ner_michoel_gallery_image_ids' );
-
-		function syncInput() {
-			var ids = [];
-			$list.find( '.nm-gallery-item' ).each( function () {
-				ids.push( $( this ).data( 'id' ) );
-			} );
-			$input.val( ids.join( ',' ) );
-		}
-
-		$list.sortable( { update: syncInput } );
-
-		$( '#ner_michoel_gallery_add' ).on( 'click', function ( e ) {
-			e.preventDefault();
-			frame = wp.media( {
-				title: <?php echo wp_json_encode( __( 'Select gallery images', 'ner-michoel-core' ) ); ?>,
-				library: { type: 'image' },
-				multiple: true
-			} );
-			frame.on( 'select', function () {
-				var selection = frame.state().get( 'selection' );
-				selection.each( function ( attachment ) {
-					var data     = attachment.toJSON();
-					var thumbUrl = ( data.sizes && data.sizes.thumbnail ) ? data.sizes.thumbnail.url : data.url;
-					var $item = $( '<div class="nm-gallery-item" style="position:relative;cursor:move;"></div>' )
-						.attr( 'data-id', data.id )
-						.append(
-							$( '<img>' ).attr( 'src', thumbUrl ).css( {
-								width: 100,
-								height: 100,
-								objectFit: 'cover',
-								display: 'block',
-								border: '1px solid #ccc'
-							} )
-						)
-						.append(
-							$( '<button type="button" class="nm-gallery-remove button-link-delete">&times;</button>' ).css( {
-								position: 'absolute',
-								top: 2,
-								right: 2,
-								background: '#fff',
-								borderRadius: '50%',
-								lineHeight: 1,
-								padding: '2px 6px'
-							} )
-						);
-					$list.append( $item );
-				} );
-				syncInput();
-			} );
-			frame.open();
-		} );
-
-		$list.on( 'click', '.nm-gallery-remove', function () {
-			$( this ).closest( '.nm-gallery-item' ).remove();
-			syncInput();
-		} );
-	} )( jQuery );
-	</script>
 	<?php
+	// JS: assets/media-pickers.js (enqueued in ner_michoel_gallery_meta_box_assets()
+	// below) — not an inline <script> here, since the block editor loads
+	// this meta box in a way that doesn't reliably execute inline scripts.
 }
 
 function ner_michoel_save_gallery_meta( $post_id ) {
@@ -272,8 +212,7 @@ function ner_michoel_gallery_meta_box_assets( $hook ) {
 	if ( 'gallery' !== $post_type || ! in_array( $hook, array( 'post.php', 'post-new.php' ), true ) ) {
 		return;
 	}
-	wp_enqueue_media();
-	wp_enqueue_script( 'jquery-ui-sortable' );
+	ner_michoel_enqueue_media_pickers_script();
 }
 add_action( 'admin_enqueue_scripts', 'ner_michoel_gallery_meta_box_assets' );
 

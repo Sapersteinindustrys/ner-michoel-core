@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.7.0
+Stable tag: 0.8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,17 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.8.0 =
+* Fix "Add"/"Choose" buttons across the admin (Homepage Slider, Gallery
+  Images, Shiur audio/video, Speaker/Series cover image, Bulk Upload
+  Shiurim) not responding to clicks. Homepage Slider's bug was a
+  confirmed real one (a script ran before its target element existed,
+  which skipped binding the click handler entirely). The meta-box
+  pickers (Gallery, Shiur) moved off inline `<script>` tags entirely, in
+  favor of one shared, properly-enqueued file using event delegation —
+  more robust regardless of when/how the block editor injects a classic
+  meta box's markup.
 
 = 0.7.0 =
 * Reorganize the Homepage Slider into a "Home Page" settings screen with

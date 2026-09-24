@@ -52,55 +52,9 @@ function ner_michoel_render_bulk_upload_page() {
 			</p>
 		</form>
 	</div>
-	<script>
-	( function( $ ) {
-		var frame;
-
-		var guessTitle = function( filename ) {
-			var name = filename.replace( /\.[^/.]+$/, '' );
-			name = name.replace( /[_-]+/g, ' ' ).replace( /\s+/g, ' ' ).trim();
-			return name.replace( /\w\S*/g, function ( word ) {
-				return word.charAt( 0 ).toUpperCase() + word.substr( 1 );
-			} );
-		};
-
-		var addRow = function( id, filename, title ) {
-			var $row = $( '<tr></tr>' );
-			$row.append( $( '<td></td>' ).text( filename ).append(
-				$( '<input type="hidden" name="nm_bulk_attachment_id[]">' ).val( id )
-			) );
-			$row.append( $( '<td></td>' ).append(
-				$( '<input type="text" name="nm_bulk_title[]" class="widefat">' ).val( title )
-			) );
-			$( '#nm_bulk_upload_table tbody' ).append( $row );
-		};
-
-		$( '#nm_bulk_upload_select' ).on( 'click', function( e ) {
-			e.preventDefault();
-			if ( frame ) {
-				frame.open();
-				return;
-			}
-			frame = wp.media( {
-				title: <?php echo wp_json_encode( __( 'Select or upload audio/video files', 'ner-michoel-core' ) ); ?>,
-				library: { type: [ 'audio', 'video' ] },
-				multiple: true
-			} );
-			frame.on( 'select', function() {
-				var selection = frame.state().get( 'selection' );
-				$( '#nm_bulk_upload_table tbody' ).empty();
-				selection.each( function( attachment ) {
-					var data = attachment.toJSON();
-					addRow( data.id, data.filename, guessTitle( data.filename ) );
-				} );
-				$( '#nm_bulk_upload_table' ).show();
-				$( '#nm_bulk_upload_submit' ).show();
-			} );
-			frame.open();
-		} );
-	} )( jQuery );
-	</script>
 	<?php
+	// JS: assets/media-pickers.js — see ner_michoel_dashboard_admin_assets()
+	// in admin-dashboard.php for where it's enqueued for this page.
 }
 
 function ner_michoel_handle_bulk_create_shiurim() {

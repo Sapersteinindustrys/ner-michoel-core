@@ -13,6 +13,31 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'NER_MICHOEL_DASHBOARD_SLUG', 'nm-dashboard' );
 
+/**
+ * Shared by every screen with a wp.media() "Choose Image/File(s)"
+ * button (gallery.php, shiur-meta.php, term-meta.php, bulk-upload.php)
+ * — one script (assets/media-pickers.js), enqueued alongside
+ * wp_enqueue_media() wherever any of those buttons actually appear.
+ * Safe to call more than once per page load; wp_enqueue_script() and
+ * wp_localize_script() are both no-ops on a repeat call for the same
+ * handle.
+ */
+function ner_michoel_enqueue_media_pickers_script() {
+	wp_enqueue_media();
+	wp_enqueue_script( 'ner-michoel-media-pickers', NER_MICHOEL_CORE_URL . 'assets/media-pickers.js', array( 'jquery', 'jquery-ui-sortable' ), NER_MICHOEL_CORE_VERSION, true );
+	wp_localize_script(
+		'ner-michoel-media-pickers',
+		'nmMediaPickers',
+		array(
+			'galleryTitle'     => __( 'Select gallery images', 'ner-michoel-core' ),
+			'audioTitle'       => __( 'Select or upload an audio or video file', 'ner-michoel-core' ),
+			'noFileSelected'   => __( 'No file selected.', 'ner-michoel-core' ),
+			'coverImageTitle'  => __( 'Select or upload a cover image', 'ner-michoel-core' ),
+			'bulkUploadTitle'  => __( 'Select or upload audio/video files', 'ner-michoel-core' ),
+		)
+	);
+}
+
 function ner_michoel_register_dashboard_menu() {
 	add_menu_page(
 		__( 'Site Control Panel', 'ner-michoel-core' ),
@@ -202,7 +227,7 @@ function ner_michoel_dashboard_admin_assets() {
 		wp_enqueue_script( 'jquery-ui-sortable' );
 		wp_enqueue_script( 'ner-michoel-admin', NER_MICHOEL_CORE_URL . 'assets/admin.js', array( 'jquery', 'jquery-ui-sortable' ), NER_MICHOEL_CORE_VERSION, true );
 	} elseif ( 'nm-bulk-upload' === $page ) {
-		wp_enqueue_media();
+		ner_michoel_enqueue_media_pickers_script();
 	}
 }
 add_action( 'admin_enqueue_scripts', 'ner_michoel_dashboard_admin_assets' );

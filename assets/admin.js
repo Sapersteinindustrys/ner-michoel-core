@@ -4,7 +4,7 @@
  * for the PHP side (field names, save handling, the JS row template).
  */
 
-( function ( $ ) {
+jQuery( function ( $ ) {
 	'use strict';
 
 	var $list = $( '#nm-slider-list' );
@@ -53,4 +53,4 @@
 		$list.append( $row );
 		bindRow( $row );
 	} );
-} )( jQuery );
+} );

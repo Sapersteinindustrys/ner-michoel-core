@@ -43,34 +43,10 @@ function ner_michoel_render_shiur_meta_box( $post ) {
 		<input type="text" id="ner_michoel_shiur_duration" name="ner_michoel_shiur_duration" value="<?php echo esc_attr( $duration ); ?>" placeholder="45:30" style="width:100%;" />
 	</p>
 	<p class="description"><?php esc_html_e( 'Ordering within a series uses the Order field below (Page Attributes).', 'ner-michoel-core' ); ?></p>
-	<script>
-	( function( $ ) {
-		var frame;
-		$( '#ner_michoel_audio_select' ).on( 'click', function( e ) {
-			e.preventDefault();
-			if ( frame ) { frame.open(); return; }
-			frame = wp.media( {
-				title: <?php echo wp_json_encode( __( 'Select or upload an audio or video file', 'ner-michoel-core' ) ); ?>,
-				library: { type: [ 'audio', 'video' ] },
-				multiple: false
-			} );
-			frame.on( 'select', function() {
-				var attachment = frame.state().get( 'selection' ).first().toJSON();
-				$( '#ner_michoel_audio_id' ).val( attachment.id );
-				$( '#ner_michoel_audio_filename' ).text( attachment.filename );
-				$( '#ner_michoel_audio_remove' ).show();
-			} );
-			frame.open();
-		} );
-		$( '#ner_michoel_audio_remove' ).on( 'click', function( e ) {
-			e.preventDefault();
-			$( '#ner_michoel_audio_id' ).val( '' );
-			$( '#ner_michoel_audio_filename' ).text( <?php echo wp_json_encode( __( 'No file selected.', 'ner-michoel-core' ) ); ?> );
-			$( this ).hide();
-		} );
-	} )( jQuery );
-	</script>
 	<?php
+	// JS: assets/media-pickers.js (enqueued in ner_michoel_shiur_meta_box_assets()
+	// below) — not an inline <script> here, since the block editor loads
+	// this meta box in a way that doesn't reliably execute inline scripts.
 }
 
 function ner_michoel_save_shiur_meta( $post_id ) {
@@ -105,7 +81,7 @@ function ner_michoel_shiur_meta_box_assets( $hook ) {
 	if ( 'shiur' !== $post_type || ! in_array( $hook, array( 'post.php', 'post-new.php' ), true ) ) {
 		return;
 	}
-	wp_enqueue_media();
+	ner_michoel_enqueue_media_pickers_script();
 }
 add_action( 'admin_enqueue_scripts', 'ner_michoel_shiur_meta_box_assets' );
 

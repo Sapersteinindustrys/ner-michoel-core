@@ -36,35 +36,10 @@ function ner_michoel_taxonomy_image_field( $taxonomy_object, $term = null ) {
 		<button type="button" class="button" id="ner_michoel_term_image_select"><?php esc_html_e( 'Choose Image', 'ner-michoel-core' ); ?></button>
 	</div>
 	<?php endif; ?>
-	<script>
-	( function( $ ) {
-		var frame;
-		$( '#ner_michoel_term_image_select' ).on( 'click', function( e ) {
-			e.preventDefault();
-			if ( frame ) { frame.open(); return; }
-			frame = wp.media( {
-				title: <?php echo wp_json_encode( __( 'Select or upload a cover image', 'ner-michoel-core' ) ); ?>,
-				library: { type: 'image' },
-				multiple: false
-			} );
-			frame.on( 'select', function() {
-				var attachment = frame.state().get( 'selection' ).first().toJSON();
-				var url = attachment.sizes && attachment.sizes.medium ? attachment.sizes.medium.url : attachment.url;
-				$( '#ner_michoel_image_id' ).val( attachment.id );
-				$( '#ner_michoel_term_image_preview' ).html( '<img src="' + url + '" style="max-width:150px;height:auto;display:block;" />' );
-				$( '#ner_michoel_term_image_remove' ).show();
-			} );
-			frame.open();
-		} );
-		$( '#ner_michoel_term_image_remove' ).on( 'click', function( e ) {
-			e.preventDefault();
-			$( '#ner_michoel_image_id' ).val( '' );
-			$( '#ner_michoel_term_image_preview' ).empty();
-			$( this ).hide();
-		} );
-	} )( jQuery );
-	</script>
 	<?php
+	// JS: assets/media-pickers.js (enqueued in ner_michoel_taxonomy_image_assets()
+	// below) — not an inline <script> here, for consistency with the
+	// other meta boxes' pickers (see the note in gallery.php).
 }
 
 function ner_michoel_taxonomy_image_add_field( $taxonomy ) {
@@ -103,7 +78,7 @@ function ner_michoel_taxonomy_image_assets( $hook ) {
 	}
 	$taxonomy = isset( $_GET['taxonomy'] ) ? sanitize_key( $_GET['taxonomy'] ) : '';
 	if ( in_array( $taxonomy, array( 'speaker', 'series' ), true ) ) {
-		wp_enqueue_media();
+		ner_michoel_enqueue_media_pickers_script();
 	}
 }
 add_action( 'admin_enqueue_scripts', 'ner_michoel_taxonomy_image_assets' );
