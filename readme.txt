@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.8.17
+Stable tag: 0.8.18
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,19 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.8.18 =
+* Replace /admin's old behavior (always redirecting into wp-admin's own
+  Site Control Panel) with a genuinely custom admin UI rendered directly
+  at /admin — categories across the top, sub-tabs within each, covering
+  every settings screen (Appearance, Home Page, Live Shiur, Layout
+  Toggle, Admin Login Shortcut, Storage, Import Sample Content, Full
+  Library Import, Site Statistics) plus quick actions (Post a Mazal Tov,
+  Post News, Bulk Upload). Editing individual posts (Shiurim, Speakers,
+  Galleries, etc.) still opens WordPress's own editor/list tables — not
+  reimplemented, that's a deliberate click-through, not the unwanted
+  auto-redirect this replaces. All the previous wp-admin submenu pages
+  still exist unchanged as a fallback.
 
 = 0.8.14 =
 * Fix the Appearance settings page's color pickers/palette swatches not

@@ -250,14 +250,13 @@ function ner_michoel_dashboard_admin_assets() {
 add_action( 'admin_enqueue_scripts', 'ner_michoel_dashboard_admin_assets' );
 
 /**
- * Makes site-url/admin redirect into the dashboard — straight there if
- * already logged in with edit access; otherwise, if a shortcut
- * password has been configured (see includes/admin-panel-login.php), a
- * plain one-field password form instead of the full WP login; if no
- * shortcut password was ever set, falls back to the normal login
- * screen unchanged (which then lands here after signing in). Note:
- * this will shadow any actual page/post whose slug happens to be
- * "admin".
+ * Makes site-url/admin render the custom Site Control Panel UI
+ * directly — no redirect into wp-admin — for anyone already logged in
+ * with edit access (see includes/custom-admin.php). Logged out: a
+ * shortcut password form if one's configured (includes/admin-panel-login.php),
+ * else the normal WP login screen unchanged, landing back here once
+ * signed in. Note: this will shadow any actual page/post whose slug
+ * happens to be "admin".
  */
 function ner_michoel_admin_shortcut_redirect() {
 	if ( is_admin() || wp_doing_ajax() || wp_doing_cron() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
@@ -271,10 +270,15 @@ function ner_michoel_admin_shortcut_redirect() {
 		return;
 	}
 
-	$dashboard_url = admin_url( 'admin.php?page=' . NER_MICHOEL_DASHBOARD_SLUG );
+	$dashboard_url = home_url( '/admin' );
 
 	if ( is_user_logged_in() && current_user_can( 'edit_posts' ) ) {
-		wp_safe_redirect( $dashboard_url );
+		if ( function_exists( 'ner_michoel_render_custom_admin_ui' ) ) {
+			ner_michoel_render_custom_admin_ui(); // Always exits.
+		}
+		// Custom UI failed to load somehow — fall back to the old
+		// behavior rather than showing nothing.
+		wp_safe_redirect( admin_url( 'admin.php?page=' . NER_MICHOEL_DASHBOARD_SLUG ) );
 		exit;
 	}
 
