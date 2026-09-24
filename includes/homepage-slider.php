@@ -100,6 +100,8 @@ function ner_michoel_render_hero_slider_tab() {
 		<p>
 			<button type="button" class="button" id="nm-slider-add"><?php esc_html_e( '+ Add Slide', 'ner-michoel-core' ); ?></button>
 			<button type="button" class="button" id="nm-slider-add-multiple"><?php esc_html_e( '+ Add Slides from Photos…', 'ner-michoel-core' ); ?></button>
+			<br />
+			<span class="description"><?php esc_html_e( 'In the photo picker, hold Ctrl (⌘ Cmd on Mac) while clicking to select more than one photo at a time — WordPress\'s picker treats a plain click as "just this one" instead.', 'ner-michoel-core' ); ?></span>
 		</p>
 
 		<div class="nm-slider-bulk-button">
@@ -147,7 +149,7 @@ function ner_michoel_render_slide_row( $index, $slide ) {
 		<div class="nm-slide-row__image">
 			<div class="nm-slide-row__preview"><?php if ( $thumb ) : ?><img src="<?php echo esc_url( $thumb ); ?>" alt="" /><?php endif; ?></div>
 			<input type="hidden" class="nm-slide-image-id" name="<?php echo $name; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>[image_id]" value="<?php echo esc_attr( $slide['image_id'] ); ?>" />
-			<button type="button" class="button nm-slide-choose-image"><?php esc_html_e( 'Choose Image', 'ner-michoel-core' ); ?></button>
+			<button type="button" class="button nm-slide-choose-image" title="<?php esc_attr_e( 'Hold Ctrl (⌘ Cmd on Mac) to pick more than one — extras become new slides.', 'ner-michoel-core' ); ?>"><?php esc_html_e( 'Choose Image', 'ner-michoel-core' ); ?></button>
 		</div>
 		<div class="nm-slide-row__fields">
 			<label>
