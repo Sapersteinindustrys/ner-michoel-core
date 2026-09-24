@@ -98,15 +98,39 @@ jQuery( function ( $ ) {
 		$row.find( '.nm-slide-choose-image' ).on( 'click', function ( e ) {
 			e.preventDefault();
 			frame = wp.media( {
-				title: 'Select slide image',
+				title: 'Select slide image(s)',
 				library: { type: 'image' },
-				multiple: false
+				multiple: true
 			} );
 			frame.on( 'select', function () {
-				var attachment = frame.state().get( 'selection' ).first().toJSON();
-				var url = ( attachment.sizes && attachment.sizes.medium ) ? attachment.sizes.medium.url : attachment.url;
-				$row.find( '.nm-slide-image-id' ).val( attachment.id );
-				$row.find( '.nm-slide-row__preview' ).html( '<img src="' + url + '" alt="" />' );
+				// Picking several here fills this row with the first and
+				// inserts one new row per additional image right after it,
+				// in order — the same "one photo, one slide" behavior as
+				// "+ Add Slides from Photos…", but from the button people
+				// reach for first without needing to find the other one.
+				var attachments = frame.state().get( 'selection' ).toArray();
+				var $insertAfter = $row;
+				attachments.forEach( function ( attachment, i ) {
+					var data = attachment.toJSON();
+					var url  = ( data.sizes && data.sizes.medium ) ? data.sizes.medium.url : data.url;
+
+					if ( 0 === i ) {
+						$row.find( '.nm-slide-image-id' ).val( data.id );
+						$row.find( '.nm-slide-row__preview' ).html( '<img src="' + url + '" alt="" />' );
+						return;
+					}
+
+					var $newRow = createRow();
+					if ( ! $newRow ) {
+						return;
+					}
+					$newRow.find( '.nm-slide-image-id' ).val( data.id );
+					$newRow.find( '.nm-slide-row__preview' ).html( '<img src="' + url + '" alt="" />' );
+					$insertAfter.after( $newRow );
+					bindRow( $newRow );
+					applyBulkButton( $newRow );
+					$insertAfter = $newRow;
+				} );
 			} );
 			frame.open();
 		} );
