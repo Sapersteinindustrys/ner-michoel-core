@@ -267,6 +267,50 @@ function ner_michoel_save_appearance_settings() {
 	}
 }
 
+/**
+ * REST route for setting these options programmatically — same
+ * reasoning as ner_michoel_handle_storage_settings_rest() in
+ * bunny-storage.php: manage_options-gated, so a valid Application
+ * Password can configure this without a live wp-admin session (no
+ * REST route exists for that; a plain color picker form needs one).
+ */
+function ner_michoel_register_appearance_settings_route() {
+	register_rest_route(
+		'ner-michoel/v1',
+		'/appearance-settings',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ner_michoel_handle_appearance_settings_rest',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_options' );
+			},
+		)
+	);
+}
+add_action( 'rest_api_init', 'ner_michoel_register_appearance_settings_route' );
+
+function ner_michoel_handle_appearance_settings_rest( WP_REST_Request $request ) {
+	$saved = array();
+	foreach ( ner_michoel_appearance_fields() as $key => $field ) {
+		$raw = $request->get_param( $key );
+		if ( null === $raw ) {
+			continue;
+		}
+
+		$value = ( 'color' === $field['type'] ) ? sanitize_hex_color( $raw ) : sanitize_text_field( $raw );
+
+		if ( '' === $value || null === $value ) {
+			delete_option( $key );
+			$saved[ $key ] = null;
+		} else {
+			update_option( $key, $value );
+			$saved[ $key ] = $value;
+		}
+	}
+
+	return new WP_REST_Response( array( 'saved' => $saved ), 200 );
+}
+
 function ner_michoel_appearance_admin_assets( $hook ) {
 	$screen = get_current_screen();
 	if ( ! $screen || false === strpos( $screen->id, 'nm-appearance' ) ) {
