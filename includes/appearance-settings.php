@@ -157,6 +157,16 @@ function ner_michoel_render_appearance_settings_page() {
 			<?php endforeach; ?>
 		</div>
 
+		<h2><?php esc_html_e( 'Preview', 'ner-michoel-core' ); ?></h2>
+		<p class="description"><?php esc_html_e( 'Updates live as you pick a palette or adjust a color below — before you save anything.', 'ner-michoel-core' ); ?></p>
+		<div id="nm-appearance-preview" style="max-width:360px;border-radius:8px;padding:20px;margin:16px 0 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+			<div id="nm-appearance-preview-card" style="border-radius:8px;padding:16px;">
+				<div id="nm-appearance-preview-title" style="font-weight:600;font-size:1.1rem;margin-bottom:6px;"><?php esc_html_e( 'Sample Shiur Title', 'ner-michoel-core' ); ?></div>
+				<div id="nm-appearance-preview-text" style="font-size:0.9rem;margin-bottom:14px;"><?php esc_html_e( 'Rabbi Example — Series Name', 'ner-michoel-core' ); ?></div>
+				<button type="button" id="nm-appearance-preview-button" style="border:none;border-radius:999px;padding:8px 18px;font-weight:700;cursor:default;">▶ <?php esc_html_e( 'Play', 'ner-michoel-core' ); ?></button>
+			</div>
+		</div>
+
 		<form method="post">
 			<?php wp_nonce_field( 'nm_save_appearance', 'nm_appearance_nonce' ); ?>
 			<table class="form-table">
@@ -193,8 +203,25 @@ function ner_michoel_render_appearance_settings_page() {
 		</form>
 	</div>
 	<script>
-	( function( $ ) {
-		$( '.nm-color-field' ).wpColorPicker();
+	jQuery( function ( $ ) {
+		function updatePreview() {
+			var bg      = $( '#nm_color_bg' ).val() || '#121212';
+			var surface = $( '#nm_color_surface' ).val() || '#181818';
+			var text    = $( '#nm_color_text' ).val() || '#ffffff';
+			var accent  = $( '#nm_color_accent' ).val() || '#2f8f5b';
+
+			$( '#nm-appearance-preview' ).css( 'background', bg );
+			$( '#nm-appearance-preview-card' ).css( 'background', surface );
+			$( '#nm-appearance-preview-title' ).css( 'color', text );
+			$( '#nm-appearance-preview-text' ).css( 'color', text ).css( 'opacity', 0.65 );
+			$( '#nm-appearance-preview-button' ).css( { background: accent, color: '#fff' } );
+		}
+
+		// The `change` callback fires both on a manual pick AND on the
+		// programmatic .wpColorPicker('color', ...) call the palette
+		// swatches use below — one code path keeps the preview correct
+		// either way.
+		$( '.nm-color-field' ).wpColorPicker( { change: updatePreview } );
 
 		$( '.nm-palette-swatch' ).on( 'click', function () {
 			var $swatch = $( this );
@@ -208,7 +235,9 @@ function ner_michoel_render_appearance_settings_page() {
 				$( '#' + id ).wpColorPicker( 'color', color );
 			} );
 		} );
-	} )( jQuery );
+
+		updatePreview();
+	} );
 	</script>
 	<?php
 }

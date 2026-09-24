@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.8.13
+Stable tag: 0.8.14
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,14 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.8.14 =
+* Fix the Appearance settings page's color pickers/palette swatches not
+  reliably responding — same root cause as the earlier admin-wide button
+  fix (a script ran before checking whether its dependencies/targets
+  were ready). Wrapped in a DOM-ready handler.
+* Add a live preview to the Appearance settings page — updates instantly
+  as a palette is picked or a color is adjusted, before saving anything.
 
 = 0.8.12 =
 * Add color palette presets to the Appearance settings screen — six
