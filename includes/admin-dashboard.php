@@ -213,14 +213,22 @@ function ner_michoel_render_dashboard_home() {
  * Homepage Slider page specifically.
  */
 function ner_michoel_dashboard_admin_assets() {
-	$screen = get_current_screen();
-	if ( ! $screen || false === strpos( $screen->id, NER_MICHOEL_DASHBOARD_SLUG ) ) {
+	$page = isset( $_GET['page'] ) ? sanitize_key( $_GET['page'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+	// Was gated on get_current_screen()->id containing NER_MICHOEL_DASHBOARD_SLUG
+	// ('nm-dashboard') — but WordPress derives a submenu's screen id from
+	// the top-level menu's *title* text ("Site Control Panel", sanitized
+	// to "site-control-panel"), not its slug, so that string never
+	// actually appeared in $screen->id. The check silently failed on
+	// every Site Control Panel screen, so admin.css/admin.js/the media
+	// picker never loaded anywhere in here — not just on this page.
+	// $page (from the URL's own ?page=) doesn't have that problem, since
+	// it's exactly what we registered every submenu's slug as.
+	if ( '' === $page || 0 !== strpos( $page, 'nm-' ) ) {
 		return;
 	}
 
 	wp_enqueue_style( 'ner-michoel-admin', NER_MICHOEL_CORE_URL . 'assets/admin.css', array(), NER_MICHOEL_CORE_VERSION );
-
-	$page = isset( $_GET['page'] ) ? sanitize_key( $_GET['page'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 	if ( 'nm-homepage-settings' === $page ) {
 		wp_enqueue_media();
