@@ -12,7 +12,27 @@ jQuery( function ( $ ) {
 		return;
 	}
 
-	$list.sortable( { handle: '.nm-slide-row__drag' } );
+	// "+ Add Slide" is bound first, before anything below that could
+	// throw (jQuery UI Sortable failing to init, a media-library
+	// hiccup) — those would otherwise abort this whole handler and
+	// silently leave the button doing nothing, with no visible error.
+	$( '#nm-slider-add' ).on( 'click', function () {
+		var template = document.getElementById( 'nm-slide-row-template' );
+		if ( ! template ) {
+			return;
+		}
+		var index = $list.find( '.nm-slide-row' ).length;
+		var html  = template.innerHTML.replace( /__INDEX__/g, index );
+		var $row  = $( html );
+		$list.append( $row );
+		bindRow( $row );
+	} );
+
+	try {
+		$list.sortable( { handle: '.nm-slide-row__drag' } );
+	} catch ( e ) {
+		window.console && window.console.error( 'Ner Michoel: drag-to-reorder unavailable', e );
+	}
 
 	function bindRow( $row ) {
 		var frame;
@@ -40,17 +60,5 @@ jQuery( function ( $ ) {
 
 	$list.find( '.nm-slide-row' ).each( function () {
 		bindRow( $( this ) );
-	} );
-
-	$( '#nm-slider-add' ).on( 'click', function () {
-		var template = document.getElementById( 'nm-slide-row-template' );
-		if ( ! template ) {
-			return;
-		}
-		var index = $list.find( '.nm-slide-row' ).length;
-		var html  = template.innerHTML.replace( /__INDEX__/g, index );
-		var $row  = $( html );
-		$list.append( $row );
-		bindRow( $row );
 	} );
 } );
