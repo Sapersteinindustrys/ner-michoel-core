@@ -187,6 +187,58 @@ function ner_michoel_bunny_filter_attachment_url( $url, $attachment_id ) {
 add_filter( 'wp_get_attachment_url', 'ner_michoel_bunny_filter_attachment_url', 10, 2 );
 
 /**
+ * The base URL a Bunny-offloaded attachment's file would have had if
+ * it were still local — needed below because wp_get_attachment_url()
+ * (and therefore image_downsize(), which builds every sized URL off
+ * of it) has already been filtered to return the Bunny URL instead,
+ * and that's exactly the URL a sized/thumbnail file was never
+ * actually uploaded to.
+ */
+function ner_michoel_bunny_local_base_url( $attachment_id ) {
+	$file = get_post_meta( $attachment_id, '_wp_attached_file', true );
+	if ( ! $file ) {
+		return false;
+	}
+	$upload_dir = wp_get_upload_dir();
+	return trailingslashit( $upload_dir['baseurl'] ) . $file;
+}
+
+/**
+ * Only the main file gets offloaded to Bunny (see
+ * ner_michoel_bunny_offload_attachment() above) — thumbnails and any
+ * other registered size stay on local disk. But image_downsize()
+ * builds a sized file's URL by string-replacing the base filename
+ * *within the attachment's own URL* — which, for an offloaded
+ * attachment, is now the Bunny URL, since wp_get_attachment_url() is
+ * filtered above. That produces a URL for a crop that was never
+ * uploaded there, so every non-"full" size of any offloaded image
+ * 404s: the WP Media Library grid, our own custom crops, all of it.
+ * Reconstructs the real (still-local) URL directly instead, using the
+ * same _wp_attached_file source of truth the offload path itself
+ * uses, rather than trusting the swapped base URL.
+ */
+function ner_michoel_bunny_fix_sized_image_url( $downsize, $id, $size ) {
+	if ( 'full' === $size || ! get_post_meta( $id, '_nm_bunny_offloaded', true ) ) {
+		return $downsize;
+	}
+
+	$meta = wp_get_attachment_metadata( $id );
+	if ( empty( $meta['sizes'][ $size ]['file'] ) ) {
+		return $downsize; // No such size — let core's own handling apply.
+	}
+
+	$local_base_url = ner_michoel_bunny_local_base_url( $id );
+	if ( ! $local_base_url ) {
+		return $downsize;
+	}
+
+	$sized_url = str_replace( wp_basename( $local_base_url ), $meta['sizes'][ $size ]['file'], $local_base_url );
+
+	return array( $sized_url, $meta['sizes'][ $size ]['width'], $meta['sizes'][ $size ]['height'], true );
+}
+add_filter( 'image_downsize', 'ner_michoel_bunny_fix_sized_image_url', 10, 3 );
+
+/**
  * Deleting the attachment should delete it from Bunny too, not just
  * locally — otherwise storage quietly fills up with orphaned files no
  * post ever references again.
