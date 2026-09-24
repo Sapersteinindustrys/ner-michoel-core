@@ -53,6 +53,7 @@ function ner_michoel_register_dashboard_menu() {
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Home Page', 'ner-michoel-core' ), __( 'Home Page', 'ner-michoel-core' ), 'edit_posts', 'nm-homepage-settings', 'ner_michoel_render_homepage_settings_page' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Live Shiur / Zoom', 'ner-michoel-core' ), __( 'Live Shiur / Zoom', 'ner-michoel-core' ), 'edit_posts', 'nm-live-shiur', 'ner_michoel_render_live_shiur_page' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Appearance', 'ner-michoel-core' ), __( 'Appearance', 'ner-michoel-core' ), 'edit_posts', 'nm-appearance', 'ner_michoel_render_appearance_settings_page' );
+	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Layout Toggle', 'ner-michoel-core' ), __( 'Layout Toggle', 'ner-michoel-core' ), 'edit_posts', 'nm-layout-toggle', 'ner_michoel_render_layout_toggle_settings_page' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Shiurim', 'ner-michoel-core' ), __( 'Shiurim', 'ner-michoel-core' ), 'edit_posts', 'edit.php?post_type=shiur' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Speakers', 'ner-michoel-core' ), __( 'Speakers', 'ner-michoel-core' ), 'edit_posts', 'edit-tags.php?taxonomy=speaker&post_type=shiur' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Series', 'ner-michoel-core' ), __( 'Series', 'ner-michoel-core' ), 'edit_posts', 'edit-tags.php?taxonomy=series&post_type=shiur' );
