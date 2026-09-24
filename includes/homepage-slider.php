@@ -265,7 +265,22 @@ function ner_michoel_get_homepage_slider_images( $size = 'nm_hero_slide' ) {
 	foreach ( $slides as $slide ) {
 		$src = wp_get_attachment_image_src( $slide['image_id'], $size );
 		if ( ! $src ) {
-			continue;
+			// The custom crop hasn't been generated yet — its
+			// background job (image-processing.php) runs on WP-Cron,
+			// not synchronously at upload time, so a slide added
+			// moments ago can hit this before that job has run.
+			// WordPress does NOT automatically fall back to the full
+			// image for a registered size with no generated file
+			// yet (image_downsize() just returns false for it), so
+			// without this the slide would silently disappear from
+			// the slider until the background job eventually catches
+			// up. The hero slider crops via CSS background-size:cover
+			// anyway, so the uncropped full image displays correctly
+			// here regardless of its own aspect ratio.
+			$src = wp_get_attachment_image_src( $slide['image_id'], 'full' );
+		}
+		if ( ! $src ) {
+			continue; // Genuinely missing/deleted attachment.
 		}
 		$out[] = array_merge(
 			$slide,
