@@ -117,3 +117,94 @@ function ner_michoel_handle_update_debug_rest( WP_REST_Request $request ) {
 		200
 	);
 }
+
+/**
+ * REST route (manage_options-gated) that actually performs the
+ * upgrade — the same WP_Upgrader machinery wp-admin's "Update Now"
+ * button calls, triggered by one authenticated request instead of a
+ * manual click, since Application Passwords can't drive that button
+ * itself (it's a nonce+session AJAX action, not a REST call). POST
+ * only: this changes files on disk, a GET must stay side-effect-free.
+ */
+function ner_michoel_register_update_now_route() {
+	register_rest_route(
+		'ner-michoel/v1',
+		'/update-now',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ner_michoel_handle_update_now_rest',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_options' );
+			},
+		)
+	);
+}
+add_action( 'rest_api_init', 'ner_michoel_register_update_now_route' );
+
+function ner_michoel_handle_update_now_rest( WP_REST_Request $request ) {
+	$checker = isset( $GLOBALS['ner_michoel_update_checker'] ) ? $GLOBALS['ner_michoel_update_checker'] : null;
+	if ( ! $checker ) {
+		return new WP_REST_Response( array( 'success' => false, 'message' => 'Update checker not initialized.' ), 500 );
+	}
+
+	$checker->checkForUpdates();
+	if ( ! $checker->getUpdate() ) {
+		return new WP_REST_Response( array( 'success' => false, 'message' => 'No update available.' ), 200 );
+	}
+
+	// Forces the direct filesystem method rather than letting WP fall
+	// back to prompting for FTP credentials — there's no form to fill
+	// out on the other end of a REST call. Fine on hosts (like this
+	// one) where PHP already owns the files it's replacing.
+	if ( ! defined( 'FS_METHOD' ) ) {
+		define( 'FS_METHOD', 'direct' );
+	}
+
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+	require_once ABSPATH . 'wp-admin/includes/class-automatic-upgrader-skin.php';
+	require_once ABSPATH . 'wp-admin/includes/plugin.php';
+
+	$plugin_file = plugin_basename( NER_MICHOEL_CORE_PATH . 'ner-michoel-core.php' );
+	$was_active  = is_plugin_active( $plugin_file );
+
+	// Automatic_Upgrader_Skin is core's own headless skin (built for
+	// background auto-updates) — it swallows the HTML progress output
+	// a normal admin-page skin would print, so upgrade() doesn't leak
+	// markup into this JSON response.
+	$upgrader = new Plugin_Upgrader( new Automatic_Upgrader_Skin() );
+	$result   = $upgrader->upgrade( $plugin_file );
+
+	if ( $was_active && ! is_plugin_active( $plugin_file ) ) {
+		activate_plugin( $plugin_file );
+	}
+
+	if ( is_wp_error( $result ) ) {
+		return new WP_REST_Response( array( 'success' => false, 'message' => $result->get_error_message() ), 500 );
+	}
+
+	if ( false === $result ) {
+		$errors = $upgrader->skin->get_errors();
+		return new WP_REST_Response(
+			array(
+				'success' => false,
+				'message' => $errors ? implode( ' ', $errors ) : 'Upgrade failed for an unknown reason.',
+			),
+			500
+		);
+	}
+
+	// Re-reads the version from the upgraded file on disk rather than
+	// the NER_MICHOEL_CORE_VERSION constant, which reflects whatever
+	// was loaded into memory at the start of this request, not what's
+	// actually on disk after upgrade() just replaced it.
+	$data = get_plugin_data( NER_MICHOEL_CORE_PATH . 'ner-michoel-core.php', false, false );
+
+	return new WP_REST_Response(
+		array(
+			'success'            => true,
+			'installed_version'  => isset( $data['Version'] ) ? $data['Version'] : null,
+		),
+		200
+	);
+}
