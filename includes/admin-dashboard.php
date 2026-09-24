@@ -25,7 +25,7 @@ function ner_michoel_register_dashboard_menu() {
 	);
 
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Overview', 'ner-michoel-core' ), __( 'Overview', 'ner-michoel-core' ), 'edit_posts', NER_MICHOEL_DASHBOARD_SLUG, 'ner_michoel_render_dashboard_home' );
-	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Homepage Slider', 'ner-michoel-core' ), __( 'Homepage Slider', 'ner-michoel-core' ), 'edit_posts', 'nm-homepage-slider', 'ner_michoel_render_homepage_slider_page' );
+	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Home Page', 'ner-michoel-core' ), __( 'Home Page', 'ner-michoel-core' ), 'edit_posts', 'nm-homepage-settings', 'ner_michoel_render_homepage_settings_page' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Live Shiur / Zoom', 'ner-michoel-core' ), __( 'Live Shiur / Zoom', 'ner-michoel-core' ), 'edit_posts', 'nm-live-shiur', 'ner_michoel_render_live_shiur_page' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Appearance', 'ner-michoel-core' ), __( 'Appearance', 'ner-michoel-core' ), 'edit_posts', 'nm-appearance', 'ner_michoel_render_appearance_settings_page' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Shiurim', 'ner-michoel-core' ), __( 'Shiurim', 'ner-michoel-core' ), 'edit_posts', 'edit.php?post_type=shiur' );
@@ -113,9 +113,9 @@ function ner_michoel_render_dashboard_home() {
 			'url'   => admin_url( 'admin.php?page=nm-mazal-tov-quick-add' ),
 		),
 		array(
-			'title' => __( 'Homepage Slider', 'ner-michoel-core' ),
-			'desc'  => __( 'Change the rotating banner images (and their text) on the homepage.', 'ner-michoel-core' ),
-			'url'   => admin_url( 'admin.php?page=nm-homepage-slider' ),
+			'title' => __( 'Home Page', 'ner-michoel-core' ),
+			'desc'  => __( 'Change the rotating hero banner (images, text, buttons) and other homepage settings.', 'ner-michoel-core' ),
+			'url'   => admin_url( 'admin.php?page=nm-homepage-settings' ),
 		),
 		array(
 			'title' => __( 'Live Shiur / Zoom', 'ner-michoel-core' ),
@@ -197,7 +197,7 @@ function ner_michoel_dashboard_admin_assets() {
 
 	$page = isset( $_GET['page'] ) ? sanitize_key( $_GET['page'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
-	if ( 'nm-homepage-slider' === $page ) {
+	if ( 'nm-homepage-settings' === $page ) {
 		wp_enqueue_media();
 		wp_enqueue_script( 'jquery-ui-sortable' );
 		wp_enqueue_script( 'ner-michoel-admin', NER_MICHOEL_CORE_URL . 'assets/admin.js', array( 'jquery', 'jquery-ui-sortable' ), NER_MICHOEL_CORE_VERSION, true );

@@ -21,11 +21,52 @@ function ner_michoel_register_hero_slide_size() {
 }
 add_action( 'after_setup_theme', 'ner_michoel_register_hero_slide_size' );
 
-function ner_michoel_render_homepage_slider_page() {
+/**
+ * "Home Page" settings screen — a tabbed container so homepage-related
+ * settings live in one place instead of each being its own flat
+ * top-level Site Control Panel entry. Hero Slider is the first tab;
+ * new homepage settings should add a tab here rather than a new
+ * top-level menu item (see ner_michoel_home_page_tabs() below).
+ */
+function ner_michoel_home_page_tabs() {
+	return array(
+		'hero-slider' => array(
+			'label'    => __( 'Hero Slider', 'ner-michoel-core' ),
+			'callback' => 'ner_michoel_render_hero_slider_tab',
+		),
+	);
+}
+
+function ner_michoel_render_homepage_settings_page() {
 	if ( ! current_user_can( 'edit_posts' ) ) {
 		wp_die( esc_html__( 'You do not have permission to access this page.', 'ner-michoel-core' ) );
 	}
 
+	$tabs        = ner_michoel_home_page_tabs();
+	$current_tab = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	if ( ! isset( $tabs[ $current_tab ] ) ) {
+		$current_tab = array_key_first( $tabs );
+	}
+	?>
+	<div class="wrap nm-dashboard">
+		<h1><?php esc_html_e( 'Home Page', 'ner-michoel-core' ); ?></h1>
+
+		<h2 class="nav-tab-wrapper">
+			<?php foreach ( $tabs as $tab_slug => $tab ) : ?>
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=nm-homepage-settings&tab=' . $tab_slug ) ); ?>" class="nav-tab <?php echo $tab_slug === $current_tab ? 'nav-tab-active' : ''; ?>">
+					<?php echo esc_html( $tab['label'] ); ?>
+				</a>
+			<?php endforeach; ?>
+		</h2>
+
+		<div class="nm-tab-content" style="margin-top:20px;">
+			<?php call_user_func( $tabs[ $current_tab ]['callback'] ); ?>
+		</div>
+	</div>
+	<?php
+}
+
+function ner_michoel_render_hero_slider_tab() {
 	$saved = false;
 	if ( isset( $_POST['nm_homepage_slider_nonce'] ) && wp_verify_nonce( $_POST['nm_homepage_slider_nonce'], 'nm_save_homepage_slider' ) ) {
 		ner_michoel_save_homepage_slider();
@@ -34,27 +75,24 @@ function ner_michoel_render_homepage_slider_page() {
 
 	$slides = ner_michoel_get_homepage_slider();
 	?>
-	<div class="wrap nm-dashboard">
-		<h1><?php esc_html_e( 'Homepage Slider', 'ner-michoel-core' ); ?></h1>
-		<p><?php esc_html_e( 'These images rotate at the top of the homepage. Add, remove, or drag to reorder slides below.', 'ner-michoel-core' ); ?></p>
+	<p><?php esc_html_e( 'These images rotate at the top of the homepage. Add, remove, or drag to reorder slides below.', 'ner-michoel-core' ); ?></p>
 
-		<?php if ( $saved ) : ?>
-			<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Homepage slider saved.', 'ner-michoel-core' ); ?></p></div>
-		<?php endif; ?>
+	<?php if ( $saved ) : ?>
+		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Homepage slider saved.', 'ner-michoel-core' ); ?></p></div>
+	<?php endif; ?>
 
-		<form method="post" id="nm-slider-form">
-			<?php wp_nonce_field( 'nm_save_homepage_slider', 'nm_homepage_slider_nonce' ); ?>
+	<form method="post" id="nm-slider-form">
+		<?php wp_nonce_field( 'nm_save_homepage_slider', 'nm_homepage_slider_nonce' ); ?>
 
-			<div id="nm-slider-list">
-				<?php foreach ( $slides as $i => $slide ) : ?>
-					<?php ner_michoel_render_slide_row( $i, $slide ); ?>
-				<?php endforeach; ?>
-			</div>
+		<div id="nm-slider-list">
+			<?php foreach ( $slides as $i => $slide ) : ?>
+				<?php ner_michoel_render_slide_row( $i, $slide ); ?>
+			<?php endforeach; ?>
+		</div>
 
-			<p><button type="button" class="button" id="nm-slider-add"><?php esc_html_e( '+ Add Slide', 'ner-michoel-core' ); ?></button></p>
-			<p><button type="submit" class="button button-primary"><?php esc_html_e( 'Save Slider', 'ner-michoel-core' ); ?></button></p>
-		</form>
-	</div>
+		<p><button type="button" class="button" id="nm-slider-add"><?php esc_html_e( '+ Add Slide', 'ner-michoel-core' ); ?></button></p>
+		<p><button type="submit" class="button button-primary"><?php esc_html_e( 'Save Slider', 'ner-michoel-core' ); ?></button></p>
+	</form>
 
 	<script type="text/html" id="nm-slide-row-template">
 		<?php ner_michoel_render_slide_row( '__INDEX__', array() ); ?>

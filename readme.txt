@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.6.0
+Stable tag: 0.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,11 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.7.0 =
+* Reorganize the Homepage Slider into a "Home Page" settings screen with
+  tabs (Hero Slider is the first tab) — future homepage settings now
+  have a place to live without adding more top-level menu items.
 
 = 0.6.0 =
 * Add a diagnostic hook for the GitHub update checker — captures the
