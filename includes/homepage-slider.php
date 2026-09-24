@@ -101,6 +101,17 @@ function ner_michoel_render_hero_slider_tab() {
 					<td><input type="color" id="nm_slider_button_color" name="nm_slider_button_color" value="<?php echo esc_attr( $button_style['color'] ); ?>" /></td>
 				</tr>
 				<tr>
+					<th scope="row"><label for="nm_slider_button_position"><?php esc_html_e( 'Placement', 'ner-michoel-core' ); ?></label></th>
+					<td>
+						<select id="nm_slider_button_position" name="nm_slider_button_position">
+							<?php foreach ( ner_michoel_homepage_slider_button_positions() as $value => $label ) : ?>
+								<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $button_style['position'], $value ); ?>><?php echo esc_html( $label ); ?></option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description"><?php esc_html_e( 'Where the button sits over the photo, independent of the heading/subtext above it.', 'ner-michoel-core' ); ?></p>
+					</td>
+				</tr>
+				<tr>
 					<th scope="row"><label for="nm_slider_button_shape"><?php esc_html_e( 'Shape', 'ner-michoel-core' ); ?></label></th>
 					<td>
 						<select id="nm_slider_button_shape" name="nm_slider_button_shape">
@@ -278,16 +289,39 @@ function ner_michoel_save_homepage_slider() {
 	$interval = isset( $_POST['nm_homepage_slider_interval'] ) ? absint( $_POST['nm_homepage_slider_interval'] ) : 0;
 	update_option( 'nm_homepage_slider_interval', $interval ? max( 2, min( 60, $interval ) ) : 6 );
 
-	$valid_shapes = array( 'pill', 'rounded', 'square' );
-	$shape        = isset( $_POST['nm_slider_button_shape'] ) ? sanitize_key( wp_unslash( $_POST['nm_slider_button_shape'] ) ) : 'pill';
-	$opacity      = isset( $_POST['nm_slider_button_opacity'] ) ? absint( $_POST['nm_slider_button_opacity'] ) : 100;
+	$valid_shapes    = array( 'pill', 'rounded', 'square' );
+	$shape           = isset( $_POST['nm_slider_button_shape'] ) ? sanitize_key( wp_unslash( $_POST['nm_slider_button_shape'] ) ) : 'pill';
+	$opacity         = isset( $_POST['nm_slider_button_opacity'] ) ? absint( $_POST['nm_slider_button_opacity'] ) : 100;
+	$position        = isset( $_POST['nm_slider_button_position'] ) ? sanitize_key( wp_unslash( $_POST['nm_slider_button_position'] ) ) : 'bottom-center';
+	$valid_positions = ner_michoel_homepage_slider_button_positions();
 	update_option(
 		'nm_homepage_slider_button_style',
 		array(
-			'color'   => isset( $_POST['nm_slider_button_color'] ) ? sanitize_hex_color( wp_unslash( $_POST['nm_slider_button_color'] ) ) : '#2f8f5b',
-			'shape'   => in_array( $shape, $valid_shapes, true ) ? $shape : 'pill',
-			'opacity' => max( 10, min( 100, $opacity ) ),
+			'color'    => isset( $_POST['nm_slider_button_color'] ) ? sanitize_hex_color( wp_unslash( $_POST['nm_slider_button_color'] ) ) : '#2f8f5b',
+			'shape'    => in_array( $shape, $valid_shapes, true ) ? $shape : 'pill',
+			'opacity'  => max( 10, min( 100, $opacity ) ),
+			'position' => isset( $valid_positions[ $position ] ) ? $position : 'bottom-center',
 		)
+	);
+}
+
+/**
+ * Same 9-slot grid as the Layout Toggle's placement setting
+ * (Site Control Panel > Layout Toggle) — kept as its own copy rather
+ * than a shared cross-file dependency, since the two features are
+ * otherwise unrelated and each is meant to stand alone.
+ */
+function ner_michoel_homepage_slider_button_positions() {
+	return array(
+		'top-left'      => __( 'Top left', 'ner-michoel-core' ),
+		'top-center'    => __( 'Top center', 'ner-michoel-core' ),
+		'top-right'     => __( 'Top right', 'ner-michoel-core' ),
+		'center-left'   => __( 'Center left', 'ner-michoel-core' ),
+		'center-center' => __( 'Center center', 'ner-michoel-core' ),
+		'center-right'  => __( 'Center right', 'ner-michoel-core' ),
+		'bottom-left'   => __( 'Bottom left', 'ner-michoel-core' ),
+		'bottom-center' => __( 'Bottom center (default)', 'ner-michoel-core' ),
+		'bottom-right'  => __( 'Bottom right', 'ner-michoel-core' ),
 	);
 }
 
@@ -308,11 +342,24 @@ function ner_michoel_get_homepage_slider_button_style() {
 	return wp_parse_args(
 		get_option( 'nm_homepage_slider_button_style', array() ),
 		array(
-			'color'   => '#2f8f5b',
-			'shape'   => 'pill',
-			'opacity' => 100,
+			'color'    => '#2f8f5b',
+			'shape'    => 'pill',
+			'opacity'  => 100,
+			'position' => 'bottom-center',
 		)
 	);
+}
+
+/**
+ * Validated against the real option list, same reasoning as
+ * ner_michoel_get_layout_toggle_position() — a renamed/removed
+ * position from a future version shouldn't be able to render a
+ * button with no matching CSS class.
+ */
+function ner_michoel_get_homepage_slider_button_position() {
+	$style = ner_michoel_get_homepage_slider_button_style();
+	$valid = ner_michoel_homepage_slider_button_positions();
+	return isset( $valid[ $style['position'] ] ) ? $style['position'] : 'bottom-center';
 }
 
 /**
