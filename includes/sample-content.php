@@ -153,8 +153,22 @@ function ner_michoel_sample_content_get_or_create_term( $name, $taxonomy ) {
  * the same mechanism the "Upload Media" screen uses under the hood.
  * Returns the new attachment ID, or 0 if the download/attach fails —
  * the caller creates the shiur post regardless, just without audio.
+ *
+ * $title_for_filename, if given, names the stored file after the
+ * shiur's title (slugified via sanitize_title(), extension preserved)
+ * instead of whatever the source URL happened to be called — e.g. the
+ * full-library import's source filenames are the origin site's own
+ * numeric-prefixed names ("1789723459_025-Bava-Kamma-28a-...") rather
+ * than anything meaningful here. Deliberately only used for a brand
+ * new sideload, never to rename an attachment that's already been
+ * created — renaming an existing attachment's on-disk file/GUID after
+ * the fact risks breaking any URL already pointing at it (a link
+ * someone's shared, another site's reference, a CDN's cached copy) and
+ * has to also cover the Bunny-offload case if that attachment's
+ * already been pushed there. Not worth that risk for a cosmetic
+ * filename improvement, so this only ever applies at creation time.
  */
-function ner_michoel_sample_content_sideload_audio( $url, $post_id ) {
+function ner_michoel_sample_content_sideload_audio( $url, $post_id, $title_for_filename = '' ) {
 	require_once ABSPATH . 'wp-admin/includes/file.php';
 	require_once ABSPATH . 'wp-admin/includes/media.php';
 	require_once ABSPATH . 'wp-admin/includes/image.php';
@@ -164,8 +178,19 @@ function ner_michoel_sample_content_sideload_audio( $url, $post_id ) {
 		return 0;
 	}
 
+	$source_name = wp_basename( wp_parse_url( $url, PHP_URL_PATH ) );
+	$filename    = $source_name;
+
+	if ( '' !== $title_for_filename ) {
+		$ext  = pathinfo( $source_name, PATHINFO_EXTENSION );
+		$slug = sanitize_title( $title_for_filename );
+		if ( $slug ) {
+			$filename = $ext ? $slug . '.' . $ext : $slug;
+		}
+	}
+
 	$file_array = array(
-		'name'     => wp_basename( wp_parse_url( $url, PHP_URL_PATH ) ),
+		'name'     => $filename,
 		'tmp_name' => $tmp_file,
 	);
 
@@ -235,7 +260,7 @@ function ner_michoel_handle_import_sample_content() {
 			wp_set_object_terms( $post_id, array( $series_id ), 'series' );
 		}
 
-		$attachment_id = ner_michoel_sample_content_sideload_audio( $row['audio'], $post_id );
+		$attachment_id = ner_michoel_sample_content_sideload_audio( $row['audio'], $post_id, $row['title'] );
 		if ( $attachment_id ) {
 			update_post_meta( $post_id, '_shiur_audio_id', $attachment_id );
 		} else {

@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.8.11
+Stable tag: 0.8.12
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,15 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.8.12 =
+* Add color palette presets to the Appearance settings screen — six
+  curated one-click palettes (Forest, Royal Blue, Burgundy, Gold, Slate,
+  Deep Purple) that fill in the color fields, previewable before saving.
+* Name newly-sideloaded shiur audio/video files after the shiur's title
+  (slugified) instead of the source URL's filename, for the sample
+  content importer and the full-library import — scoped to brand-new
+  sideloads only, never a rename of an already-existing attachment.
 
 = 0.8.0 =
 * Fix "Add"/"Choose" buttons across the admin (Homepage Slider, Gallery

@@ -57,6 +57,63 @@ function ner_michoel_appearance_fields() {
 	);
 }
 
+/**
+ * Curated presets so the admin can pick a cohesive look in one click
+ * instead of choosing 4 individual colors that have to work together.
+ * All built on the same dark-app formula as the default (dark
+ * bg/surface, white text) so every preset stays readable — only the
+ * accent actually varies much, since that's "the one that visibly
+ * recolors the player" per the app's own design. Picking a palette
+ * just fills in the color fields below; nothing saves until the admin
+ * clicks Save, so it's easy to preview a few before committing.
+ */
+function ner_michoel_appearance_palettes() {
+	return array(
+		array(
+			'label'   => __( 'Forest (default)', 'ner-michoel-core' ),
+			'bg'      => '#121212',
+			'surface' => '#181818',
+			'text'    => '#ffffff',
+			'accent'  => '#2f8f5b',
+		),
+		array(
+			'label'   => __( 'Royal Blue', 'ner-michoel-core' ),
+			'bg'      => '#10151f',
+			'surface' => '#171e2b',
+			'text'    => '#ffffff',
+			'accent'  => '#3b6fd6',
+		),
+		array(
+			'label'   => __( 'Burgundy', 'ner-michoel-core' ),
+			'bg'      => '#1a1214',
+			'surface' => '#241a1d',
+			'text'    => '#ffffff',
+			'accent'  => '#b23a50',
+		),
+		array(
+			'label'   => __( 'Gold', 'ner-michoel-core' ),
+			'bg'      => '#16130d',
+			'surface' => '#211c13',
+			'text'    => '#ffffff',
+			'accent'  => '#d6a13b',
+		),
+		array(
+			'label'   => __( 'Slate', 'ner-michoel-core' ),
+			'bg'      => '#16181a',
+			'surface' => '#202325',
+			'text'    => '#ffffff',
+			'accent'  => '#7a8a99',
+		),
+		array(
+			'label'   => __( 'Deep Purple', 'ner-michoel-core' ),
+			'bg'      => '#14101c',
+			'surface' => '#1d1728',
+			'text'    => '#ffffff',
+			'accent'  => '#8266dd',
+		),
+	);
+}
+
 function ner_michoel_render_appearance_settings_page() {
 	if ( ! current_user_can( 'edit_posts' ) ) {
 		wp_die( esc_html__( 'You do not have permission to access this page.', 'ner-michoel-core' ) );
@@ -77,6 +134,28 @@ function ner_michoel_render_appearance_settings_page() {
 		<?php if ( $saved ) : ?>
 			<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Appearance settings saved.', 'ner-michoel-core' ); ?></p></div>
 		<?php endif; ?>
+
+		<h2><?php esc_html_e( 'Color Palettes', 'ner-michoel-core' ); ?></h2>
+		<p class="description"><?php esc_html_e( 'Click one to fill in the fields below — nothing saves until you click Save, so feel free to try a few first.', 'ner-michoel-core' ); ?></p>
+		<div class="nm-palette-grid" style="display:flex;flex-wrap:wrap;gap:14px;margin:16px 0 28px;">
+			<?php foreach ( ner_michoel_appearance_palettes() as $palette ) : ?>
+				<button
+					type="button"
+					class="nm-palette-swatch"
+					data-bg="<?php echo esc_attr( $palette['bg'] ); ?>"
+					data-surface="<?php echo esc_attr( $palette['surface'] ); ?>"
+					data-text="<?php echo esc_attr( $palette['text'] ); ?>"
+					data-accent="<?php echo esc_attr( $palette['accent'] ); ?>"
+					style="border:1px solid #ccd0d4;border-radius:6px;padding:8px;background:#fff;cursor:pointer;width:120px;text-align:left;"
+				>
+					<span style="display:block;height:36px;border-radius:4px;overflow:hidden;background:<?php echo esc_attr( $palette['bg'] ); ?>;position:relative;">
+						<span style="position:absolute;inset:0;left:60%;background:<?php echo esc_attr( $palette['surface'] ); ?>;"></span>
+						<span style="position:absolute;bottom:4px;right:4px;width:14px;height:14px;border-radius:50%;background:<?php echo esc_attr( $palette['accent'] ); ?>;"></span>
+					</span>
+					<span style="display:block;margin-top:6px;font-size:12px;"><?php echo esc_html( $palette['label'] ); ?></span>
+				</button>
+			<?php endforeach; ?>
+		</div>
 
 		<form method="post">
 			<?php wp_nonce_field( 'nm_save_appearance', 'nm_appearance_nonce' ); ?>
@@ -116,6 +195,19 @@ function ner_michoel_render_appearance_settings_page() {
 	<script>
 	( function( $ ) {
 		$( '.nm-color-field' ).wpColorPicker();
+
+		$( '.nm-palette-swatch' ).on( 'click', function () {
+			var $swatch = $( this );
+			var map = {
+				nm_color_bg: $swatch.data( 'bg' ),
+				nm_color_surface: $swatch.data( 'surface' ),
+				nm_color_text: $swatch.data( 'text' ),
+				nm_color_accent: $swatch.data( 'accent' )
+			};
+			$.each( map, function ( id, color ) {
+				$( '#' + id ).wpColorPicker( 'color', color );
+			} );
+		} );
 	} )( jQuery );
 	</script>
 	<?php

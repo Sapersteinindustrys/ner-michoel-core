@@ -449,7 +449,7 @@ function ner_michoel_process_queue_row( $row ) {
 	}
 
 	$attachment_id = function_exists( 'ner_michoel_sample_content_sideload_audio' )
-		? ner_michoel_sample_content_sideload_audio( $media_url, $post_id )
+		? ner_michoel_sample_content_sideload_audio( $media_url, $post_id, $row->title )
 		: 0;
 
 	if ( $attachment_id ) {
