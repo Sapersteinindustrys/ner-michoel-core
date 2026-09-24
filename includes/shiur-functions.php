@@ -32,6 +32,23 @@ function ner_michoel_get_series_shiurim( $term_id ) {
 }
 
 /**
+ * The N most recently published shiurim, across every speaker/series
+ * — for the Shiurim sidebar's "Recent" view.
+ *
+ * @return WP_Post[]
+ */
+function ner_michoel_get_recent_shiurim( $limit = 24 ) {
+	return get_posts(
+		array(
+			'post_type'      => 'shiur',
+			'posts_per_page' => $limit,
+			'orderby'        => 'date',
+			'order'          => 'DESC',
+		)
+	);
+}
+
+/**
  * All shiurim by a speaker, newest first.
  *
  * @return WP_Post[]
