@@ -90,7 +90,21 @@ function ner_michoel_render_hero_slider_tab() {
 			<?php endforeach; ?>
 		</div>
 
-		<p><button type="button" class="button" id="nm-slider-add"><?php esc_html_e( '+ Add Slide', 'ner-michoel-core' ); ?></button></p>
+		<p>
+			<button type="button" class="button" id="nm-slider-add"><?php esc_html_e( '+ Add Slide', 'ner-michoel-core' ); ?></button>
+			<button type="button" class="button" id="nm-slider-add-multiple"><?php esc_html_e( '+ Add Slides from Photos…', 'ner-michoel-core' ); ?></button>
+		</p>
+
+		<div class="nm-slider-bulk-button">
+			<strong><?php esc_html_e( 'Set one button for every slide', 'ner-michoel-core' ); ?></strong>
+			<p class="description"><?php esc_html_e( 'Fills in the same button link + text on every slide below, including new ones you add afterward. Each slide can still be edited individually.', 'ner-michoel-core' ); ?></p>
+			<div class="nm-slider-bulk-button__row">
+				<input type="url" id="nm-bulk-link-url" placeholder="https://" />
+				<input type="text" id="nm-bulk-link-text" placeholder="<?php esc_attr_e( 'Learn More', 'ner-michoel-core' ); ?>" />
+				<button type="button" class="button" id="nm-bulk-link-apply"><?php esc_html_e( 'Apply to All Slides', 'ner-michoel-core' ); ?></button>
+			</div>
+		</div>
+
 		<p><button type="submit" class="button button-primary"><?php esc_html_e( 'Save Slider', 'ner-michoel-core' ); ?></button></p>
 	</form>
 
@@ -147,7 +161,7 @@ function ner_michoel_render_slide_row( $index, $slide ) {
 			</div>
 			<label>
 				<?php esc_html_e( 'Button Text (optional)', 'ner-michoel-core' ); ?>
-				<input type="text" name="<?php echo $name; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>[link_text]" value="<?php echo esc_attr( $slide['link_text'] ); ?>" placeholder="<?php esc_attr_e( 'Learn More', 'ner-michoel-core' ); ?>" />
+				<input type="text" class="nm-slide-link-text" name="<?php echo $name; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>[link_text]" value="<?php echo esc_attr( $slide['link_text'] ); ?>" placeholder="<?php esc_attr_e( 'Learn More', 'ner-michoel-core' ); ?>" />
 			</label>
 		</div>
 		<button type="button" class="button-link-delete nm-slide-remove"><?php esc_html_e( 'Remove Slide', 'ner-michoel-core' ); ?></button>

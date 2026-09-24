@@ -12,20 +12,78 @@ jQuery( function ( $ ) {
 		return;
 	}
 
+	// Builds one new (unbound, unattached) row from the JS template —
+	// shared by both "+ Add Slide" and the multi-photo picker below,
+	// rather than duplicating the template-cloning logic in each.
+	function createRow() {
+		var template = document.getElementById( 'nm-slide-row-template' );
+		if ( ! template ) {
+			return null;
+		}
+		var index = $list.find( '.nm-slide-row' ).length;
+		var html  = template.innerHTML.replace( /__INDEX__/g, index );
+		return $( html );
+	}
+
+	// Copies the "one button for every slide" fields into a single
+	// row — used both by "Apply to All Slides" (every existing row)
+	// and automatically on every newly created row, so a slide added
+	// after that button is set doesn't fall out of sync with it.
+	function applyBulkButton( $row ) {
+		var url  = $( '#nm-bulk-link-url' ).val();
+		var text = $( '#nm-bulk-link-text' ).val();
+		if ( ! url && ! text ) {
+			return;
+		}
+		$row.find( '.nm-slide-link-url' ).val( url );
+		$row.find( '.nm-slide-link-text' ).val( text );
+	}
+
 	// "+ Add Slide" is bound first, before anything below that could
 	// throw (jQuery UI Sortable failing to init, a media-library
 	// hiccup) — those would otherwise abort this whole handler and
 	// silently leave the button doing nothing, with no visible error.
 	$( '#nm-slider-add' ).on( 'click', function () {
-		var template = document.getElementById( 'nm-slide-row-template' );
-		if ( ! template ) {
+		var $row = createRow();
+		if ( ! $row ) {
 			return;
 		}
-		var index = $list.find( '.nm-slide-row' ).length;
-		var html  = template.innerHTML.replace( /__INDEX__/g, index );
-		var $row  = $( html );
 		$list.append( $row );
 		bindRow( $row );
+		applyBulkButton( $row );
+	} );
+
+	// One media frame, multiple images at once (drag-and-drop onto the
+	// frame's own uploader works here too, not just picking from the
+	// library) — each selected image becomes its own new slide row.
+	$( '#nm-slider-add-multiple' ).on( 'click', function () {
+		var frame = wp.media( {
+			title: 'Select images — one slide per image',
+			library: { type: 'image' },
+			multiple: true
+		} );
+		frame.on( 'select', function () {
+			frame.state().get( 'selection' ).each( function ( attachment ) {
+				var data = attachment.toJSON();
+				var url  = ( data.sizes && data.sizes.medium ) ? data.sizes.medium.url : data.url;
+				var $row = createRow();
+				if ( ! $row ) {
+					return;
+				}
+				$row.find( '.nm-slide-image-id' ).val( data.id );
+				$row.find( '.nm-slide-row__preview' ).html( '<img src="' + url + '" alt="" />' );
+				$list.append( $row );
+				bindRow( $row );
+				applyBulkButton( $row );
+			} );
+		} );
+		frame.open();
+	} );
+
+	$( '#nm-bulk-link-apply' ).on( 'click', function () {
+		$list.find( '.nm-slide-row' ).each( function () {
+			applyBulkButton( $( this ) );
+		} );
 	} );
 
 	try {

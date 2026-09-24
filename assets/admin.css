@@ -45,6 +45,31 @@
 	max-width: 900px;
 }
 
+.nm-slider-bulk-button {
+	max-width: 900px;
+	margin: 20px 0;
+	padding: 14px 16px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-left: 4px solid #2271b1;
+	border-radius: 4px;
+}
+
+.nm-slider-bulk-button .description {
+	margin: 4px 0 12px;
+}
+
+.nm-slider-bulk-button__row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.nm-slider-bulk-button__row input[type="url"],
+.nm-slider-bulk-button__row input[type="text"] {
+	flex: 1 1 220px;
+}
+
 .nm-slide-row {
 	display: grid;
 	grid-template-columns: 24px 160px 1fr 110px;
