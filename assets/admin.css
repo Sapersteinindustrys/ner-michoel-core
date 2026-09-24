@@ -104,3 +104,45 @@
 	color: #b32d2e;
 	white-space: nowrap;
 }
+
+.nm-slide-link-picker {
+	position: relative;
+	margin-top: -4px;
+}
+
+.nm-slide-link-search {
+	width: 100%;
+	font-weight: 400;
+}
+
+.nm-slide-link-results {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	z-index: 10;
+	margin-top: 2px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	box-shadow: 0 2px 8px rgba( 0, 0, 0, 0.15 );
+	max-height: 220px;
+	overflow-y: auto;
+}
+
+.nm-slide-link-result {
+	display: block;
+	width: 100%;
+	text-align: left;
+	padding: 8px 10px;
+	border: none;
+	background: transparent;
+	cursor: pointer;
+	font-size: 0.85rem;
+	font-weight: 400;
+}
+
+.nm-slide-link-result:hover,
+.nm-slide-link-result:focus {
+	background: #f0f0f1;
+}

@@ -139,8 +139,12 @@ function ner_michoel_render_slide_row( $index, $slide ) {
 			</label>
 			<label>
 				<?php esc_html_e( 'Button Link (optional)', 'ner-michoel-core' ); ?>
-				<input type="url" name="<?php echo $name; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>[link_url]" value="<?php echo esc_attr( $slide['link_url'] ); ?>" placeholder="https://" />
+				<input type="url" class="nm-slide-link-url" name="<?php echo $name; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>[link_url]" value="<?php echo esc_attr( $slide['link_url'] ); ?>" placeholder="https://" />
 			</label>
+			<div class="nm-slide-link-picker">
+				<input type="text" class="nm-slide-link-search" placeholder="<?php esc_attr_e( 'Search pages…', 'ner-michoel-core' ); ?>" autocomplete="off" />
+				<div class="nm-slide-link-results" hidden></div>
+			</div>
 			<label>
 				<?php esc_html_e( 'Button Text (optional)', 'ner-michoel-core' ); ?>
 				<input type="text" name="<?php echo $name; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>[link_text]" value="<?php echo esc_attr( $slide['link_text'] ); ?>" placeholder="<?php esc_attr_e( 'Learn More', 'ner-michoel-core' ); ?>" />
@@ -150,6 +154,49 @@ function ner_michoel_render_slide_row( $index, $slide ) {
 	</div>
 	<?php
 }
+
+/**
+ * Search-as-you-type page results for the slide link picker — a
+ * dedicated action rather than reusing WordPress's own internal
+ * "wp-link-ajax" (which powers the post editor's Insert Link dialog),
+ * since scoping that one to pages only would also restrict the
+ * editor's link search everywhere else on the site.
+ */
+function ner_michoel_ajax_search_pages() {
+	check_ajax_referer( 'nm_search_pages', 'nonce' );
+
+	if ( ! current_user_can( 'edit_posts' ) ) {
+		wp_send_json_error();
+	}
+
+	$search = isset( $_POST['search'] ) ? sanitize_text_field( wp_unslash( $_POST['search'] ) ) : '';
+	if ( '' === $search ) {
+		wp_send_json_success( array() );
+	}
+
+	$query = new WP_Query(
+		array(
+			'post_type'              => 'page',
+			'post_status'            => 'publish',
+			's'                      => $search,
+			'posts_per_page'         => 15,
+			'no_found_rows'          => true,
+			'update_post_meta_cache' => false,
+			'update_post_term_cache' => false,
+		)
+	);
+
+	$results = array();
+	foreach ( $query->posts as $post ) {
+		$results[] = array(
+			'title' => get_the_title( $post ),
+			'url'   => get_permalink( $post ),
+		);
+	}
+
+	wp_send_json_success( $results );
+}
+add_action( 'wp_ajax_nm_search_pages', 'ner_michoel_ajax_search_pages' );
 
 function ner_michoel_save_homepage_slider() {
 	if ( ! current_user_can( 'edit_posts' ) ) {

@@ -234,6 +234,14 @@ function ner_michoel_dashboard_admin_assets() {
 		wp_enqueue_media();
 		wp_enqueue_script( 'jquery-ui-sortable' );
 		wp_enqueue_script( 'ner-michoel-admin', NER_MICHOEL_CORE_URL . 'assets/admin.js', array( 'jquery', 'jquery-ui-sortable' ), NER_MICHOEL_CORE_VERSION, true );
+		wp_localize_script(
+			'ner-michoel-admin',
+			'nmHomepageSlider',
+			array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'nm_search_pages' ),
+			)
+		);
 	} elseif ( 'nm-bulk-upload' === $page ) {
 		ner_michoel_enqueue_media_pickers_script();
 	}

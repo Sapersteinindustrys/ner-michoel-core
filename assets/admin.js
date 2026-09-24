@@ -56,9 +56,67 @@ jQuery( function ( $ ) {
 		$row.find( '.nm-slide-remove' ).on( 'click', function () {
 			$row.remove();
 		} );
+
+		// Page search — scoped to this row via the $row/$searchInput/etc.
+		// closures, same as the image picker above, so the same picker UI
+		// works independently no matter how many slide rows exist,
+		// including ones added later by "+ Add Slide".
+		var $searchInput = $row.find( '.nm-slide-link-search' );
+		var $results     = $row.find( '.nm-slide-link-results' );
+		var $urlInput    = $row.find( '.nm-slide-link-url' );
+		var searchTimer  = null;
+
+		function renderResults( items ) {
+			$results.empty();
+			if ( ! items || ! items.length ) {
+				$results.attr( 'hidden', true );
+				return;
+			}
+			items.forEach( function ( item ) {
+				var $btn = $( '<button type="button" class="nm-slide-link-result"></button>' ).text( item.title || item.url );
+				$btn.on( 'click', function () {
+					$urlInput.val( item.url );
+					$searchInput.val( item.title );
+					$results.empty().attr( 'hidden', true );
+				} );
+				$results.append( $btn );
+			} );
+			$results.attr( 'hidden', false );
+		}
+
+		$searchInput.on( 'input', function () {
+			var term = $searchInput.val().trim();
+			window.clearTimeout( searchTimer );
+			if ( term.length < 2 ) {
+				$results.empty().attr( 'hidden', true );
+				return;
+			}
+			if ( ! window.nmHomepageSlider ) {
+				return;
+			}
+			searchTimer = window.setTimeout( function () {
+				$.post( nmHomepageSlider.ajaxUrl, {
+					action: 'nm_search_pages',
+					search: term,
+					nonce: nmHomepageSlider.nonce
+				} ).done( function ( response ) {
+					renderResults( response && response.success ? response.data : [] );
+				} );
+			}, 300 );
+		} );
 	}
 
 	$list.find( '.nm-slide-row' ).each( function () {
 		bindRow( $( this ) );
+	} );
+
+	// Bound once, delegated on the document, rather than per row —
+	// closing every open results dropdown on an outside click doesn't
+	// need row-specific state, and binding it inside bindRow() would
+	// stack up one redundant document-level handler per slide added.
+	$( document ).on( 'click', function ( e ) {
+		if ( ! $( e.target ).closest( '.nm-slide-link-picker' ).length ) {
+			$( '.nm-slide-link-results' ).attr( 'hidden', true );
+		}
 	} );
 } );
