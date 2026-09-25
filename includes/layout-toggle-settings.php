@@ -128,3 +128,38 @@ function ner_michoel_save_layout_toggle_settings() {
 		)
 	);
 }
+
+/**
+ * REST route for setting these options programmatically — same
+ * reasoning/shape as ner_michoel_handle_appearance_settings_rest() in
+ * appearance-settings.php. Added for the custom /admin Settings UI
+ * (custom-admin-settings-api.php), which needs a save path that isn't
+ * a $_POST form submit.
+ */
+function ner_michoel_register_layout_toggle_rest_route() {
+	register_rest_route(
+		'ner-michoel/v1',
+		'/layout-toggle-settings',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ner_michoel_handle_layout_toggle_settings_rest',
+			'permission_callback' => function () {
+				return current_user_can( 'edit_posts' );
+			},
+		)
+	);
+}
+add_action( 'rest_api_init', 'ner_michoel_register_layout_toggle_rest_route' );
+
+function ner_michoel_handle_layout_toggle_settings_rest( WP_REST_Request $request ) {
+	$valid    = ner_michoel_layout_toggle_positions();
+	$position = $request->get_param( 'position' );
+	$position = ( $position && isset( $valid[ $position ] ) ) ? $position : 'top-right';
+
+	$opacity = $request->get_param( 'opacity' );
+	$opacity = null !== $opacity ? max( 0, min( 100, absint( $opacity ) ) ) : 100;
+
+	update_option( 'nm_layout_toggle_settings', array( 'position' => $position, 'opacity' => $opacity ) );
+
+	return new WP_REST_Response( array( 'saved' => true ), 200 );
+}

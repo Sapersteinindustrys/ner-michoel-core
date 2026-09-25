@@ -233,3 +233,47 @@ function ner_michoel_save_admin_panel_login_settings() {
 
 	return 'saved';
 }
+
+/**
+ * REST route for setting these options programmatically, for the
+ * custom /admin Settings UI (custom-admin-settings-api.php) — same
+ * validation as ner_michoel_save_admin_panel_login_settings() above,
+ * reading a JSON body instead of $_POST.
+ */
+function ner_michoel_register_admin_login_rest_route() {
+	register_rest_route(
+		'ner-michoel/v1',
+		'/admin-login-settings',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ner_michoel_handle_admin_login_settings_rest',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_options' );
+			},
+		)
+	);
+}
+add_action( 'rest_api_init', 'ner_michoel_register_admin_login_rest_route' );
+
+function ner_michoel_handle_admin_login_settings_rest( WP_REST_Request $request ) {
+	$password = (string) $request->get_param( 'new_password' );
+	$confirm  = (string) $request->get_param( 'confirm_password' );
+
+	if ( '' !== $password || '' !== $confirm ) {
+		if ( $password !== $confirm ) {
+			return new WP_Error( 'nm_password_mismatch', __( "The two passwords didn't match — nothing was changed.", 'ner-michoel-core' ), array( 'status' => 400 ) );
+		}
+		update_option( 'nm_admin_panel_password', wp_hash_password( $password ) );
+	} else {
+		delete_option( 'nm_admin_panel_password' );
+	}
+
+	$login_as = absint( $request->get_param( 'login_as' ) );
+	if ( $login_as ) {
+		update_option( 'nm_admin_panel_user_id', $login_as );
+	} else {
+		delete_option( 'nm_admin_panel_user_id' );
+	}
+
+	return new WP_REST_Response( array( 'saved' => true ), 200 );
+}

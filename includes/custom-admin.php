@@ -69,16 +69,16 @@ function ner_michoel_custom_admin_structure() {
 		'appearance' => array(
 			'label' => __( 'Appearance', 'ner-michoel-core' ),
 			'tabs'  => array(
-				'colors' => array( 'label' => __( 'Colors & Font', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_appearance_settings_page' ),
-				'hero'   => array( 'label' => __( 'Hero Slider', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_hero_slider_tab' ),
-				'layout' => array( 'label' => __( 'Layout Toggle', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_layout_toggle_settings_page' ),
+				'colors' => array( 'label' => __( 'Colors & Font', 'ner-michoel-core' ), 'settings_type' => 'appearance', 'capability' => 'manage_options' ),
+				'hero'   => array( 'label' => __( 'Hero Slider', 'ner-michoel-core' ), 'settings_type' => 'hero_slider' ),
+				'layout' => array( 'label' => __( 'Layout Toggle', 'ner-michoel-core' ), 'settings_type' => 'layout_toggle' ),
 			),
 		),
 		'site'       => array(
 			'label' => __( 'Site Settings', 'ner-michoel-core' ),
 			'tabs'  => array(
 				'live'  => array( 'label' => __( 'Live Shiur / Zoom', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_live_shiur_page' ),
-				'login' => array( 'label' => __( 'Admin Login Shortcut', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_admin_panel_login_settings_page', 'capability' => 'manage_options' ),
+				'login' => array( 'label' => __( 'Admin Login Shortcut', 'ner-michoel-core' ), 'settings_type' => 'admin_login', 'capability' => 'manage_options' ),
 			),
 		),
 		'data'       => array(
@@ -86,7 +86,7 @@ function ner_michoel_custom_admin_structure() {
 			'tabs'  => array(
 				'sample'  => array( 'label' => __( 'Import Sample Content', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_sample_content_page', 'capability' => 'manage_options' ),
 				'library' => array( 'label' => __( 'Full Library Import', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_library_import_page', 'capability' => 'manage_options' ),
-				'storage' => array( 'label' => __( 'Storage (Bunny)', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_storage_settings_page', 'capability' => 'manage_options' ),
+				'storage' => array( 'label' => __( 'Storage (Bunny)', 'ner-michoel-core' ), 'settings_type' => 'storage', 'capability' => 'manage_options' ),
 			),
 		),
 		'analytics'  => array(
@@ -134,6 +134,19 @@ function ner_michoel_enqueue_custom_admin_assets() {
 	wp_localize_script(
 		'ner-michoel-admin-cms',
 		'nmCmsConfig',
+		array(
+			'restUrl' => esc_url_raw( rest_url( 'ner-michoel/v1' ) ),
+			'nonce'   => wp_create_nonce( 'wp_rest' ),
+		)
+	);
+
+	// Our own Settings screens (Appearance, Layout Toggle, Hero Slider,
+	// Admin Login Shortcut, Storage) — see includes/custom-admin-
+	// settings-api.php. Same REST auth as the CMS screens above.
+	wp_enqueue_script( 'ner-michoel-admin-settings', NER_MICHOEL_CORE_URL . 'assets/custom-admin-settings.js', array( 'jquery', 'jquery-ui-sortable' ), NER_MICHOEL_CORE_VERSION, true );
+	wp_localize_script(
+		'ner-michoel-admin-settings',
+		'nmSettingsConfig',
 		array(
 			'restUrl' => esc_url_raw( rest_url( 'ner-michoel/v1' ) ),
 			'nonce'   => wp_create_nonce( 'wp_rest' ),
@@ -229,6 +242,12 @@ function ner_michoel_render_custom_admin_ui() {
 						<div class="nm-admin-denied"><?php esc_html_e( 'You don\'t have permission to view this section.', 'ner-michoel-core' ); ?></div>
 					<?php else : ?>
 						<div class="nm-cms-root" data-cms-type="<?php echo esc_attr( $active['cms_type'] ); ?>" data-cms-args="<?php echo esc_attr( wp_json_encode( isset( $active['cms_args'] ) ? $active['cms_args'] : array() ) ); ?>"></div>
+					<?php endif; ?>
+				<?php elseif ( isset( $active['settings_type'] ) ) : ?>
+					<?php if ( ! $has_access ) : ?>
+						<div class="nm-admin-denied"><?php esc_html_e( 'You don\'t have permission to view this section.', 'ner-michoel-core' ); ?></div>
+					<?php else : ?>
+						<div class="nm-settings-root" data-settings-type="<?php echo esc_attr( $active['settings_type'] ); ?>"></div>
 					<?php endif; ?>
 				<?php elseif ( isset( $active['iframe'] ) ) : ?>
 					<iframe id="nm-admin-iframe" src="<?php echo esc_url( $active['iframe'] ); ?>" title="<?php echo esc_attr( $active['label'] ); ?>"></iframe>

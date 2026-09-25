@@ -306,6 +306,74 @@ function ner_michoel_save_homepage_slider() {
 }
 
 /**
+ * REST route for setting these options programmatically, for the
+ * custom /admin Settings UI (custom-admin-settings-api.php) — same
+ * validation as ner_michoel_save_homepage_slider() above, reading a
+ * JSON body ({interval, button_color, button_position, button_shape,
+ * button_opacity, slides: [{image_id, heading, subtext, link_url,
+ * link_text}, ...]}) instead of a $_POST array.
+ */
+function ner_michoel_register_hero_slider_rest_route() {
+	register_rest_route(
+		'ner-michoel/v1',
+		'/hero-slider-settings',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ner_michoel_handle_hero_slider_settings_rest',
+			'permission_callback' => function () {
+				return current_user_can( 'edit_posts' );
+			},
+		)
+	);
+}
+add_action( 'rest_api_init', 'ner_michoel_register_hero_slider_rest_route' );
+
+function ner_michoel_handle_hero_slider_settings_rest( WP_REST_Request $request ) {
+	$body = $request->get_json_params();
+	if ( ! is_array( $body ) ) {
+		$body = array();
+	}
+
+	$slides_in = isset( $body['slides'] ) && is_array( $body['slides'] ) ? $body['slides'] : array();
+	$slides    = array();
+	foreach ( $slides_in as $row ) {
+		$image_id = isset( $row['image_id'] ) ? absint( $row['image_id'] ) : 0;
+		if ( ! $image_id ) {
+			continue;
+		}
+		$slides[] = array(
+			'image_id'  => $image_id,
+			'heading'   => isset( $row['heading'] ) ? sanitize_text_field( $row['heading'] ) : '',
+			'subtext'   => isset( $row['subtext'] ) ? sanitize_textarea_field( $row['subtext'] ) : '',
+			'link_url'  => isset( $row['link_url'] ) ? esc_url_raw( $row['link_url'] ) : '',
+			'link_text' => isset( $row['link_text'] ) ? sanitize_text_field( $row['link_text'] ) : '',
+		);
+	}
+	update_option( 'nm_homepage_slider', $slides );
+
+	$interval = isset( $body['interval'] ) ? absint( $body['interval'] ) : 0;
+	update_option( 'nm_homepage_slider_interval', $interval ? max( 2, min( 60, $interval ) ) : 6 );
+
+	$valid_shapes    = array( 'pill', 'rounded', 'square' );
+	$shape           = isset( $body['button_shape'] ) ? sanitize_key( $body['button_shape'] ) : 'pill';
+	$opacity         = isset( $body['button_opacity'] ) ? absint( $body['button_opacity'] ) : 100;
+	$position        = isset( $body['button_position'] ) ? sanitize_key( $body['button_position'] ) : 'bottom-center';
+	$valid_positions = ner_michoel_homepage_slider_button_positions();
+
+	update_option(
+		'nm_homepage_slider_button_style',
+		array(
+			'color'    => isset( $body['button_color'] ) ? sanitize_hex_color( $body['button_color'] ) : '#2f8f5b',
+			'shape'    => in_array( $shape, $valid_shapes, true ) ? $shape : 'pill',
+			'opacity'  => max( 10, min( 100, $opacity ) ),
+			'position' => isset( $valid_positions[ $position ] ) ? $position : 'bottom-center',
+		)
+	);
+
+	return new WP_REST_Response( array( 'saved' => true ), 200 );
+}
+
+/**
  * Same 9-slot grid as the Layout Toggle's placement setting
  * (Site Control Panel > Layout Toggle) — kept as its own copy rather
  * than a shared cross-file dependency, since the two features are

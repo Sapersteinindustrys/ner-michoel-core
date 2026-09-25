@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.8.20
+Stable tag: 0.8.21
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,20 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.8.21 =
+* Extend the custom /admin UI's own-styled interface (added in 0.8.20)
+  to the Settings screens too — Appearance (colors/font, palette
+  presets, live preview), Layout Toggle, Hero Slider (slides,
+  interval, button design), Admin Login Shortcut, and Storage (Bunny)
+  now render as our own forms instead of wp-admin-styled ones. New
+  includes/custom-admin-settings-api.php exposes a schema-driven
+  REST read/save engine (reusing the existing Appearance/Storage REST
+  routes, with three new ones added for Layout Toggle/Hero Slider/
+  Admin Login); assets/custom-admin-settings.js is one generic
+  single-form renderer covering all five, including a drag-to-reorder
+  slide repeater for the Hero Slider. Native color inputs replace
+  wp-color-picker for full visual independence from wp-admin.
 
 = 0.8.20 =
 * Replace the iframe-embedded wp-admin content screens (added in

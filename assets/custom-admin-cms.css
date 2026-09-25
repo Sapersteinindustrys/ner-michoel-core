@@ -178,6 +178,46 @@ select.nm-cms-input { min-width: 160px; }
 	font-size: 14px;
 }
 
+/* ---- Settings screens (Appearance, Layout Toggle, Hero Slider, Admin Login Shortcut, Storage) ---- */
+
+.nm-settings { max-width: 640px; }
+.nm-settings-form { display: flex; flex-direction: column; gap: 18px; margin-bottom: 20px; }
+.nm-settings-field label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px; color: #374151; }
+.nm-settings-field .nm-cms-input { width: 100%; }
+.nm-settings-checkbox { display: flex; align-items: center; gap: 8px; font-weight: 500 !important; cursor: pointer; }
+.nm-settings-checkbox input { width: auto; }
+.nm-settings-status { padding: 10px 14px; background: #f0f6fb; border-radius: 8px; font-size: 13px; color: #1d2327; margin: 0 0 18px; }
+
+.nm-settings-color { display: flex; align-items: center; gap: 8px; }
+.nm-settings-color-native { width: 44px; height: 38px; padding: 2px; border: 1px solid #d5d9de; border-radius: 8px; background: #fff; cursor: pointer; }
+.nm-settings-color-text { flex: 1; }
+
+.nm-settings-palettes { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.nm-settings-palette { border: 1px solid #d5d9de; border-radius: 8px; padding: 8px; background: #fff; cursor: pointer; width: 110px; text-align: left; }
+.nm-settings-palette:hover { border-color: #2271b1; }
+.nm-settings-palette__swatch { display: block; position: relative; height: 34px; border-radius: 6px; overflow: hidden; }
+.nm-settings-palette__swatch span { position: absolute; inset: 0; left: 60%; }
+.nm-settings-palette__swatch i { position: absolute; bottom: 4px; right: 4px; width: 12px; height: 12px; border-radius: 50%; }
+.nm-settings-palette__label { display: block; margin-top: 6px; font-size: 12px; color: #374151; }
+
+.nm-settings-preview { border-radius: 10px; padding: 20px; margin-bottom: 24px; }
+.nm-settings-preview__card { border-radius: 8px; padding: 16px; }
+.nm-settings-preview__title { font-weight: 600; font-size: 1.05rem; margin-bottom: 6px; }
+.nm-settings-preview__text { font-size: 0.9rem; margin-bottom: 14px; }
+.nm-settings-preview__button { border: none; border-radius: 999px; padding: 8px 18px; font-weight: 700; cursor: default; }
+
+.nm-settings-message { font-size: 13px; padding: 8px 0; margin: 0 0 4px; }
+.nm-settings-message--success { color: #166534; }
+.nm-settings-message--error { color: #b91c1c; }
+
+.nm-settings-repeater { margin-bottom: 20px; }
+.nm-settings-repeater h3 { font-size: 0.95rem; margin: 0 0 10px; }
+.nm-settings-repeater-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
+.nm-settings-repeater-item { display: flex; gap: 12px; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; background: #fff; }
+.nm-settings-repeater-item__drag { cursor: move; color: #9ca3af; padding-top: 4px; }
+.nm-settings-repeater-item__body { flex: 1; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.nm-settings-repeater-remove { align-self: flex-start; color: #b91c1c; }
+
 @media (max-width: 640px) {
 	.nm-cms-table thead { display: none; }
 	.nm-cms-table, .nm-cms-table tbody, .nm-cms-table tr, .nm-cms-table td { display: block; width: 100%; }
