@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.8.21
+Stable tag: 0.8.22
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,14 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.8.22 =
+* Restore two Hero Slider conveniences that didn't make the 0.8.21
+  custom-UI conversion: a page-title search-as-you-type for each
+  slide's button link, and a "set one button for every slide" bulk
+  apply. Same custom-styled UI as everything else, not a wp-admin
+  screen — the page search hits the existing nm_search_pages
+  admin-ajax action directly.
 
 = 0.8.21 =
 * Extend the custom /admin UI's own-styled interface (added in 0.8.20)

@@ -40,6 +40,34 @@
 		} );
 	}
 
+	function debounce( fn, wait ) {
+		var timer;
+		return function () {
+			var args = arguments;
+			var ctx = this;
+			clearTimeout( timer );
+			timer = setTimeout( function () {
+				fn.apply( ctx, args );
+			}, wait );
+		};
+	}
+
+	/**
+	 * The Hero Slider's per-slide link field reuses the existing
+	 * wp_ajax_nm_search_pages action (homepage-slider.php) — a small,
+	 * page-title-only search, not the REST API — so this hits
+	 * admin-ajax.php directly instead of going through apiFetch().
+	 */
+	function searchPages( search ) {
+		return $.post( cfg.ajaxUrl, {
+			action: 'nm_search_pages',
+			nonce: cfg.searchPagesNonce,
+			search: search
+		} ).then( function ( response ) {
+			return response && response.success ? response.data : [];
+		} );
+	}
+
 	/* ---------------- Field rendering ---------------- */
 
 	function renderField( key, field, value ) {
@@ -124,6 +152,49 @@
 			$field.find( '.nm-cms-media-id' ).val( '' );
 			$field.find( '.nm-cms-media-preview-wrap' ).html( '<span class="nm-cms-muted">No image selected.</span>' );
 			$( this ).hide();
+		} );
+	}
+
+	/**
+	 * Search-as-you-type page results for a repeater item's link_url
+	 * field, scoped to that one item so multiple slides' pickers don't
+	 * collide. No-ops if the item has no .nm-settings-link-picker (only
+	 * present for a 'link_url' sub-field — see renderRepeaterItem()).
+	 */
+	function bindLinkPicker( $item ) {
+		var $picker = $item.find( '.nm-settings-link-picker' );
+		if ( ! $picker.length ) {
+			return;
+		}
+		var $input = $picker.find( '.nm-settings-link-search' );
+		var $results = $picker.find( '.nm-settings-link-results' );
+		var $urlField = $item.find( '.nm-settings-field[data-subkey="link_url"] .nm-cms-input' );
+
+		$input.on(
+			'input',
+			debounce( function () {
+				var term = $input.val();
+				if ( '' === term ) {
+					$results.empty().attr( 'hidden', true );
+					return;
+				}
+				searchPages( term ).then( function ( pages ) {
+					if ( ! pages.length ) {
+						$results.html( '<div class="nm-settings-link-result nm-cms-muted">No matches.</div>' ).removeAttr( 'hidden' );
+						return;
+					}
+					var html = $.map( pages, function ( page ) {
+						return '<div class="nm-settings-link-result" data-url="' + esc( page.url ) + '">' + esc( page.title ) + '</div>';
+					} ).join( '' );
+					$results.html( html ).removeAttr( 'hidden' );
+				} );
+			}, 300 )
+		);
+
+		$results.on( 'click', '.nm-settings-link-result[data-url]', function () {
+			$urlField.val( $( this ).data( 'url' ) );
+			$results.empty().attr( 'hidden', true );
+			$input.val( '' );
 		} );
 	}
 
@@ -223,6 +294,12 @@
 			} else {
 				html += renderField( subKey, subField, item[ subKey ] );
 			}
+			if ( 'link_url' === subKey ) {
+				html += '<div class="nm-settings-link-picker">' +
+					'<input type="text" class="nm-settings-link-search" placeholder="Search pages…" autocomplete="off">' +
+					'<div class="nm-settings-link-results" hidden></div>' +
+					'</div>';
+			}
 			html += '</div>';
 		} );
 		html += '</div>';
@@ -241,6 +318,18 @@
 		} );
 		html += '</div>';
 		html += '<button type="button" class="nm-cms-btn nm-settings-repeater-add">+ Add ' + esc( field.item_label || 'Item' ) + '</button>';
+
+		if ( field.item_fields.link_url && field.item_fields.link_text ) {
+			html += '<div class="nm-settings-bulk-link">' +
+				'<strong>Set one button for every ' + esc( ( field.item_label || 'item' ).toLowerCase() ) + '</strong>' +
+				'<p class="nm-cms-hint">Fills in the same button link + text on every ' + esc( ( field.item_label || 'item' ).toLowerCase() ) + ' below, including new ones you add afterward.</p>' +
+				'<div class="nm-settings-bulk-link__row">' +
+				'<input type="text" class="nm-cms-input nm-settings-bulk-link-url" placeholder="https://">' +
+				'<input type="text" class="nm-cms-input nm-settings-bulk-link-text" placeholder="Learn More">' +
+				'<button type="button" class="nm-cms-btn nm-settings-bulk-link-apply">Apply to All</button>' +
+				'</div></div>';
+		}
+
 		html += '</div>';
 		return html;
 	};
@@ -326,13 +415,27 @@
 			if ( $list.sortable ) {
 				$list.sortable( { handle: '.nm-settings-repeater-item__drag' } );
 			}
+			$list.find( '.nm-settings-repeater-item' ).each( function () {
+				bindLinkPicker( $( this ) );
+			} );
 			$rep.find( '.nm-settings-repeater-add' ).on( 'click', function () {
 				var $item = $( self.renderRepeaterItem( field, {}, $list.children().length ) );
 				$list.append( $item );
 				bindImagePicker( $item.find( '.nm-cms-media-field' ) );
+				bindLinkPicker( $item );
 			} );
 			$list.on( 'click', '.nm-settings-repeater-remove', function () {
 				$( this ).closest( '.nm-settings-repeater-item' ).remove();
+			} );
+
+			$rep.find( '.nm-settings-bulk-link-apply' ).on( 'click', function () {
+				var url = $rep.find( '.nm-settings-bulk-link-url' ).val();
+				var text = $rep.find( '.nm-settings-bulk-link-text' ).val();
+				$list.find( '.nm-settings-repeater-item' ).each( function () {
+					var $item = $( this );
+					$item.find( '.nm-settings-field[data-subkey="link_url"] .nm-cms-input' ).val( url );
+					$item.find( '.nm-settings-field[data-subkey="link_text"] .nm-cms-input' ).val( text );
+				} );
 			} );
 		} );
 

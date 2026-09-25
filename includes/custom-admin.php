@@ -148,8 +148,10 @@ function ner_michoel_enqueue_custom_admin_assets() {
 		'ner-michoel-admin-settings',
 		'nmSettingsConfig',
 		array(
-			'restUrl' => esc_url_raw( rest_url( 'ner-michoel/v1' ) ),
-			'nonce'   => wp_create_nonce( 'wp_rest' ),
+			'restUrl'          => esc_url_raw( rest_url( 'ner-michoel/v1' ) ),
+			'nonce'            => wp_create_nonce( 'wp_rest' ),
+			'ajaxUrl'          => admin_url( 'admin-ajax.php' ),
+			'searchPagesNonce' => wp_create_nonce( 'nm_search_pages' ),
 		)
 	);
 }

@@ -218,6 +218,16 @@ select.nm-cms-input { min-width: 160px; }
 .nm-settings-repeater-item__body { flex: 1; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .nm-settings-repeater-remove { align-self: flex-start; color: #b91c1c; }
 
+.nm-settings-link-picker { position: relative; margin-top: 6px; }
+.nm-settings-link-search { width: 100%; box-sizing: border-box; }
+.nm-settings-link-results { position: absolute; z-index: 10; top: calc(100% + 2px); left: 0; right: 0; background: #fff; border: 1px solid #d5d9de; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.1); max-height: 200px; overflow-y: auto; }
+.nm-settings-link-result { padding: 8px 12px; font-size: 13px; cursor: pointer; }
+.nm-settings-link-result:hover { background: #f6f7f7; }
+
+.nm-settings-bulk-link { border: 1px dashed #d5d9de; border-radius: 10px; padding: 14px; margin-bottom: 20px; }
+.nm-settings-bulk-link__row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.nm-settings-bulk-link__row .nm-cms-input { flex: 1; min-width: 140px; }
+
 @media (max-width: 640px) {
 	.nm-cms-table thead { display: none; }
 	.nm-cms-table, .nm-cms-table tbody, .nm-cms-table tr, .nm-cms-table td { display: block; width: 100%; }
