@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.8.18
+Stable tag: 0.8.19
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,19 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.8.19 =
+* Embed real content-management screens directly inside the custom
+  /admin UI instead of redirecting away — Shiurim, Speakers, Series,
+  Galleries, Mazal Tov, News, Most Listened, Missing Audio, and Recent
+  Submissions all now open in-place (same-origin iframe with WordPress's
+  own admin chrome hidden, auto-sized to content, with an "Open in a new
+  tab" fallback link). Quick-add forms (Post a Mazal Tov, Post News)
+  remain separate tabs alongside their full list views.
+* Redesign Site Statistics with visual charts instead of plain tables —
+  gradient stat cards for Pageviews/Visitors/Avg. Load Time, a 14-day
+  pageviews-vs-visitors bar chart, and horizontal bar charts for Top
+  Pages and Top Referrers. Pure CSS, no external charting library.
 
 = 0.8.18 =
 * Replace /admin's old behavior (always redirecting into wp-admin's own

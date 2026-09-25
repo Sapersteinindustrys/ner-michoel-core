@@ -238,6 +238,16 @@ function ner_michoel_render_site_stats_page() {
 	$top_referrers = $wpdb->get_results( $wpdb->prepare( "SELECT referrer_domain, COUNT(*) AS views FROM {$table} WHERE created_at >= %s AND referrer_domain IS NOT NULL GROUP BY referrer_domain ORDER BY views DESC LIMIT 10", $since_30 ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 	$daily = $wpdb->get_results( $wpdb->prepare( "SELECT DATE(created_at) AS day, COUNT(*) AS views, COUNT(DISTINCT visitor_hash) AS visitors FROM {$table} WHERE created_at >= %s GROUP BY DATE(created_at) ORDER BY day DESC LIMIT 14", $since_30 ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	$daily = array_reverse( $daily ); // Oldest first, so the bar chart reads left-to-right chronologically.
+
+	$daily_max     = 1;
+	$daily_max_vis = 1;
+	foreach ( $daily as $row ) {
+		$daily_max     = max( $daily_max, (int) $row->views );
+		$daily_max_vis = max( $daily_max_vis, (int) $row->visitors );
+	}
+	$pages_max     = $top_pages ? max( wp_list_pluck( $top_pages, 'views' ) ) : 1;
+	$referrer_max  = $top_referrers ? max( wp_list_pluck( $top_referrers, 'views' ) ) : 1;
 	?>
 	<div class="wrap nm-dashboard">
 		<h1><?php esc_html_e( 'Site Statistics', 'ner-michoel-core' ); ?></h1>
@@ -245,78 +255,123 @@ function ner_michoel_render_site_stats_page() {
 			<?php esc_html_e( 'Self-hosted, kept entirely in this site\'s own database. "Visitors" is an approximate daily count (the same person visiting on two different days counts twice, by design — see the note in dev-notes.md).', 'ner-michoel-core' ); ?>
 		</p>
 
-		<h2><?php esc_html_e( 'Last 7 / 30 days', 'ner-michoel-core' ); ?></h2>
-		<table class="widefat striped" style="max-width:700px;">
-			<tbody>
-				<tr>
-					<th><?php esc_html_e( 'Pageviews', 'ner-michoel-core' ); ?></th>
-					<td><?php echo esc_html( number_format_i18n( $pageviews_7 ) ); ?> <span class="description">(<?php esc_html_e( '7 days', 'ner-michoel-core' ); ?>)</span></td>
-					<td><?php echo esc_html( number_format_i18n( $pageviews_30 ) ); ?> <span class="description">(<?php esc_html_e( '30 days', 'ner-michoel-core' ); ?>)</span></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'Visitors (approx.)', 'ner-michoel-core' ); ?></th>
-					<td><?php echo esc_html( number_format_i18n( $visitors_7 ) ); ?> <span class="description">(<?php esc_html_e( '7 days', 'ner-michoel-core' ); ?>)</span></td>
-					<td><?php echo esc_html( number_format_i18n( $visitors_30 ) ); ?> <span class="description">(<?php esc_html_e( '30 days', 'ner-michoel-core' ); ?>)</span></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'Avg. page load time', 'ner-michoel-core' ); ?></th>
-					<td colspan="2">
-						<?php
-						echo $avg_load_ms
-							? esc_html( number_format_i18n( $avg_load_ms / 1000, 2 ) . ' ' . __( 'sec', 'ner-michoel-core' ) )
-							: esc_html__( 'Not enough data yet', 'ner-michoel-core' );
-						?>
-						<span class="description">(<?php esc_html_e( '30 days, as reported by visitors\' own browsers', 'ner-michoel-core' ); ?>)</span>
-					</td>
-				</tr>
-			</tbody>
-		</table>
+		<style>
+			.nm-stat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 20px 0 32px; max-width: 900px; }
+			.nm-stat-card { border-radius: 10px; padding: 20px 22px; color: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+			.nm-stat-card--views { background: linear-gradient(135deg, #2271b1, #135e96); }
+			.nm-stat-card--visitors { background: linear-gradient(135deg, #00a32a, #007017); }
+			.nm-stat-card--speed { background: linear-gradient(135deg, #8c5cd6, #5e35b1); }
+			.nm-stat-card__label { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; opacity: .85; margin-bottom: 6px; }
+			.nm-stat-card__value { font-size: 2rem; font-weight: 700; line-height: 1.1; }
+			.nm-stat-card__sub { font-size: .8rem; opacity: .8; margin-top: 4px; }
 
-		<h2><?php esc_html_e( 'Top Pages (30 days)', 'ner-michoel-core' ); ?></h2>
-		<?php if ( $top_pages ) : ?>
-			<table class="widefat striped" style="max-width:700px;">
-				<thead><tr><th><?php esc_html_e( 'Page', 'ner-michoel-core' ); ?></th><th><?php esc_html_e( 'Views', 'ner-michoel-core' ); ?></th></tr></thead>
-				<tbody>
-					<?php foreach ( $top_pages as $row ) : ?>
-						<tr><td><?php echo esc_html( $row->url ); ?></td><td><?php echo esc_html( number_format_i18n( $row->views ) ); ?></td></tr>
-					<?php endforeach; ?>
-				</tbody>
-			</table>
-		<?php else : ?>
-			<p><?php esc_html_e( 'No data yet.', 'ner-michoel-core' ); ?></p>
-		<?php endif; ?>
+			.nm-chart-panel { background: #fff; border: 1px solid #dcdcde; border-radius: 8px; padding: 20px 24px 8px; margin-bottom: 28px; max-width: 900px; }
+			.nm-chart-panel h2 { margin-top: 0; }
 
-		<h2><?php esc_html_e( 'Top Referrers (30 days)', 'ner-michoel-core' ); ?></h2>
-		<?php if ( $top_referrers ) : ?>
-			<table class="widefat striped" style="max-width:700px;">
-				<thead><tr><th><?php esc_html_e( 'Referring Site', 'ner-michoel-core' ); ?></th><th><?php esc_html_e( 'Views', 'ner-michoel-core' ); ?></th></tr></thead>
-				<tbody>
-					<?php foreach ( $top_referrers as $row ) : ?>
-						<tr><td><?php echo esc_html( $row->referrer_domain ); ?></td><td><?php echo esc_html( number_format_i18n( $row->views ) ); ?></td></tr>
-					<?php endforeach; ?>
-				</tbody>
-			</table>
-		<?php else : ?>
-			<p><?php esc_html_e( 'No external referrers recorded yet (direct traffic and internal navigation aren\'t counted here).', 'ner-michoel-core' ); ?></p>
-		<?php endif; ?>
+			.nm-bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 160px; padding-top: 10px; }
+			.nm-bar-chart__col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+			.nm-bar-chart__bar { width: 100%; max-width: 26px; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, #4f9fe8, #2271b1); position: relative; transition: opacity .15s ease; }
+			.nm-bar-chart__bar:hover { opacity: .8; }
+			.nm-bar-chart__bar[data-visitors="1"] { background: linear-gradient(180deg, #4bd07a, #00a32a); }
+			.nm-bar-chart__val { font-size: .65rem; color: #50575e; margin-bottom: 2px; white-space: nowrap; }
+			.nm-bar-chart__label { font-size: .65rem; color: #8c8f94; margin-top: 6px; white-space: nowrap; transform: rotate(-40deg); transform-origin: top left; }
+			.nm-chart-legend { display: flex; gap: 18px; font-size: .8rem; color: #50575e; margin: 10px 0 20px; }
+			.nm-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+			.nm-chart-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
 
-		<h2><?php esc_html_e( 'Last 14 Days', 'ner-michoel-core' ); ?></h2>
-		<?php if ( $daily ) : ?>
-			<table class="widefat striped" style="max-width:700px;">
-				<thead><tr><th><?php esc_html_e( 'Date', 'ner-michoel-core' ); ?></th><th><?php esc_html_e( 'Pageviews', 'ner-michoel-core' ); ?></th><th><?php esc_html_e( 'Visitors', 'ner-michoel-core' ); ?></th></tr></thead>
-				<tbody>
+			.nm-hbar-list { display: flex; flex-direction: column; gap: 10px; margin: 16px 0 20px; }
+			.nm-hbar-row { display: grid; grid-template-columns: 220px 1fr 60px; align-items: center; gap: 10px; }
+			.nm-hbar-row__label { font-size: .85rem; color: #1d2327; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+			.nm-hbar-row__track { background: #f0f0f1; border-radius: 4px; height: 18px; overflow: hidden; }
+			.nm-hbar-row__fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #2271b1, #72aee6); }
+			.nm-hbar-row__val { font-size: .8rem; color: #50575e; text-align: right; }
+		</style>
+
+		<div class="nm-stat-cards">
+			<div class="nm-stat-card nm-stat-card--views">
+				<div class="nm-stat-card__label"><?php esc_html_e( 'Pageviews', 'ner-michoel-core' ); ?></div>
+				<div class="nm-stat-card__value"><?php echo esc_html( number_format_i18n( $pageviews_30 ) ); ?></div>
+				<div class="nm-stat-card__sub"><?php echo esc_html( number_format_i18n( $pageviews_7 ) ); ?> <?php esc_html_e( 'in the last 7 days', 'ner-michoel-core' ); ?></div>
+			</div>
+			<div class="nm-stat-card nm-stat-card--visitors">
+				<div class="nm-stat-card__label"><?php esc_html_e( 'Visitors (approx.)', 'ner-michoel-core' ); ?></div>
+				<div class="nm-stat-card__value"><?php echo esc_html( number_format_i18n( $visitors_30 ) ); ?></div>
+				<div class="nm-stat-card__sub"><?php echo esc_html( number_format_i18n( $visitors_7 ) ); ?> <?php esc_html_e( 'in the last 7 days', 'ner-michoel-core' ); ?></div>
+			</div>
+			<div class="nm-stat-card nm-stat-card--speed">
+				<div class="nm-stat-card__label"><?php esc_html_e( 'Avg. Load Time', 'ner-michoel-core' ); ?></div>
+				<div class="nm-stat-card__value">
+					<?php
+					echo $avg_load_ms
+						? esc_html( number_format_i18n( $avg_load_ms / 1000, 2 ) . 's' )
+						: esc_html__( '—', 'ner-michoel-core' );
+					?>
+				</div>
+				<div class="nm-stat-card__sub"><?php esc_html_e( 'reported by visitors\' browsers', 'ner-michoel-core' ); ?></div>
+			</div>
+		</div>
+
+		<div class="nm-chart-panel">
+			<h2><?php esc_html_e( 'Last 14 Days', 'ner-michoel-core' ); ?></h2>
+			<?php if ( $daily ) : ?>
+				<div class="nm-chart-legend">
+					<span><i style="background:#2271b1;"></i><?php esc_html_e( 'Pageviews', 'ner-michoel-core' ); ?></span>
+					<span><i style="background:#00a32a;"></i><?php esc_html_e( 'Visitors', 'ner-michoel-core' ); ?></span>
+				</div>
+				<div class="nm-bar-chart">
 					<?php foreach ( $daily as $row ) : ?>
-						<tr>
-							<td><?php echo esc_html( mysql2date( get_option( 'date_format' ), $row->day ) ); ?></td>
-							<td><?php echo esc_html( number_format_i18n( $row->views ) ); ?></td>
-							<td><?php echo esc_html( number_format_i18n( $row->visitors ) ); ?></td>
-						</tr>
+						<?php
+						$views_pct = max( 4, round( ( (int) $row->views / $daily_max ) * 100 ) );
+						$vis_pct   = max( 4, round( ( (int) $row->visitors / $daily_max_vis ) * 100 ) );
+						?>
+						<div class="nm-bar-chart__col">
+							<div class="nm-bar-chart__val"><?php echo esc_html( number_format_i18n( $row->views ) ); ?></div>
+							<div style="display:flex;align-items:flex-end;gap:2px;width:100%;height:100%;">
+								<div class="nm-bar-chart__bar" style="height:<?php echo esc_attr( $views_pct ); ?>%;"></div>
+								<div class="nm-bar-chart__bar" data-visitors="1" style="height:<?php echo esc_attr( $vis_pct ); ?>%;"></div>
+							</div>
+							<div class="nm-bar-chart__label"><?php echo esc_html( mysql2date( 'M j', $row->day ) ); ?></div>
+						</div>
 					<?php endforeach; ?>
-				</tbody>
-			</table>
-		<?php else : ?>
-			<p><?php esc_html_e( 'No data yet.', 'ner-michoel-core' ); ?></p>
-		<?php endif; ?>
+				</div>
+			<?php else : ?>
+				<p><?php esc_html_e( 'No data yet.', 'ner-michoel-core' ); ?></p>
+			<?php endif; ?>
+		</div>
+
+		<div class="nm-chart-panel">
+			<h2><?php esc_html_e( 'Top Pages (30 days)', 'ner-michoel-core' ); ?></h2>
+			<?php if ( $top_pages ) : ?>
+				<div class="nm-hbar-list">
+					<?php foreach ( $top_pages as $row ) : ?>
+						<div class="nm-hbar-row">
+							<div class="nm-hbar-row__label" title="<?php echo esc_attr( $row->url ); ?>"><?php echo esc_html( $row->url ); ?></div>
+							<div class="nm-hbar-row__track"><div class="nm-hbar-row__fill" style="width:<?php echo esc_attr( round( ( $row->views / $pages_max ) * 100 ) ); ?>%;"></div></div>
+							<div class="nm-hbar-row__val"><?php echo esc_html( number_format_i18n( $row->views ) ); ?></div>
+						</div>
+					<?php endforeach; ?>
+				</div>
+			<?php else : ?>
+				<p><?php esc_html_e( 'No data yet.', 'ner-michoel-core' ); ?></p>
+			<?php endif; ?>
+		</div>
+
+		<div class="nm-chart-panel">
+			<h2><?php esc_html_e( 'Top Referrers (30 days)', 'ner-michoel-core' ); ?></h2>
+			<?php if ( $top_referrers ) : ?>
+				<div class="nm-hbar-list">
+					<?php foreach ( $top_referrers as $row ) : ?>
+						<div class="nm-hbar-row">
+							<div class="nm-hbar-row__label"><?php echo esc_html( $row->referrer_domain ); ?></div>
+							<div class="nm-hbar-row__track"><div class="nm-hbar-row__fill" style="width:<?php echo esc_attr( round( ( $row->views / $referrer_max ) * 100 ) ); ?>%;"></div></div>
+							<div class="nm-hbar-row__val"><?php echo esc_html( number_format_i18n( $row->views ) ); ?></div>
+						</div>
+					<?php endforeach; ?>
+				</div>
+			<?php else : ?>
+				<p><?php esc_html_e( 'No external referrers recorded yet (direct traffic and internal navigation aren\'t counted here).', 'ner-michoel-core' ); ?></p>
+			<?php endif; ?>
+		</div>
 	</div>
 	<?php
 }

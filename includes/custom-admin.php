@@ -51,13 +51,15 @@ function ner_michoel_custom_admin_structure() {
 		'content'    => array(
 			'label' => __( 'Content', 'ner-michoel-core' ),
 			'tabs'  => array(
-				'shiurim'   => array( 'label' => __( 'Shiurim', 'ner-michoel-core' ), 'link' => admin_url( 'edit.php?post_type=shiur' ) ),
-				'speakers'  => array( 'label' => __( 'Speakers', 'ner-michoel-core' ), 'link' => admin_url( 'edit-tags.php?taxonomy=speaker&post_type=shiur' ) ),
-				'series'    => array( 'label' => __( 'Series', 'ner-michoel-core' ), 'link' => admin_url( 'edit-tags.php?taxonomy=series&post_type=shiur' ) ),
-				'galleries' => array( 'label' => __( 'Galleries', 'ner-michoel-core' ), 'link' => admin_url( 'edit.php?post_type=gallery' ) ),
-				'mazaltov'  => array( 'label' => __( 'Mazal Tov', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_mazal_tov_quick_add_page' ),
-				'news'      => array( 'label' => __( 'Post News', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_post_news_page' ),
-				'bulk'      => array( 'label' => __( 'Bulk Upload', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_bulk_upload_page' ),
+				'shiurim'     => array( 'label' => __( 'Shiurim', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit.php?post_type=shiur' ) ),
+				'speakers'    => array( 'label' => __( 'Speakers', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit-tags.php?taxonomy=speaker&post_type=shiur' ) ),
+				'series'      => array( 'label' => __( 'Series', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit-tags.php?taxonomy=series&post_type=shiur' ) ),
+				'galleries'   => array( 'label' => __( 'Galleries', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit.php?post_type=gallery' ) ),
+				'mazaltov'    => array( 'label' => __( 'Mazal Tov', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit.php?post_type=mazal_tov' ) ),
+				'mazaltovadd' => array( 'label' => __( 'Post a Mazal Tov', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_mazal_tov_quick_add_page' ),
+				'newslist'    => array( 'label' => __( 'News Posts', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit.php?category_name=news' ) ),
+				'news'        => array( 'label' => __( 'Post News', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_post_news_page' ),
+				'bulk'        => array( 'label' => __( 'Bulk Upload', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_bulk_upload_page' ),
 			),
 		),
 		'appearance' => array(
@@ -87,9 +89,9 @@ function ner_michoel_custom_admin_structure() {
 			'label' => __( 'Analytics', 'ner-michoel-core' ),
 			'tabs'  => array(
 				'stats'     => array( 'label' => __( 'Site Statistics', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_site_stats_page', 'capability' => 'manage_options' ),
-				'listened'  => array( 'label' => __( 'Most Listened', 'ner-michoel-core' ), 'link' => admin_url( 'edit.php?post_type=shiur&orderby=nm_plays&order=desc' ) ),
-				'missing'   => array( 'label' => __( 'Missing Audio', 'ner-michoel-core' ), 'link' => admin_url( 'edit.php?post_type=shiur&nm_missing_audio=1' ) ),
-				'inquiries' => array( 'label' => __( 'Recent Submissions', 'ner-michoel-core' ), 'link' => admin_url( 'edit.php?post_type=nm_submission' ) ),
+				'listened'  => array( 'label' => __( 'Most Listened', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit.php?post_type=shiur&orderby=nm_plays&order=desc' ) ),
+				'missing'   => array( 'label' => __( 'Missing Audio', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit.php?post_type=shiur&nm_missing_audio=1' ) ),
+				'inquiries' => array( 'label' => __( 'Recent Submissions', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit.php?post_type=nm_submission' ) ),
 			),
 		),
 	);
@@ -169,6 +171,9 @@ function ner_michoel_render_custom_admin_ui() {
 			.nm-admin-content { background: #fff; border: 1px solid #dcdcde; border-top: none; padding: 24px 20px 32px; }
 			.nm-admin-content .wrap.nm-dashboard { margin: 0; }
 			.nm-admin-denied { padding: 40px 0; text-align: center; color: #646970; }
+			.nm-admin-content--iframe { padding: 0; }
+			.nm-admin-content--iframe #nm-admin-iframe { display: block; width: 100%; height: 600px; border: none; }
+			.nm-admin-content--iframe .nm-admin-iframe-fallback { margin: 0; padding: 8px 16px; font-size: 0.8rem; text-align: right; border-top: 1px solid #f0f0f1; }
 		</style>
 	</head>
 	<body class="wp-admin wp-core-ui no-js">
@@ -198,8 +203,37 @@ function ner_michoel_render_custom_admin_ui() {
 				</div>
 			<?php endif; ?>
 
-			<div class="nm-admin-content">
-				<?php if ( isset( $active['link'] ) ) : ?>
+			<div class="nm-admin-content<?php echo isset( $active['iframe'] ) ? ' nm-admin-content--iframe' : ''; ?>">
+				<?php if ( isset( $active['iframe'] ) ) : ?>
+					<iframe id="nm-admin-iframe" src="<?php echo esc_url( $active['iframe'] ); ?>" title="<?php echo esc_attr( $active['label'] ); ?>"></iframe>
+					<p class="nm-admin-iframe-fallback"><a href="<?php echo esc_url( $active['iframe'] ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Open in a new tab', 'ner-michoel-core' ); ?> →</a></p>
+					<script>
+					( function () {
+						var frame = document.getElementById( 'nm-admin-iframe' );
+						frame.addEventListener( 'load', function () {
+							try {
+								var doc = frame.contentDocument;
+								if ( ! doc ) { return; }
+								var style = doc.createElement( 'style' );
+								// Hides WordPress's own chrome (top bar, left
+								// menu, footer, screen-options tray) so the
+								// embedded screen reads as part of this UI
+								// instead of "wp-admin inside wp-admin".
+								style.textContent = '#wpadminbar,#adminmenumain,#adminmenuback,#adminmenuwrap,#wpfooter,#screen-meta-links,#screen-meta{display:none!important;}' +
+									'html.wp-toolbar{padding-top:0!important;}' +
+									'#wpcontent,#wpbody{margin-left:0!important;}' +
+									'#wpbody-content{padding-bottom:20px!important;}' +
+									'body{min-width:0!important;}';
+								doc.head.appendChild( style );
+								frame.style.height = Math.max( 600, doc.body.scrollHeight + 40 ) + 'px';
+							} catch ( e ) {
+								// Cross-origin or otherwise inaccessible — the
+								// visible fallback link above still works.
+							}
+						} );
+					} )();
+					</script>
+				<?php elseif ( isset( $active['link'] ) ) : ?>
 					<script>window.location.replace( <?php echo wp_json_encode( $active['link'] ); ?> );</script>
 					<p><?php esc_html_e( 'Opening…', 'ner-michoel-core' ); ?> <a href="<?php echo esc_url( $active['link'] ); ?>"><?php esc_html_e( 'Click here if you\'re not redirected.', 'ner-michoel-core' ); ?></a></p>
 				<?php elseif ( ! $has_access ) : ?>
