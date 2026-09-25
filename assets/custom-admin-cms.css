@@ -1,0 +1,187 @@
+/**
+ * Styling for the custom /admin's content screens (list + edit modal).
+ * Deliberately its own look, not wp-admin's .button/.widefat/.form-table
+ * classes — the whole point of custom-admin-cms.js is that this reads
+ * as "our app", not "WordPress with the chrome hidden".
+ */
+
+.nm-cms { font-size: 14px; color: #1d2327; }
+
+.nm-cms-loading,
+.nm-cms-loading-row,
+.nm-cms-empty { padding: 30px; text-align: center; color: #6b7280; }
+
+.nm-cms-error { padding: 16px; background: #fef2f2; color: #b91c1c; border-radius: 8px; }
+
+.nm-cms-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
+.nm-cms-toolbar-spacer { flex: 1; }
+.nm-cms-search { min-width: 220px; }
+.nm-cms-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.nm-cms-input {
+	font-size: 14px;
+	padding: 8px 12px;
+	border: 1px solid #d5d9de;
+	border-radius: 8px;
+	background: #fff;
+	color: #1d2327;
+	box-sizing: border-box;
+}
+.nm-cms-input:focus { outline: none; border-color: #2271b1; box-shadow: 0 0 0 3px rgba(34,113,177,0.15); }
+textarea.nm-cms-input { width: 100%; resize: vertical; font-family: inherit; }
+textarea.nm-cms-mono { font-family: Consolas, Menlo, monospace; font-size: 13px; }
+select.nm-cms-input { min-width: 160px; }
+
+.nm-cms-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+	font-weight: 500;
+	padding: 8px 16px;
+	border-radius: 8px;
+	border: 1px solid #d5d9de;
+	background: #fff;
+	color: #1d2327;
+	cursor: pointer;
+	transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.nm-cms-btn:hover { background: #f6f7f7; }
+.nm-cms-btn:disabled { opacity: 0.6; cursor: default; }
+.nm-cms-btn--primary {
+	background: linear-gradient(135deg, #2271b1, #135e96);
+	border-color: transparent;
+	color: #fff;
+}
+.nm-cms-btn--primary:hover { box-shadow: 0 2px 8px rgba(19,94,150,0.35); }
+.nm-cms-btn--link { border: none; background: none; color: #b91c1c; padding: 6px 4px; }
+.nm-cms-btn--link:hover { background: none; text-decoration: underline; }
+
+.nm-cms-table-wrap {
+	background: #fff;
+	border: 1px solid #e5e7eb;
+	border-radius: 10px;
+	overflow: hidden;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.nm-cms-table { width: 100%; border-collapse: collapse; }
+.nm-cms-table th {
+	text-align: left;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #6b7280;
+	padding: 12px 16px;
+	background: #f9fafb;
+	border-bottom: 1px solid #e5e7eb;
+}
+.nm-cms-table td { padding: 12px 16px; border-bottom: 1px solid #f0f0f1; vertical-align: middle; }
+.nm-cms-table tr:last-child td { border-bottom: none; }
+.nm-cms-table tr:hover td { background: #f9fbfd; }
+.nm-cms-muted { color: #9ca3af; }
+
+.nm-cms-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; margin-top: 4px; }
+
+.nm-cms-status {
+	display: inline-block;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	padding: 3px 10px;
+	border-radius: 999px;
+}
+.nm-cms-status--publish { background: #dcfce7; color: #166534; }
+.nm-cms-status--draft { background: #f3f4f6; color: #4b5563; }
+.nm-cms-status--pending,
+.nm-cms-status--future { background: #fef3c7; color: #92400e; }
+
+.nm-cms-col-actions { white-space: nowrap; text-align: right; }
+.nm-cms-row-btn {
+	display: inline-block;
+	font-size: 12px;
+	font-weight: 500;
+	padding: 5px 10px;
+	margin-left: 4px;
+	border-radius: 6px;
+	border: 1px solid #d5d9de;
+	background: #fff;
+	color: #1d2327;
+	cursor: pointer;
+	text-decoration: none;
+}
+.nm-cms-row-btn:hover { background: #f6f7f7; }
+.nm-cms-row-btn--danger { color: #b91c1c; border-color: #fecaca; }
+.nm-cms-row-btn--danger:hover { background: #fef2f2; }
+
+.nm-cms-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 16px; font-size: 13px; color: #6b7280; }
+
+/* ---- Modal ---- */
+
+.nm-cms-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(17,24,39,0.5);
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	padding: 40px 16px;
+	overflow-y: auto;
+	z-index: 100000;
+}
+.nm-cms-modal {
+	background: #fff;
+	border-radius: 12px;
+	width: 100%;
+	max-width: 640px;
+	box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+	display: flex;
+	flex-direction: column;
+	max-height: calc(100vh - 80px);
+}
+.nm-cms-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid #f0f0f1; }
+.nm-cms-modal-header h2 { margin: 0; font-size: 1.1rem; }
+.nm-cms-modal-close { background: none; border: none; font-size: 22px; line-height: 1; cursor: pointer; color: #6b7280; padding: 4px; }
+.nm-cms-modal-close:hover { color: #1d2327; }
+.nm-cms-modal-body { padding: 20px 24px; overflow-y: auto; }
+.nm-cms-modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid #f0f0f1; }
+
+.nm-cms-form { display: flex; flex-direction: column; gap: 16px; }
+.nm-cms-field label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px; color: #374151; }
+.nm-cms-field .nm-cms-input { width: 100%; }
+.nm-cms-hint { font-size: 12px; color: #9ca3af; margin: 6px 0 0; }
+.nm-cms-readonly-text { padding: 8px 0; color: #374151; }
+.nm-cms-readonly-textarea { white-space: normal; }
+
+.nm-cms-media-field { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.nm-cms-media-preview-wrap { flex-basis: 100%; }
+.nm-cms-media-preview { max-width: 160px; max-height: 160px; border-radius: 8px; display: block; object-fit: cover; }
+.nm-cms-media-filename { font-size: 13px; color: #374151; word-break: break-all; }
+
+.nm-cms-media-multi-list { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; min-height: 10px; }
+.nm-cms-media-multi-item { position: relative; width: 90px; height: 90px; cursor: move; }
+.nm-cms-media-multi-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb; display: block; }
+.nm-cms-media-multi-remove {
+	position: absolute;
+	top: -6px;
+	right: -6px;
+	width: 20px;
+	height: 20px;
+	line-height: 18px;
+	text-align: center;
+	padding: 0;
+	border-radius: 50%;
+	border: 1px solid #e5e7eb;
+	background: #fff;
+	color: #b91c1c;
+	cursor: pointer;
+	font-size: 14px;
+}
+
+@media (max-width: 640px) {
+	.nm-cms-table thead { display: none; }
+	.nm-cms-table, .nm-cms-table tbody, .nm-cms-table tr, .nm-cms-table td { display: block; width: 100%; }
+	.nm-cms-table tr { border-bottom: 1px solid #e5e7eb; padding: 10px 0; }
+	.nm-cms-table td { border-bottom: none; padding: 4px 16px; }
+	.nm-cms-col-actions { text-align: left; }
+}

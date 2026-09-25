@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.8.19
+Stable tag: 0.8.20
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,18 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.8.20 =
+* Replace the iframe-embedded wp-admin content screens (added in
+  0.8.19) with a genuinely custom list + edit interface for Shiurim,
+  Speakers, Series, Galleries, Mazal Tov, News Posts, Most Listened,
+  Missing Audio, and Recent Submissions — our own markup/CSS, not
+  WordPress's own list tables or block editor, talking to WordPress
+  only through a new internal REST API (includes/custom-admin-api.php).
+  One schema-driven engine covers every content type: search, taxonomy
+  filters, pagination, add/edit/delete, image and audio/video pickers
+  (still via wp.media(), the one native WP picker kept), and a
+  drag-to-reorder multi-image picker for galleries.
 
 = 0.8.19 =
 * Embed real content-management screens directly inside the custom

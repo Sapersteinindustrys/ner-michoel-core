@@ -19,12 +19,16 @@
  * admin_enqueue_scripts, since this renders through template_redirect.
  *
  * Content types that are really about editing individual posts
- * (Shiurim, Speakers, Galleries, etc.) are deliberately left as links
- * into the real wp-admin list tables/post editor rather than
- * reimplemented here — WP_List_Table, the block editor, and the media
- * library are large, well-built machinery not worth duplicating, and
- * clicking through to them is a deliberate navigation, not the
- * unwanted auto-redirect this file exists to remove.
+ * (Shiurim, Speakers, Galleries, Mazal Tov, News, Submissions) use the
+ * 'cms_type' tab type: our own list + edit UI (assets/custom-admin-
+ * cms.js, styled by custom-admin-cms.css), talking to WordPress only
+ * through a REST API underneath (includes/custom-admin-api.php) — not
+ * wp-admin's own list tables/block editor. That replaced an earlier
+ * "link/iframe into the real wp-admin screen" approach: linking away
+ * defeated the point of a custom admin, and embedding the real screen
+ * in an iframe still visibly read as WordPress, chrome-hiding CSS or
+ * not. The remaining 'callback' tabs (quick-add forms, settings pages)
+ * were already self-contained and didn't need rebuilding.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -51,13 +55,13 @@ function ner_michoel_custom_admin_structure() {
 		'content'    => array(
 			'label' => __( 'Content', 'ner-michoel-core' ),
 			'tabs'  => array(
-				'shiurim'     => array( 'label' => __( 'Shiurim', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit.php?post_type=shiur' ) ),
-				'speakers'    => array( 'label' => __( 'Speakers', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit-tags.php?taxonomy=speaker&post_type=shiur' ) ),
-				'series'      => array( 'label' => __( 'Series', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit-tags.php?taxonomy=series&post_type=shiur' ) ),
-				'galleries'   => array( 'label' => __( 'Galleries', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit.php?post_type=gallery' ) ),
-				'mazaltov'    => array( 'label' => __( 'Mazal Tov', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit.php?post_type=mazal_tov' ) ),
+				'shiurim'     => array( 'label' => __( 'Shiurim', 'ner-michoel-core' ), 'cms_type' => 'shiur' ),
+				'speakers'    => array( 'label' => __( 'Speakers', 'ner-michoel-core' ), 'cms_type' => 'speaker', 'capability' => 'manage_categories' ),
+				'series'      => array( 'label' => __( 'Series', 'ner-michoel-core' ), 'cms_type' => 'series', 'capability' => 'manage_categories' ),
+				'galleries'   => array( 'label' => __( 'Galleries', 'ner-michoel-core' ), 'cms_type' => 'gallery' ),
+				'mazaltov'    => array( 'label' => __( 'Mazal Tov', 'ner-michoel-core' ), 'cms_type' => 'mazal_tov' ),
 				'mazaltovadd' => array( 'label' => __( 'Post a Mazal Tov', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_mazal_tov_quick_add_page' ),
-				'newslist'    => array( 'label' => __( 'News Posts', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit.php?category_name=news' ) ),
+				'newslist'    => array( 'label' => __( 'News Posts', 'ner-michoel-core' ), 'cms_type' => 'post_news' ),
 				'news'        => array( 'label' => __( 'Post News', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_post_news_page' ),
 				'bulk'        => array( 'label' => __( 'Bulk Upload', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_bulk_upload_page' ),
 			),
@@ -89,9 +93,9 @@ function ner_michoel_custom_admin_structure() {
 			'label' => __( 'Analytics', 'ner-michoel-core' ),
 			'tabs'  => array(
 				'stats'     => array( 'label' => __( 'Site Statistics', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_site_stats_page', 'capability' => 'manage_options' ),
-				'listened'  => array( 'label' => __( 'Most Listened', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit.php?post_type=shiur&orderby=nm_plays&order=desc' ) ),
-				'missing'   => array( 'label' => __( 'Missing Audio', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit.php?post_type=shiur&nm_missing_audio=1' ) ),
-				'inquiries' => array( 'label' => __( 'Recent Submissions', 'ner-michoel-core' ), 'iframe' => admin_url( 'edit.php?post_type=nm_submission' ) ),
+				'listened'  => array( 'label' => __( 'Most Listened', 'ner-michoel-core' ), 'cms_type' => 'shiur', 'cms_args' => array( 'orderby' => 'plays' ) ),
+				'missing'   => array( 'label' => __( 'Missing Audio', 'ner-michoel-core' ), 'cms_type' => 'shiur', 'cms_args' => array( 'missing_audio' => 1 ) ),
+				'inquiries' => array( 'label' => __( 'Recent Submissions', 'ner-michoel-core' ), 'cms_type' => 'nm_submission' ),
 			),
 		),
 	);
@@ -120,6 +124,21 @@ function ner_michoel_enqueue_custom_admin_assets() {
 	if ( function_exists( 'ner_michoel_enqueue_media_pickers_script' ) ) {
 		ner_michoel_enqueue_media_pickers_script();
 	}
+
+	// Our own content screens (list + edit) for the Content/Analytics
+	// tabs — talks to WordPress only through the REST API underneath
+	// (see includes/custom-admin-api.php), not wp-admin's own screens.
+	wp_enqueue_media();
+	wp_enqueue_style( 'ner-michoel-admin-cms', NER_MICHOEL_CORE_URL . 'assets/custom-admin-cms.css', array(), NER_MICHOEL_CORE_VERSION );
+	wp_enqueue_script( 'ner-michoel-admin-cms', NER_MICHOEL_CORE_URL . 'assets/custom-admin-cms.js', array( 'jquery', 'jquery-ui-sortable' ), NER_MICHOEL_CORE_VERSION, true );
+	wp_localize_script(
+		'ner-michoel-admin-cms',
+		'nmCmsConfig',
+		array(
+			'restUrl' => esc_url_raw( rest_url( 'ner-michoel/v1' ) ),
+			'nonce'   => wp_create_nonce( 'wp_rest' ),
+		)
+	);
 }
 
 function ner_michoel_render_custom_admin_ui() {
@@ -174,6 +193,7 @@ function ner_michoel_render_custom_admin_ui() {
 			.nm-admin-content--iframe { padding: 0; }
 			.nm-admin-content--iframe #nm-admin-iframe { display: block; width: 100%; height: 600px; border: none; }
 			.nm-admin-content--iframe .nm-admin-iframe-fallback { margin: 0; padding: 8px 16px; font-size: 0.8rem; text-align: right; border-top: 1px solid #f0f0f1; }
+			.nm-cms-root { min-height: 200px; }
 		</style>
 	</head>
 	<body class="wp-admin wp-core-ui no-js">
@@ -204,7 +224,13 @@ function ner_michoel_render_custom_admin_ui() {
 			<?php endif; ?>
 
 			<div class="nm-admin-content<?php echo isset( $active['iframe'] ) ? ' nm-admin-content--iframe' : ''; ?>">
-				<?php if ( isset( $active['iframe'] ) ) : ?>
+				<?php if ( isset( $active['cms_type'] ) ) : ?>
+					<?php if ( ! $has_access ) : ?>
+						<div class="nm-admin-denied"><?php esc_html_e( 'You don\'t have permission to view this section.', 'ner-michoel-core' ); ?></div>
+					<?php else : ?>
+						<div class="nm-cms-root" data-cms-type="<?php echo esc_attr( $active['cms_type'] ); ?>" data-cms-args="<?php echo esc_attr( wp_json_encode( isset( $active['cms_args'] ) ? $active['cms_args'] : array() ) ); ?>"></div>
+					<?php endif; ?>
+				<?php elseif ( isset( $active['iframe'] ) ) : ?>
 					<iframe id="nm-admin-iframe" src="<?php echo esc_url( $active['iframe'] ); ?>" title="<?php echo esc_attr( $active['label'] ); ?>"></iframe>
 					<p class="nm-admin-iframe-fallback"><a href="<?php echo esc_url( $active['iframe'] ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Open in a new tab', 'ner-michoel-core' ); ?> →</a></p>
 					<script>

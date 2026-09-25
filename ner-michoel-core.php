@@ -3,7 +3,7 @@
  * Plugin Name:       Ner Michoel Core
  * Plugin URI:
  * Description:       Site functionality (custom post types, forms, integrations) for the Ner Michoel rebuild. Kept independent of the theme so content/data survive a future redesign.
- * Version:           0.8.19
+ * Version:           0.8.20
  * Requires at least: 6.0
  * Requires PHP:       7.4
  * Author:             Tomo
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NER_MICHOEL_CORE_VERSION', '0.8.19' );
+define( 'NER_MICHOEL_CORE_VERSION', '0.8.20' );
 define( 'NER_MICHOEL_CORE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'NER_MICHOEL_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -44,6 +44,7 @@ require_once NER_MICHOEL_CORE_PATH . 'includes/library-import.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/bunny-storage.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/admin-panel-login.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/custom-admin.php';
+require_once NER_MICHOEL_CORE_PATH . 'includes/custom-admin-api.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/forms.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/updates.php';
 
