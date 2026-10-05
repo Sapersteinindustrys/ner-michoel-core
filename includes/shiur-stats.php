@@ -65,6 +65,16 @@ function ner_michoel_handle_shiur_event( WP_REST_Request $request ) {
 		update_post_meta( $post_id, $meta_key, $count + 1 );
 	}
 
+	// Piggybacks the per-user History list (user-library.php) on this
+	// same ping rather than a second request from the player: a 'play'
+	// here is already the one meaningful "engaged with this shiur"
+	// signal History wants, and the player calls this regardless of
+	// whether anyone's logged in, so the rate-limited count above and
+	// the logged-in visitor's history both come from one event.
+	if ( 'play' === $event && is_user_logged_in() && function_exists( 'ner_michoel_record_history' ) ) {
+		ner_michoel_record_history( get_current_user_id(), $post_id );
+	}
+
 	return new WP_REST_Response( array( 'recorded' => true ), 200 );
 }
 
