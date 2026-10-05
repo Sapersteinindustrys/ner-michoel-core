@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NER_MICHOEL_USER_LIBRARY_DB_VERSION', '1.0' );
+define( 'NER_MICHOEL_USER_LIBRARY_DB_VERSION', '1.1' );
 
 function ner_michoel_history_table_name() {
 	global $wpdb;
@@ -44,31 +44,72 @@ function ner_michoel_create_user_library_tables() {
 	$history_table    = ner_michoel_history_table_name();
 	$saved_table      = ner_michoel_saved_table_name();
 
+	// Self-healing for exactly the bug this version fixes: if either
+	// table already exists (the first, buggy version of this ran
+	// before), it may already hold duplicate (user_id, post_id) rows —
+	// saved from toggling with no UNIQUE KEY to stop it, history from
+	// the INSERT ... ON DUPLICATE KEY UPDATE upsert silently behaving
+	// as a plain INSERT for the same reason — which MySQL will then
+	// refuse to add that key over. Keeps the newest row per pair,
+	// removes the rest. A no-op on a fresh install (neither table
+	// exists yet) or once this has already run once (no duplicates
+	// left to find).
+	foreach ( array( $history_table, $saved_table ) as $table ) {
+		if ( $wpdb->get_var( "SHOW TABLES LIKE '{$table}'" ) === $table ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->query( // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"DELETE older FROM {$table} older
+				INNER JOIN {$table} newer
+					ON older.user_id = newer.user_id
+					AND older.post_id = newer.post_id
+					AND older.id < newer.id"
+			);
+		}
+	}
+
 	// user_post UNIQUE on both tables: history upserts (INSERT ...
 	// ON DUPLICATE KEY UPDATE) instead of growing one row per visit,
 	// and saved can only be toggled, never duplicated.
-	$sql = "CREATE TABLE {$history_table} (
-		id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-		user_id BIGINT UNSIGNED NOT NULL,
-		post_id BIGINT UNSIGNED NOT NULL,
-		post_type VARCHAR(20) NOT NULL,
-		viewed_at DATETIME NOT NULL,
-		PRIMARY KEY  (id),
-		UNIQUE KEY user_post (user_id, post_id),
-		KEY user_viewed (user_id, viewed_at)
-	) {$charset_collate};
-CREATE TABLE {$saved_table} (
-		id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-		user_id BIGINT UNSIGNED NOT NULL,
-		post_id BIGINT UNSIGNED NOT NULL,
-		post_type VARCHAR(20) NOT NULL,
-		saved_at DATETIME NOT NULL,
-		PRIMARY KEY  (id),
-		UNIQUE KEY user_post (user_id, post_id),
-		KEY user_saved (user_id, saved_at)
-	) {$charset_collate};";
+	//
+	// Two separate dbDelta() calls, not one call with both CREATE TABLE
+	// statements concatenated: dbDelta() parses each statement in the
+	// string it's given to find the table name and diff it against
+	// what exists, and that parsing is documented as needing a blank
+	// line between statements when more than one is passed together.
+	// Without it, the first version of this shipped the two statements
+	// back-to-back with a single newline — dbDelta still created both
+	// tables (no visible error; it fails quiet, not loud), but silently
+	// dropped the second table's UNIQUE KEY, so Saved could never
+	// actually detect an existing row and toggling the same item kept
+	// inserting a new one instead of removing it. Bumped
+	// NER_MICHOEL_USER_LIBRARY_DB_VERSION so this corrected version
+	// re-runs dbDelta on an already-active install and adds the
+	// missing key to the existing table — dbDelta does that safely,
+	// without dropping the (sparse, this early) data already in it.
+	dbDelta(
+		"CREATE TABLE {$history_table} (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			user_id BIGINT UNSIGNED NOT NULL,
+			post_id BIGINT UNSIGNED NOT NULL,
+			post_type VARCHAR(20) NOT NULL,
+			viewed_at DATETIME NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY user_post (user_id, post_id),
+			KEY user_viewed (user_id, viewed_at)
+		) {$charset_collate};"
+	);
 
-	dbDelta( $sql );
+	dbDelta(
+		"CREATE TABLE {$saved_table} (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			user_id BIGINT UNSIGNED NOT NULL,
+			post_id BIGINT UNSIGNED NOT NULL,
+			post_type VARCHAR(20) NOT NULL,
+			saved_at DATETIME NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY user_post (user_id, post_id),
+			KEY user_saved (user_id, saved_at)
+		) {$charset_collate};"
+	);
 
 	update_option( 'nm_user_library_db_version', NER_MICHOEL_USER_LIBRARY_DB_VERSION );
 }
