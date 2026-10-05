@@ -57,10 +57,10 @@ function ner_michoel_cms_registry() {
 				'title'      => array( 'type' => 'text', 'label' => __( 'Title', 'ner-michoel-core' ), 'required' => true, 'target' => 'post_title' ),
 				'content'    => array( 'type' => 'textarea', 'label' => __( 'Description', 'ner-michoel-core' ), 'target' => 'post_content', 'rows' => 5 ),
 				'speaker'    => array( 'type' => 'taxonomy', 'label' => __( 'Speaker', 'ner-michoel-core' ), 'taxonomy' => 'speaker' ),
-				'series'     => array( 'type' => 'taxonomy', 'label' => __( 'Series', 'ner-michoel-core' ), 'taxonomy' => 'series' ),
+				'series'     => array( 'type' => 'taxonomy', 'label' => __( 'Series', 'ner-michoel-core' ), 'taxonomy' => 'series', 'picker' => 'recent' ),
 				'audio'      => array( 'type' => 'media', 'label' => __( 'Audio / Video File', 'ner-michoel-core' ), 'meta' => '_shiur_audio_id' ),
 				'vimeo_id'   => array( 'type' => 'text', 'label' => __( 'Vimeo ID (externally-hosted video, no file upload)', 'ner-michoel-core' ), 'meta' => '_shiur_vimeo_id' ),
-				'duration'   => array( 'type' => 'text', 'label' => __( 'Duration (mm:ss)', 'ner-michoel-core' ), 'meta' => '_shiur_duration' ),
+				'duration'   => array( 'type' => 'readonly', 'label' => __( 'Duration (set from the file)', 'ner-michoel-core' ), 'meta' => '_shiur_duration' ),
 				'dedication' => array( 'type' => 'textarea', 'label' => __( 'Dedication (optional)', 'ner-michoel-core' ), 'meta' => '_shiur_dedication', 'rows' => 3 ),
 				'thumbnail'  => array( 'type' => 'image', 'label' => __( 'Featured Image', 'ner-michoel-core' ), 'target' => 'thumbnail' ),
 				'menu_order' => array( 'type' => 'number', 'label' => __( 'Order (within series)', 'ner-michoel-core' ), 'target' => 'menu_order' ),
@@ -85,7 +85,7 @@ function ner_michoel_cms_registry() {
 				'title'     => array( 'type' => 'text', 'label' => __( 'Title', 'ner-michoel-core' ), 'required' => true, 'target' => 'post_title' ),
 				'content'   => array( 'type' => 'textarea', 'label' => __( 'Description (optional)', 'ner-michoel-core' ), 'target' => 'post_content', 'rows' => 4 ),
 				'speaker'   => array( 'type' => 'taxonomy', 'label' => __( 'Speaker', 'ner-michoel-core' ), 'taxonomy' => 'speaker' ),
-				'series'    => array( 'type' => 'taxonomy', 'label' => __( 'Series', 'ner-michoel-core' ), 'taxonomy' => 'series' ),
+				'series'    => array( 'type' => 'taxonomy', 'label' => __( 'Series', 'ner-michoel-core' ), 'taxonomy' => 'series', 'picker' => 'recent' ),
 				'pdf'       => array( 'type' => 'media', 'kind' => 'pdf', 'label' => __( 'PDF File', 'ner-michoel-core' ), 'meta' => '_written_pdf_id' ),
 				'thumbnail' => array( 'type' => 'image', 'label' => __( 'Cover Image (optional)', 'ner-michoel-core' ), 'target' => 'thumbnail' ),
 				'status'    => array( 'type' => 'select', 'label' => __( 'Status', 'ner-michoel-core' ), 'target' => 'status', 'options' => $status_options ),
@@ -310,6 +310,14 @@ function ner_michoel_cms_route_terms( WP_REST_Request $request ) {
 	if ( is_wp_error( $terms ) ) {
 		return new WP_REST_Response( array(), 200 );
 	}
+	// 'last': when a post of the calling form's own post type last used this
+	// term. The series picker uses it to put the three most recent at the
+	// top — scoped to post_type so editing a written shiur doesn't surface
+	// series that are only recently active for audio shiurim, or vice versa.
+	// Only series need it.
+	$post_type = $request->get_param( 'post_type' ) ? sanitize_key( $request->get_param( 'post_type' ) ) : 'shiur';
+	$latest    = 'series' === $taxonomy && function_exists( 'ner_michoel_term_latest_dates' ) ? ner_michoel_term_latest_dates( $taxonomy, $post_type ) : array();
+
 	$out = array();
 	foreach ( $terms as $term ) {
 		$out[] = array(
@@ -317,6 +325,7 @@ function ner_michoel_cms_route_terms( WP_REST_Request $request ) {
 			'name'   => $term->name,
 			'parent' => $term->parent,
 			'count'  => $term->count,
+			'last'   => isset( $latest[ $term->term_id ] ) ? $latest[ $term->term_id ] : '',
 		);
 	}
 	return new WP_REST_Response( $out, 200 );

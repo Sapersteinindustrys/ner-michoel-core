@@ -39,9 +39,10 @@ function ner_michoel_render_shiur_meta_box( $post ) {
 	<input type="hidden" name="ner_michoel_shiur_audio_id" id="ner_michoel_audio_id" value="<?php echo esc_attr( $attachment_id ); ?>" />
 
 	<p>
-		<label for="ner_michoel_shiur_duration"><?php esc_html_e( 'Duration (mm:ss, optional)', 'ner-michoel-core' ); ?></label><br />
-		<input type="text" id="ner_michoel_shiur_duration" name="ner_michoel_shiur_duration" value="<?php echo esc_attr( $duration ); ?>" placeholder="45:30" style="width:100%;" />
+		<strong><?php esc_html_e( 'Duration:', 'ner-michoel-core' ); ?></strong>
+		<?php echo $duration ? esc_html( $duration ) : esc_html__( '—', 'ner-michoel-core' ); ?>
 	</p>
+	<p class="description"><?php esc_html_e( 'Set automatically from the audio or video file.', 'ner-michoel-core' ); ?></p>
 	<p class="description"><?php esc_html_e( 'Ordering within a series uses the Order field below (Page Attributes).', 'ner-michoel-core' ); ?></p>
 	<?php
 	// JS: assets/media-pickers.js (enqueued in ner_michoel_shiur_meta_box_assets()
@@ -70,9 +71,8 @@ function ner_michoel_save_shiur_meta( $post_id ) {
 		}
 	}
 
-	if ( isset( $_POST['ner_michoel_shiur_duration'] ) ) {
-		update_post_meta( $post_id, '_shiur_duration', sanitize_text_field( $_POST['ner_michoel_shiur_duration'] ) );
-	}
+	// Duration is not typed in. It's set from the file when the media is attached
+	// (shiur-duration.php), so there's nothing to save here.
 }
 add_action( 'save_post_shiur', 'ner_michoel_save_shiur_meta' );
 

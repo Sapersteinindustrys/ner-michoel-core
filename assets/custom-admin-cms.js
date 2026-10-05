@@ -65,12 +65,18 @@
 		} );
 	}
 
-	function getTerms( taxonomy ) {
-		if ( termsCache[ taxonomy ] ) {
-			return termsCache[ taxonomy ];
+	function getTerms( taxonomy, postType ) {
+		// postType scopes "recent" (the series picker) to the form you're on —
+		// a series recently used by a shiur isn't necessarily recent for a
+		// written shiur, or vice versa. Cache key includes it so the two
+		// forms don't share a stale result.
+		var cacheKey = taxonomy + '|' + ( postType || '' );
+		if ( termsCache[ cacheKey ] ) {
+			return termsCache[ cacheKey ];
 		}
-		termsCache[ taxonomy ] = apiFetch( 'terms/' + taxonomy );
-		return termsCache[ taxonomy ];
+		var path = 'terms/' + taxonomy + ( postType ? '?post_type=' + encodeURIComponent( postType ) : '' );
+		termsCache[ cacheKey ] = apiFetch( path );
+		return termsCache[ cacheKey ];
 	}
 
 	/* ---------------- Field rendering ---------------- */
@@ -94,7 +100,11 @@
 				} );
 				return '<select class="nm-cms-input">' + opts + '</select>';
 			case 'taxonomy':
-				return '<select class="nm-cms-input nm-cms-taxonomy-select" data-taxonomy="' + esc( field.taxonomy ) + '" data-selected="' + esc( value || '' ) + '"><option value="">— None —</option></select>';
+				// field.picker === 'recent' makes this the searchable list with "Recent" on top
+				// (series-picker.js, enhanced once the terms have loaded).
+				return '<select class="nm-cms-input nm-cms-taxonomy-select"' +
+					( field.picker === 'recent' ? ' data-series-picker data-placeholder="Search series…" data-recent-label="Recent" data-all-label="All series"' : '' ) +
+					' data-taxonomy="' + esc( field.taxonomy ) + '" data-selected="' + esc( value || '' ) + '"><option value="">— None —</option></select>';
 			case 'term_parent':
 				return '<select class="nm-cms-input nm-cms-parent-select" data-selected="' + esc( value || '' ) + '"><option value="">— None (top level) —</option></select>';
 			case 'image':
@@ -435,14 +445,22 @@
 			var $select = $( this );
 			var taxonomy = $select.data( 'taxonomy' );
 			var selected = String( $select.data( 'selected' ) || '' );
-			getTerms( taxonomy ).then( function ( terms ) {
+			getTerms( taxonomy, self.type ).then( function ( terms ) {
 				$.each( terms, function ( i, term ) {
 					var $opt = $( '<option></option>' ).val( term.id ).text( term.name );
+					if ( term.last ) {
+						$opt.attr( 'data-last', term.last );
+					}
 					if ( String( term.id ) === selected ) {
 						$opt.prop( 'selected', true );
 					}
 					$select.append( $opt );
 				} );
+				// All options are in place and the selection is set, so the picker
+				// can build its list from them.
+				if ( $select.is( '[data-series-picker]' ) && window.NMSeriesPicker ) {
+					window.NMSeriesPicker.enhance( $select[ 0 ] );
+				}
 			} );
 		} );
 
