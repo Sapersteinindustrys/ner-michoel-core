@@ -51,12 +51,12 @@ function ner_michoel_search_strlen( $text ) {
  * Results are cached per request, so the query hook and the template can
  * both call this without scanning twice.
  */
-function ner_michoel_shiur_search_ranking( $raw_term ) {
+function ner_michoel_shiur_search_ranking( $raw_term, $post_type = 'shiur' ) {
 	static $cache = array();
 
 	$raw_term = (string) $raw_term;
-	if ( isset( $cache[ $raw_term ] ) ) {
-		return $cache[ $raw_term ];
+	if ( isset( $cache[ $post_type . '|' . $raw_term ] ) ) {
+		return $cache[ $post_type . '|' . $raw_term ];
 	}
 
 	$empty = array(
@@ -66,7 +66,7 @@ function ner_michoel_shiur_search_ranking( $raw_term ) {
 
 	$phrase = ner_michoel_search_fold( $raw_term );
 	if ( '' === $phrase ) {
-		return $cache[ $raw_term ] = $empty;
+		return $cache[ $post_type . '|' . $raw_term ] = $empty;
 	}
 
 	// Words of one character ("a", "I") match almost every title, so they're
@@ -91,7 +91,7 @@ function ner_michoel_shiur_search_ranking( $raw_term ) {
 		$clauses[] = $wpdb->prepare( 'post_title LIKE %s', '%' . $wpdb->esc_like( $word ) . '%' );
 	}
 	$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		"SELECT ID, post_title, post_date FROM {$wpdb->posts} WHERE post_type = 'shiur' AND post_status = 'publish' AND (" . implode( ' OR ', $clauses ) . ')'
+		"SELECT ID, post_title, post_date FROM {$wpdb->posts} WHERE post_type = '" . esc_sql( $post_type ) . "' AND post_status = 'publish' AND (" . implode( ' OR ', $clauses ) . ')'
 	);
 
 	// Whole phrase outranks any count of single words, so it gets the top
@@ -195,7 +195,7 @@ function ner_michoel_shiur_search_ranking( $raw_term ) {
 				? sprintf( /* translators: %s: speaker name */ __( 'Speaker: %s', 'ner-michoel-core' ), $term->name )
 				: sprintf( /* translators: %s: series name */ __( 'Series: %s', 'ner-michoel-core' ), $term->name );
 
-			foreach ( ner_michoel_search_term_shiur_ids( $term->term_id, $taxonomy ) as $shiur_id ) {
+			foreach ( ner_michoel_search_term_shiur_ids( $term->term_id, $taxonomy, $post_type ) as $shiur_id ) {
 				if ( isset( $seen[ $shiur_id ] ) ) {
 					continue;
 				}
@@ -220,7 +220,7 @@ function ner_michoel_shiur_search_ranking( $raw_term ) {
 		'labels' => $labels,
 	);
 
-	return $cache[ $raw_term ] = $result;
+	return $cache[ $post_type . '|' . $raw_term ] = $result;
 }
 
 /**
@@ -284,10 +284,10 @@ function ner_michoel_search_matching_terms( $taxonomy, $phrase, $words, $total )
 /**
  * IDs of the published shiurim in a speaker or series, newest first.
  */
-function ner_michoel_search_term_shiur_ids( $term_id, $taxonomy ) {
+function ner_michoel_search_term_shiur_ids( $term_id, $taxonomy, $post_type = 'shiur' ) {
 	return get_posts(
 		array(
-			'post_type'      => 'shiur',
+			'post_type'      => $post_type,
 			'post_status'    => 'publish',
 			'posts_per_page' => -1,
 			'fields'         => 'ids',
@@ -310,8 +310,16 @@ function ner_michoel_search_term_shiur_ids( $term_id, $taxonomy ) {
  * with a search term and post_type=shiur (the sidebar's search form sends
  * exactly that).
  */
+function ner_michoel_search_scope( $query ) {
+	if ( is_admin() || ! $query->is_main_query() || ! $query->is_search() ) {
+		return '';
+	}
+	$type = $query->get( 'post_type' );
+	return in_array( $type, array( 'shiur', 'written_shiur' ), true ) ? $type : '';
+}
+
 function ner_michoel_is_shiur_search_query( $query ) {
-	return ! is_admin() && $query->is_main_query() && $query->is_search() && 'shiur' === $query->get( 'post_type' );
+	return '' !== ner_michoel_search_scope( $query );
 }
 
 /**
@@ -323,7 +331,7 @@ function ner_michoel_shiur_search_pre_get_posts( $query ) {
 		return;
 	}
 
-	$ranking = ner_michoel_shiur_search_ranking( $query->get( 's' ) );
+	$ranking = ner_michoel_shiur_search_ranking( $query->get( 's' ), ner_michoel_search_scope( $query ) );
 	$ids     = $ranking['ids'] ? $ranking['ids'] : array( 0 ); // array(0): no shiur matches an ID 0.
 
 	$query->set( 'post__in', $ids );
@@ -348,7 +356,7 @@ add_filter( 'posts_search', 'ner_michoel_shiur_search_no_sql', 10, 2 );
  * Heading for each shiur in the results, keyed by shiur ID. The template
  * uses this to group results under their tier.
  */
-function ner_michoel_shiur_search_labels( $raw_term ) {
-	$ranking = ner_michoel_shiur_search_ranking( $raw_term );
+function ner_michoel_shiur_search_labels( $raw_term, $post_type = 'shiur' ) {
+	$ranking = ner_michoel_shiur_search_ranking( $raw_term, $post_type );
 	return $ranking['labels'];
 }

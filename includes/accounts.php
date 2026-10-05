@@ -159,6 +159,12 @@ function ner_michoel_handle_account_register( WP_REST_Request $request ) {
 		return ner_michoel_account_error( 'register_failed', $user_id->get_error_message() );
 	}
 
+	// Two separate, optional choices made at sign-up: general updates, and
+	// alerts when new shiurim are posted. Kept as separate flags so either
+	// can be honoured on its own later. Sending is not built yet.
+	update_user_meta( $user_id, 'nm_pref_updates', $request->get_param( 'pref_updates' ) ? 1 : 0 );
+	update_user_meta( $user_id, 'nm_pref_new_shiur_alerts', $request->get_param( 'pref_new_shiur_alerts' ) ? 1 : 0 );
+
 	ner_michoel_sign_in_user( $user_id );
 
 	return new WP_REST_Response( array( 'success' => true, 'name' => $name ), 200 );
