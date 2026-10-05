@@ -84,6 +84,7 @@ function ner_michoel_cms_registry() {
 			'fields'       => array(
 				'title'     => array( 'type' => 'text', 'label' => __( 'Title', 'ner-michoel-core' ), 'required' => true, 'target' => 'post_title' ),
 				'content'   => array( 'type' => 'textarea', 'label' => __( 'Description (optional)', 'ner-michoel-core' ), 'target' => 'post_content', 'rows' => 4 ),
+				'excerpt'   => array( 'type' => 'textarea', 'label' => __( 'Summary: the opening line, shown on the homepage card (optional)', 'ner-michoel-core' ), 'target' => 'post_excerpt', 'rows' => 2 ),
 				'speaker'   => array( 'type' => 'taxonomy', 'label' => __( 'Speaker', 'ner-michoel-core' ), 'taxonomy' => 'speaker' ),
 				'series'    => array( 'type' => 'taxonomy', 'label' => __( 'Series', 'ner-michoel-core' ), 'taxonomy' => 'series', 'picker' => 'recent' ),
 				'pdf'       => array( 'type' => 'media', 'kind' => 'pdf', 'label' => __( 'PDF File', 'ner-michoel-core' ), 'meta' => '_written_pdf_id' ),

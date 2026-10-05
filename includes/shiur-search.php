@@ -189,13 +189,21 @@ function ner_michoel_shiur_search_ranking( $raw_term, $post_type = 'shiur' ) {
 
 	// Speakers, then series ("topic"). The heading names the speaker or
 	// series, so the reason it's in the results is visible.
+	// A speaker match means that speaker's shiurim only. A matching series is
+	// limited to the matched speakers' shiurim in it, so other speakers' shiurim
+	// from the same series never show up under a speaker search.
+	$matched_speakers    = ner_michoel_search_matching_terms( 'speaker', $phrase, $words, $total );
+	$matched_speaker_ids = array_map( 'intval', wp_list_pluck( $matched_speakers, 'term_id' ) );
+
 	foreach ( array( 'speaker', 'series' ) as $taxonomy ) {
-		foreach ( ner_michoel_search_matching_terms( $taxonomy, $phrase, $words, $total ) as $term ) {
+		$terms = 'speaker' === $taxonomy ? $matched_speakers : ner_michoel_search_matching_terms( $taxonomy, $phrase, $words, $total );
+		foreach ( $terms as $term ) {
 			$label = 'speaker' === $taxonomy
 				? sprintf( /* translators: %s: speaker name */ __( 'Speaker: %s', 'ner-michoel-core' ), $term->name )
 				: sprintf( /* translators: %s: series name */ __( 'Series: %s', 'ner-michoel-core' ), $term->name );
 
-			foreach ( ner_michoel_search_term_shiur_ids( $term->term_id, $taxonomy, $post_type ) as $shiur_id ) {
+			$only_speakers = 'series' === $taxonomy ? $matched_speaker_ids : array();
+			foreach ( ner_michoel_search_term_shiur_ids( $term->term_id, $taxonomy, $post_type, $only_speakers ) as $shiur_id ) {
 				if ( isset( $seen[ $shiur_id ] ) ) {
 					continue;
 				}
@@ -284,7 +292,24 @@ function ner_michoel_search_matching_terms( $taxonomy, $phrase, $words, $total )
 /**
  * IDs of the published shiurim in a speaker or series, newest first.
  */
-function ner_michoel_search_term_shiur_ids( $term_id, $taxonomy, $post_type = 'shiur' ) {
+function ner_michoel_search_term_shiur_ids( $term_id, $taxonomy, $post_type = 'shiur', $only_speakers = array() ) {
+	$tax_query = array(
+		array(
+			'taxonomy' => $taxonomy,
+			'field'    => 'term_id',
+			'terms'    => (int) $term_id,
+		),
+	);
+	if ( $only_speakers ) {
+		// Both conditions: in this series, and by one of these speakers.
+		$tax_query['relation'] = 'AND';
+		$tax_query[]           = array(
+			'taxonomy' => 'speaker',
+			'field'    => 'term_id',
+			'terms'    => array_map( 'intval', $only_speakers ),
+		);
+	}
+
 	return get_posts(
 		array(
 			'post_type'      => $post_type,
@@ -294,13 +319,7 @@ function ner_michoel_search_term_shiur_ids( $term_id, $taxonomy, $post_type = 's
 			'orderby'        => 'date',
 			'order'          => 'DESC',
 			'no_found_rows'  => true,
-			'tax_query'      => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
-				array(
-					'taxonomy' => $taxonomy,
-					'field'    => 'term_id',
-					'terms'    => (int) $term_id,
-				),
-			),
+			'tax_query'      => $tax_query, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
 		)
 	);
 }

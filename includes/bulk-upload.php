@@ -120,6 +120,13 @@ function ner_michoel_render_bulk_assign_page() {
 
 	$speakers = get_terms( array( 'taxonomy' => 'speaker', 'hide_empty' => false ) );
 	$series   = get_terms( array( 'taxonomy' => 'series', 'hide_empty' => false ) );
+
+	// Series picker: the three most recent series go on top under "Recent".
+	// The dates come from the server (series-picker.php), and the list is built
+	// by series-picker.js.
+	$series_last = function_exists( 'ner_michoel_term_latest_dates' ) ? ner_michoel_term_latest_dates( 'series' ) : array();
+	wp_enqueue_style( 'ner-michoel-series-picker', NER_MICHOEL_CORE_URL . 'assets/series-picker.css', array(), NER_MICHOEL_CORE_VERSION );
+	wp_enqueue_script( 'ner-michoel-series-picker', NER_MICHOEL_CORE_URL . 'assets/series-picker.js', array(), NER_MICHOEL_CORE_VERSION, true );
 	?>
 	<div class="wrap nm-dashboard">
 		<h1><?php esc_html_e( 'Assign Batch', 'ner-michoel-core' ); ?></h1>
@@ -159,7 +166,7 @@ function ner_michoel_render_bulk_assign_page() {
 						<select name="nm_bulk_speaker" id="nm_bulk_speaker">
 							<option value=""><?php esc_html_e( '— None —', 'ner-michoel-core' ); ?></option>
 							<?php foreach ( $speakers as $term ) : ?>
-								<option value="<?php echo esc_attr( $term->term_id ); ?>"><?php echo esc_html( $term->name ); ?></option>
+								<option value="<?php echo esc_attr( $term->term_id ); ?>"<?php echo isset( $series_last[ $term->term_id ] ) ? ' data-last="' . esc_attr( $series_last[ $term->term_id ] ) . '"' : ''; ?>><?php echo esc_html( $term->name ); ?></option>
 							<?php endforeach; ?>
 						</select>
 					</td>
@@ -167,10 +174,10 @@ function ner_michoel_render_bulk_assign_page() {
 				<tr>
 					<th scope="row"><label for="nm_bulk_series"><?php esc_html_e( 'Series', 'ner-michoel-core' ); ?></label></th>
 					<td>
-						<select name="nm_bulk_series" id="nm_bulk_series">
+						<select name="nm_bulk_series" id="nm_bulk_series" data-series-picker data-placeholder="<?php esc_attr_e( 'Search series…', 'ner-michoel-core' ); ?>" data-recent-label="<?php esc_attr_e( 'Recent', 'ner-michoel-core' ); ?>" data-all-label="<?php esc_attr_e( 'All series', 'ner-michoel-core' ); ?>">
 							<option value=""><?php esc_html_e( '— None —', 'ner-michoel-core' ); ?></option>
 							<?php foreach ( $series as $term ) : ?>
-								<option value="<?php echo esc_attr( $term->term_id ); ?>"><?php echo esc_html( $term->name ); ?></option>
+								<option value="<?php echo esc_attr( $term->term_id ); ?>"<?php echo isset( $series_last[ $term->term_id ] ) ? ' data-last="' . esc_attr( $series_last[ $term->term_id ] ) . '"' : ''; ?>><?php echo esc_html( $term->name ); ?></option>
 							<?php endforeach; ?>
 						</select>
 					</td>

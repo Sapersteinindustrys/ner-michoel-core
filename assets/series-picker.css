@@ -1,0 +1,66 @@
+/* Series picker (assets/series-picker.js). Works in wp-admin and the Site Control Panel. */
+
+.nm-series-picker {
+	max-width: 440px;
+	margin: 0;
+}
+
+.nm-series-picker__search {
+	display: block;
+	width: 100%;
+	margin: 0 0 8px;
+	padding: 7px 10px;
+	box-sizing: border-box;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	font: inherit;
+}
+
+.nm-series-picker__list {
+	max-height: 280px;
+	overflow-y: auto;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	background: #fff;
+}
+
+.nm-series-picker__section + .nm-series-picker__section {
+	border-top: 1px solid #e5e7eb;
+}
+
+.nm-series-picker__heading {
+	padding: 8px 10px 4px;
+	color: #50575e;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.nm-series-picker__item {
+	display: block;
+	width: 100%;
+	padding: 7px 12px;
+	border: 0;
+	background: transparent;
+	color: #1d2327;
+	font: inherit;
+	text-align: start;
+	cursor: pointer;
+}
+
+.nm-series-picker__item:hover,
+.nm-series-picker__item:focus-visible {
+	background: #f0f6fc;
+}
+
+.nm-series-picker__item.is-selected {
+	background: #e5f0fa;
+	color: #0a4b78;
+	font-weight: 600;
+}
+
+.nm-series-picker__none {
+	border-bottom: 1px solid #e5e7eb;
+	color: #50575e;
+}

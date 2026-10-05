@@ -132,7 +132,10 @@ function ner_michoel_enqueue_custom_admin_assets() {
 	// (see includes/custom-admin-api.php), not wp-admin's own screens.
 	wp_enqueue_media();
 	wp_enqueue_style( 'ner-michoel-admin-cms', NER_MICHOEL_CORE_URL . 'assets/custom-admin-cms.css', array(), NER_MICHOEL_CORE_VERSION );
-	wp_enqueue_script( 'ner-michoel-admin-cms', NER_MICHOEL_CORE_URL . 'assets/custom-admin-cms.js', array( 'jquery', 'jquery-ui-sortable' ), NER_MICHOEL_CORE_VERSION, true );
+	wp_enqueue_style( 'ner-michoel-series-picker', NER_MICHOEL_CORE_URL . 'assets/series-picker.css', array(), NER_MICHOEL_CORE_VERSION );
+	wp_enqueue_script( 'ner-michoel-series-picker', NER_MICHOEL_CORE_URL . 'assets/series-picker.js', array(), NER_MICHOEL_CORE_VERSION, true );
+	wp_enqueue_script( 'ner-michoel-pdf-first-line', NER_MICHOEL_CORE_URL . 'assets/pdf-first-line.js', array(), NER_MICHOEL_CORE_VERSION, true );
+	wp_enqueue_script( 'ner-michoel-admin-cms', NER_MICHOEL_CORE_URL . 'assets/custom-admin-cms.js', array( 'jquery', 'jquery-ui-sortable', 'ner-michoel-series-picker' ), NER_MICHOEL_CORE_VERSION, true );
 	wp_localize_script(
 		'ner-michoel-admin-cms',
 		'nmCmsConfig',

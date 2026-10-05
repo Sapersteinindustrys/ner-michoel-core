@@ -43,3 +43,72 @@ function ner_michoel_autoplay_list_for_shiur( $post ) {
 
 	return array_slice( $list, $position );
 }
+
+/**
+ * The rest of a shiur's series, from this shiur on, in series order. A shiur
+ * that isn't in a series comes back alone. This is the queue for a card, so
+ * picking one shiur from a series plays the rest of it in order before
+ * autoplay moves on to related shiurim (next-up.php).
+ */
+function ner_michoel_series_rest_for_shiur( $post ) {
+	$post = get_post( $post );
+	if ( ! $post ) {
+		return array();
+	}
+
+	$series = get_the_terms( $post->ID, 'series' );
+	if ( ! $series || is_wp_error( $series ) ) {
+		return array( $post );
+	}
+
+	$list     = ner_michoel_get_series_shiurim( $series[0]->term_id );
+	$position = array_search( $post->ID, wp_list_pluck( $list, 'ID' ), true );
+	if ( false === $position ) {
+		return array( $post );
+	}
+
+	return array_slice( $list, $position );
+}
+
+/**
+ * Series a listener has been playing, each with the shiur they last played in
+ * it, most recent first. Built from the play history (user-library.php), so
+ * "continue" means where they left off. One entry per series.
+ */
+function ner_michoel_continue_series_for_user( $user_id, $limit = 4 ) {
+	$out  = array();
+	$seen = array();
+
+	foreach ( ner_michoel_get_user_history( $user_id, 200 ) as $row ) {
+		if ( 'shiur' !== $row->post_type ) {
+			continue;
+		}
+
+		$shiur = get_post( (int) $row->post_id );
+		if ( ! $shiur || 'publish' !== $shiur->post_status ) {
+			continue;
+		}
+
+		$series = get_the_terms( $shiur->ID, 'series' );
+		if ( ! $series || is_wp_error( $series ) ) {
+			continue;
+		}
+
+		$term_id = (int) $series[0]->term_id;
+		if ( isset( $seen[ $term_id ] ) ) {
+			continue;
+		}
+		$seen[ $term_id ] = true;
+
+		$out[] = array(
+			'term'  => $series[0],
+			'shiur' => $shiur,
+		);
+
+		if ( count( $out ) >= $limit ) {
+			break;
+		}
+	}
+
+	return $out;
+}

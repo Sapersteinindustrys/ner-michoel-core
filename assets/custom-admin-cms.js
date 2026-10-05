@@ -437,6 +437,22 @@
 		return html;
 	};
 
+	// Written shiurim: when a PDF is picked, its first line goes into the Summary
+	// field (the homepage card's line), but only if that field is still empty.
+	function fillSummaryFromPdf( $body, url ) {
+		var $summary = $body.find( '.nm-cms-field[data-field="excerpt"] textarea' );
+		if ( ! $summary.length || ! window.NMPdfFirstLine || $.trim( $summary.val() ) !== '' ) {
+			return;
+		}
+		window.NMPdfFirstLine.read( url ).then( function ( line ) {
+			if ( line && $.trim( $summary.val() ) === '' ) {
+				$summary.val( line );
+			}
+		} ).catch( function () {
+			$summary.attr( 'placeholder', 'Could not read the PDF here. Type the first line.' );
+		} );
+	}
+
 	CmsApp.prototype.bindFieldWidgets = function ( $body, item ) {
 		var self = this;
 		var schema = this.schema;
@@ -501,6 +517,9 @@
 						$field.find( '.nm-cms-media-preview-wrap' ).html( '<span class="nm-cms-media-filename">' + esc( att.filename ) + '</span>' );
 					}
 					$field.find( '.nm-cms-media-remove' ).show();
+					if ( kind === 'pdf' ) {
+						fillSummaryFromPdf( $body, att.url );
+					}
 				} );
 				frame.open();
 			} );
