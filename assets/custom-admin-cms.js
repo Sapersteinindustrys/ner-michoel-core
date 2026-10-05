@@ -100,7 +100,9 @@
 			case 'image':
 				return renderMediaField( 'image', value );
 			case 'media':
-				return renderMediaField( 'media', value );
+				// A media field can declare kind 'pdf' (written shiurim) —
+				// same field type on the PHP side, different picker here.
+				return renderMediaField( field.kind === 'pdf' ? 'pdf' : 'media', value );
 			case 'media_multi':
 				return renderMediaMultiField( value );
 			case 'readonly':
@@ -125,7 +127,7 @@
 		return '<div class="nm-cms-media-field" data-media-kind="' + kind + '">' +
 			'<input type="hidden" class="nm-cms-media-id" value="' + ( hasFile ? value.id : '' ) + '">' +
 			'<div class="nm-cms-media-preview-wrap">' + preview + '</div>' +
-			'<button type="button" class="nm-cms-btn nm-cms-media-choose">Choose ' + ( kind === 'image' ? 'Image' : 'File' ) + '</button> ' +
+			'<button type="button" class="nm-cms-btn nm-cms-media-choose">Choose ' + ( kind === 'image' ? 'Image' : kind === 'pdf' ? 'PDF' : 'File' ) + '</button> ' +
 			'<button type="button" class="nm-cms-btn nm-cms-btn--link nm-cms-media-remove"' + ( hasFile ? '' : ' style="display:none;"' ) + '>Remove</button>' +
 			'</div>';
 	}
@@ -467,8 +469,8 @@
 			var frame;
 			$field.find( '.nm-cms-media-choose' ).on( 'click', function () {
 				frame = wp.media( {
-					title: kind === 'image' ? 'Choose Image' : 'Choose File',
-					library: kind === 'image' ? { type: 'image' } : { type: [ 'audio', 'video' ] },
+					title: kind === 'image' ? 'Choose Image' : kind === 'pdf' ? 'Choose PDF' : 'Choose File',
+					library: kind === 'image' ? { type: 'image' } : kind === 'pdf' ? { type: 'application/pdf' } : { type: [ 'audio', 'video' ] },
 					multiple: false
 				} );
 				frame.on( 'select', function () {

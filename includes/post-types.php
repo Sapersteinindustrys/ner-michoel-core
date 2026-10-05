@@ -43,9 +43,11 @@ function ner_michoel_register_shiur_post_type() {
 add_action( 'init', 'ner_michoel_register_shiur_post_type' );
 
 function ner_michoel_register_shiur_taxonomies() {
+	// Shared with written_shiur (written-shiurim.php): a speaker or series
+	// covers both audio/video shiurim and PDF lectures.
 	register_taxonomy(
 		'speaker',
-		'shiur',
+		array( 'shiur', 'written_shiur' ),
 		array(
 			'labels'            => array(
 				'name'          => __( 'Speakers', 'ner-michoel-core' ),
@@ -65,7 +67,7 @@ function ner_michoel_register_shiur_taxonomies() {
 
 	register_taxonomy(
 		'series',
-		'shiur',
+		array( 'shiur', 'written_shiur' ),
 		array(
 			'labels'            => array(
 				'name'          => __( 'Series', 'ner-michoel-core' ),

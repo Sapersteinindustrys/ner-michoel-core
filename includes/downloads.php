@@ -24,7 +24,7 @@ function ner_michoel_register_download_query_var( $vars ) {
 add_filter( 'query_vars', 'ner_michoel_register_download_query_var' );
 
 function ner_michoel_maybe_serve_shiur_download() {
-	if ( ! get_query_var( 'nm_download' ) || ! is_singular( 'shiur' ) ) {
+	if ( ! get_query_var( 'nm_download' ) || ! is_singular( array( 'shiur', 'written_shiur' ) ) ) {
 		return;
 	}
 	ner_michoel_stream_shiur_download( get_queried_object_id() );
@@ -32,19 +32,30 @@ function ner_michoel_maybe_serve_shiur_download() {
 add_action( 'template_redirect', 'ner_michoel_maybe_serve_shiur_download' );
 
 /**
- * Streams the shiur's audio file as a download and ends the request.
- * Falls through silently (normal page render) if there's no audio
- * attached — the query var alone can't force a download that isn't
- * there.
+ * Streams the shiur's media file (audio, video, or a written shiur's
+ * PDF) as a download and ends the request. Falls through silently
+ * (normal page render) if there's no file attached — the query var
+ * alone can't force a download that isn't there.
  */
 function ner_michoel_stream_shiur_download( $post_id ) {
-	$attachment_id = get_post_meta( $post_id, '_shiur_audio_id', true );
+	$is_written    = 'written_shiur' === get_post_type( $post_id );
+	$attachment_id = $is_written
+		? ner_michoel_get_written_shiur_pdf_id( $post_id )
+		: get_post_meta( $post_id, '_shiur_audio_id', true );
 	if ( ! $attachment_id ) {
 		return;
 	}
 
 	$file = get_attached_file( $attachment_id );
 	if ( ! $file || ! file_exists( $file ) ) {
+		// Offloaded to Bunny (bunny-storage.php removes the local copy after
+		// upload), so there's nothing to stream here. Send the browser to the
+		// CDN copy instead — it can't be renamed, but it still downloads.
+		$remote = wp_get_attachment_url( $attachment_id );
+		if ( $remote ) {
+			wp_redirect( $remote ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
+			exit;
+		}
 		return;
 	}
 

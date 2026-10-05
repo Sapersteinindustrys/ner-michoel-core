@@ -134,6 +134,36 @@
 		$( this ).hide();
 	} );
 
+	/* ---- Written shiur: Choose PDF ---- */
+
+	var pdfFrame;
+	$( document ).on( 'click', '#ner_michoel_pdf_select', function ( e ) {
+		e.preventDefault();
+		if ( pdfFrame ) {
+			pdfFrame.open();
+			return;
+		}
+		pdfFrame = wp.media( {
+			title: strings.pdfTitle,
+			library: { type: 'application/pdf' },
+			multiple: false
+		} );
+		pdfFrame.on( 'select', function () {
+			var attachment = pdfFrame.state().get( 'selection' ).first().toJSON();
+			$( '#ner_michoel_pdf_id' ).val( attachment.id );
+			$( '#ner_michoel_pdf_filename' ).text( attachment.filename );
+			$( '#ner_michoel_pdf_remove' ).show();
+		} );
+		pdfFrame.open();
+	} );
+
+	$( document ).on( 'click', '#ner_michoel_pdf_remove', function ( e ) {
+		e.preventDefault();
+		$( '#ner_michoel_pdf_id' ).val( '' );
+		$( '#ner_michoel_pdf_filename' ).text( strings.noFileSelected );
+		$( this ).hide();
+	} );
+
 	/* ---- Speaker/Series term: Choose Cover Image ---- */
 
 	var termImageFrame;

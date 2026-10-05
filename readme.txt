@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.8.22
+Stable tag: 0.9.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,25 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.0 =
+* Written Shiurim: a new post type for PDF lectures (title, speaker,
+  series, description, one PDF), at /written-shiurim/. Shares the
+  Speaker and Series taxonomies with Shiurim. Listed under Content in the
+  Site Control Panel, and in the Written Shiurim dashboard shortcut.
+* The full-library importer now imports the origin site's PDF shiurim as
+  Written Shiurim, with the PDF attached. Rows parked as "skipped" by the
+  earlier version are re-queued once, automatically.
+* Site Settings > Menu: a switch (on by default) that lists Written
+  Shiurim under the Shiurim item of the site header menu, on desktop and
+  mobile. The menu in Appearance > Menus is not changed.
+* Live Shiur / Zoom is finished: the Zoom link, meeting ID and schedule
+  show in a block on the homepage and News & Events page (hidden until a
+  link or schedule is set). The Site Control Panel tab now uses the same
+  custom UI as the other settings screens.
+* PDF downloads stream with a "{Speaker} - {Title}.pdf" filename. Media
+  already offloaded to Bunny Storage now redirects to the CDN copy, instead
+  of finding no local file and doing nothing.
 
 = 0.8.22 =
 * Restore two Hero Slider conveniences that didn't make the 0.8.21

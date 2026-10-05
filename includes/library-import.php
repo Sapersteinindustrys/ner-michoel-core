@@ -30,8 +30,8 @@
  * audio and written/PDF shiurim link straight to their file from the
  * listing page; video shiurim are Vimeo-hosted (no downloadable file
  * at all) and need a second fetch of their detail page to pull the
- * Vimeo ID. Written/PDF shiurim are discovered but deliberately not
- * turned into posts yet — see the note in ner_michoel_process_queue_row().
+ * Vimeo ID. Written/PDF shiurim become `written_shiur` posts with their
+ * PDF attached (see ner_michoel_process_queue_row()).
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -344,19 +344,11 @@ function ner_michoel_process_queue_row( $row ) {
 	$media_type = $row->media_type;
 
 	/*
-	 * "Written shiurim" (PDFs) have no home in the `shiur` post type
-	 * yet — it's built entirely around audio/video playback (queue,
-	 * play button, download link). Forcing a PDF in as `_shiur_audio_id`
-	 * would get silently misclassified as an audio shiur by
-	 * ner_michoel_get_shiur_media_type() (it only distinguishes
-	 * video-vs-not, defaults everything else to 'audio'). Skipped, not
-	 * dropped — stays in the queue as a real discovered count, ready to
-	 * process once/if written shiurim get their own content model.
+	 * Written (PDF) shiurim are their own post type (written-shiurim.php),
+	 * not `shiur` — a PDF forced in as `_shiur_audio_id` would be silently
+	 * misread as an audio shiur. Everything below works off $post_type.
 	 */
-	if ( 'pdf' === $media_type ) {
-		ner_michoel_mark_queue_row( $row->id, 'skipped', 'Written/PDF shiur — not yet supported by the shiur post type, see dev-notes.md' );
-		return;
-	}
+	$post_type = 'pdf' === $media_type ? 'written_shiur' : 'shiur';
 
 	$vimeo_id = '';
 	if ( 'video' === $media_type ) {
@@ -387,11 +379,11 @@ function ner_michoel_process_queue_row( $row ) {
 		return;
 	}
 
-	// Idempotency across retries/reprocessing: title match, same
-	// reasoning as ner_michoel_handle_import_sample_content().
+	// Idempotency across retries/reprocessing: title match within the
+	// same post type, same reasoning as ner_michoel_handle_import_sample_content().
 	$existing = get_posts(
 		array(
-			'post_type'   => 'shiur',
+			'post_type'   => $post_type,
 			'title'       => $row->title,
 			'post_status' => 'any',
 			'numberposts' => 1,
@@ -399,13 +391,13 @@ function ner_michoel_process_queue_row( $row ) {
 		)
 	);
 	if ( $existing ) {
-		ner_michoel_mark_queue_row( $row->id, 'skipped', 'Shiur with this title already exists', $existing[0] );
+		ner_michoel_mark_queue_row( $row->id, 'skipped', 'A post with this title already exists', $existing[0] );
 		return;
 	}
 
 	$post_id = wp_insert_post(
 		array(
-			'post_type'   => 'shiur',
+			'post_type'   => $post_type,
 			'post_title'  => $row->title,
 			'post_status' => 'publish',
 			'post_date'   => $row->shiur_date ? $row->shiur_date . ' 00:00:00' : current_time( 'mysql' ),
@@ -434,14 +426,26 @@ function ner_michoel_process_queue_row( $row ) {
 		}
 	}
 
+	if ( 'pdf' === $media_type ) {
+		$attachment_id = ner_michoel_import_sideload_pdf( $media_url, $post_id, $row->title );
+		if ( $attachment_id ) {
+			update_post_meta( $post_id, '_written_pdf_id', $attachment_id );
+			ner_michoel_mark_queue_row( $row->id, 'imported', '', $post_id );
+		} else {
+			// Same as the audio case below: the post exists, the file didn't
+			// come through. Visible in Written Shiurim with no PDF, not lost.
+			ner_michoel_mark_queue_row( $row->id, 'imported', 'Post created but PDF download failed', $post_id );
+		}
+		return;
+	}
+
 	if ( 'video' === $media_type ) {
 		/*
 		 * No file to sideload — Vimeo-hosted, not self-hosted. Stored
 		 * as its own meta rather than forced into `_shiur_audio_id`,
 		 * with ner_michoel_get_shiur_media_type() (shiur-meta.php)
 		 * extended to recognize it as a distinct 'video-embed' type.
-		 * Theme-side rendering (an <iframe> instead of a native
-		 * <video>) is still open — see dev-notes.md.
+		 * single-shiur.php renders it as a Vimeo <iframe>.
 		 */
 		update_post_meta( $post_id, '_shiur_vimeo_id', sanitize_text_field( $vimeo_id ) );
 		ner_michoel_mark_queue_row( $row->id, 'imported', '', $post_id );
@@ -461,6 +465,71 @@ function ner_michoel_process_queue_row( $row ) {
 		ner_michoel_mark_queue_row( $row->id, 'imported', 'Post created but media download failed', $post_id );
 	}
 }
+
+/**
+ * Downloads a written shiur's PDF into the media library, attached to
+ * its post. Named after the title and always .pdf: the origin server's
+ * filename isn't reliable, and a source URL with no extension would
+ * otherwise fail WordPress's file-type check. Returns the attachment ID,
+ * or 0 on failure. The download itself is the same as the audio path.
+ */
+function ner_michoel_import_sideload_pdf( $url, $post_id, $title ) {
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/media.php';
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+
+	$tmp_file = download_url( $url );
+	if ( is_wp_error( $tmp_file ) ) {
+		return 0;
+	}
+
+	$slug = sanitize_title( $title );
+	if ( '' === $slug ) {
+		$slug = 'written-shiur-' . $post_id;
+	}
+
+	$attachment_id = media_handle_sideload(
+		array(
+			'name'     => $slug . '.pdf',
+			'tmp_name' => $tmp_file,
+		),
+		$post_id
+	);
+
+	if ( is_wp_error( $attachment_id ) ) {
+		if ( file_exists( $tmp_file ) ) {
+			wp_delete_file( $tmp_file );
+		}
+		return 0;
+	}
+
+	return $attachment_id;
+}
+
+/**
+ * Rows for PDF shiurim were parked as 'skipped' while written shiurim had
+ * no post type. Put those back in the queue, once, so the processor picks
+ * them up. Only touches rows parked for that reason, never other skips
+ * (e.g. a title that already existed).
+ */
+function ner_michoel_requeue_skipped_pdf_rows() {
+	if ( get_option( 'nm_import_pdf_requeue_v1' ) ) {
+		return;
+	}
+
+	global $wpdb;
+	$table = ner_michoel_import_queue_table_name();
+	$wpdb->query( // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->prepare(
+			"UPDATE {$table} SET status = 'discovered', attempts = 0, error_message = NULL, processed_at = NULL WHERE media_type = %s AND status = 'skipped' AND error_message LIKE %s",
+			'pdf',
+			$wpdb->esc_like( 'Written/PDF shiur' ) . '%'
+		)
+	);
+
+	update_option( 'nm_import_pdf_requeue_v1', 1 );
+}
+add_action( 'admin_init', 'ner_michoel_requeue_skipped_pdf_rows', 20 );
 
 function ner_michoel_mark_queue_row( $id, $status, $error = '', $post_id = null ) {
 	global $wpdb;
@@ -638,7 +707,7 @@ function ner_michoel_render_library_import_page() {
 		<div class="notice notice-warning">
 			<p>
 				<strong><?php esc_html_e( 'Verify on a small run first.', 'ner-michoel-core' ); ?></strong>
-				<?php esc_html_e( 'The parser is implemented against a real sample page, but has not run against the live site\'s full crawl yet. Start it, let it discover a page or two, then check the Shiurim list and a few actual posts before leaving it running unattended for the full 671 pages. Written/PDF shiurim are intentionally skipped (not yet supported by the shiur post type) — see dev-notes.md.', 'ner-michoel-core' ); ?>
+				<?php esc_html_e( 'The parser is implemented against a real sample page, but has not run against the live site\'s full crawl yet. Start it, let it discover a page or two, then check the Shiurim list and a few actual posts before leaving it running unattended for the full 671 pages. Written (PDF) shiurim are imported as Written Shiurim, with their PDF attached.', 'ner-michoel-core' ); ?>
 			</p>
 		</div>
 

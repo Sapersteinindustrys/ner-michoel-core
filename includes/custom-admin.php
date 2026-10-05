@@ -56,6 +56,7 @@ function ner_michoel_custom_admin_structure() {
 			'label' => __( 'Content', 'ner-michoel-core' ),
 			'tabs'  => array(
 				'shiurim'     => array( 'label' => __( 'Shiurim', 'ner-michoel-core' ), 'cms_type' => 'shiur' ),
+				'written'     => array( 'label' => __( 'Written Shiurim', 'ner-michoel-core' ), 'cms_type' => 'written_shiur' ),
 				'speakers'    => array( 'label' => __( 'Speakers', 'ner-michoel-core' ), 'cms_type' => 'speaker', 'capability' => 'manage_categories' ),
 				'series'      => array( 'label' => __( 'Series', 'ner-michoel-core' ), 'cms_type' => 'series', 'capability' => 'manage_categories' ),
 				'galleries'   => array( 'label' => __( 'Galleries', 'ner-michoel-core' ), 'cms_type' => 'gallery' ),
@@ -77,7 +78,8 @@ function ner_michoel_custom_admin_structure() {
 		'site'       => array(
 			'label' => __( 'Site Settings', 'ner-michoel-core' ),
 			'tabs'  => array(
-				'live'  => array( 'label' => __( 'Live Shiur / Zoom', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_live_shiur_page' ),
+				'live'  => array( 'label' => __( 'Live Shiur / Zoom', 'ner-michoel-core' ), 'settings_type' => 'live_shiur' ),
+				'menu'  => array( 'label' => __( 'Menu', 'ner-michoel-core' ), 'settings_type' => 'navigation', 'capability' => 'manage_options' ),
 				'login' => array( 'label' => __( 'Admin Login Shortcut', 'ner-michoel-core' ), 'settings_type' => 'admin_login', 'capability' => 'manage_options' ),
 			),
 		),

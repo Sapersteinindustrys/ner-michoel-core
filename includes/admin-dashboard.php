@@ -34,6 +34,7 @@ function ner_michoel_enqueue_media_pickers_script() {
 			'noFileSelected'   => __( 'No file selected.', 'ner-michoel-core' ),
 			'coverImageTitle'  => __( 'Select or upload a cover image', 'ner-michoel-core' ),
 			'bulkUploadTitle'  => __( 'Select or upload audio/video files', 'ner-michoel-core' ),
+			'pdfTitle'         => __( 'Select or upload a PDF', 'ner-michoel-core' ),
 		)
 	);
 }
@@ -127,6 +128,11 @@ function ner_michoel_render_dashboard_home() {
 			'title' => __( 'Missing Audio', 'ner-michoel-core' ),
 			'desc'  => __( 'See which Shiurim have no audio or video file attached yet.', 'ner-michoel-core' ),
 			'url'   => admin_url( 'edit.php?post_type=shiur&nm_missing_audio=1' ),
+		),
+		array(
+			'title' => __( 'Written Shiurim', 'ner-michoel-core' ),
+			'desc'  => __( 'Lectures published as PDFs — title, speaker, series, and the file.', 'ner-michoel-core' ),
+			'url'   => admin_url( 'edit.php?post_type=written_shiur' ),
 		),
 		array(
 			'title' => __( 'Mazal Tov Announcements', 'ner-michoel-core' ),

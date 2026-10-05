@@ -3,7 +3,7 @@
  * Plugin Name:       Ner Michoel Core
  * Plugin URI:
  * Description:       Site functionality (custom post types, forms, integrations) for the Ner Michoel rebuild. Kept independent of the theme so content/data survive a future redesign.
- * Version:           0.8.22
+ * Version:           0.9.0
  * Requires at least: 6.0
  * Requires PHP:       7.4
  * Author:             Tomo
@@ -14,12 +14,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NER_MICHOEL_CORE_VERSION', '0.8.22' );
+define( 'NER_MICHOEL_CORE_VERSION', '0.9.0' );
 define( 'NER_MICHOEL_CORE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'NER_MICHOEL_CORE_URL', plugin_dir_url( __FILE__ ) );
 
 require_once NER_MICHOEL_CORE_PATH . 'includes/post-types.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/shiur-meta.php';
+require_once NER_MICHOEL_CORE_PATH . 'includes/written-shiurim.php';
+require_once NER_MICHOEL_CORE_PATH . 'includes/navigation-settings.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/term-meta.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/shiur-functions.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/gallery.php';
@@ -71,6 +73,7 @@ function ner_michoel_create_default_news_category() {
 function ner_michoel_core_activate() {
 	ner_michoel_register_shiur_post_type();
 	ner_michoel_register_shiur_taxonomies();
+	ner_michoel_register_written_shiur_post_type();
 	ner_michoel_register_gallery_post_type();
 	ner_michoel_register_gallery_type_taxonomy();
 	ner_michoel_register_mazal_tov_post_type();

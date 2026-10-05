@@ -53,6 +53,35 @@ function ner_michoel_settings_registry() {
 				return ner_michoel_bunny_storage_settings();
 			},
 		),
+		'live_shiur'    => array(
+			'capability' => 'edit_posts',
+			'label'      => __( 'Live Shiur / Zoom', 'ner-michoel-core' ),
+			'rest_path'  => 'live-shiur-settings',
+			'fields'     => array(
+				'zoom_link'  => array( 'type' => 'text', 'label' => __( 'Zoom Link', 'ner-michoel-core' ), 'placeholder' => 'https://zoom.us/j/...' ),
+				'meeting_id' => array( 'type' => 'text', 'label' => __( 'Meeting ID', 'ner-michoel-core' ) ),
+				'schedule'   => array( 'type' => 'textarea', 'label' => __( 'Schedule', 'ner-michoel-core' ), 'rows' => 3, 'desc' => __( 'Shown under "Live Shiur" on the homepage and News & Events page, e.g. "Sundays 8:00 PM ET".', 'ner-michoel-core' ) ),
+			),
+			'get_values' => function () {
+				return ner_michoel_get_live_shiur();
+			},
+		),
+		'navigation'    => array(
+			'capability' => 'manage_options',
+			'label'      => __( 'Menu', 'ner-michoel-core' ),
+			'rest_path'  => 'navigation-settings',
+			'fields'     => array(
+				'written_in_shiurim' => array(
+					'type'  => 'checkbox',
+					'label' => __( 'Show "Written Shiurim" under the Shiurim menu (desktop and mobile)', 'ner-michoel-core' ),
+				),
+			),
+			'get_values' => function () {
+				return array(
+					'written_in_shiurim' => ner_michoel_written_in_shiurim_menu_enabled(),
+				);
+			},
+		),
 		'layout_toggle' => array(
 			'capability' => 'edit_posts',
 			'label'      => __( 'Layout Toggle', 'ner-michoel-core' ),

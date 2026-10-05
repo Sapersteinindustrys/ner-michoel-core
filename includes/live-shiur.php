@@ -6,10 +6,10 @@
  * them into post content. The original site hardcoded this directly
  * into News posts.
  *
- * Backend-only for now: stores the option and exposes the accessors
- * below, but nothing in ner-michoel-child renders them yet — that's
- * theme-side work (homepage / News & Events page), tracked separately
- * so it doesn't collide with whoever's actively in that repo.
+ * Rendered by ner-michoel-child (template-parts/live-shiur.php) on the
+ * homepage and News & Events page. Saved from two places: the wp-admin
+ * screen below (fallback), and the Site Control Panel's Live Shiur tab
+ * via the live-shiur-settings REST route.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -68,12 +68,62 @@ function ner_michoel_save_live_shiur() {
 
 	update_option(
 		'nm_live_shiur',
-		array(
-			'zoom_link'  => isset( $_POST['nm_live_shiur_zoom_link'] ) ? esc_url_raw( wp_unslash( $_POST['nm_live_shiur_zoom_link'] ) ) : '',
-			'meeting_id' => isset( $_POST['nm_live_shiur_meeting_id'] ) ? sanitize_text_field( wp_unslash( $_POST['nm_live_shiur_meeting_id'] ) ) : '',
-			'schedule'   => isset( $_POST['nm_live_shiur_schedule'] ) ? sanitize_textarea_field( wp_unslash( $_POST['nm_live_shiur_schedule'] ) ) : '',
+		ner_michoel_sanitize_live_shiur(
+			array(
+				'zoom_link'  => isset( $_POST['nm_live_shiur_zoom_link'] ) ? wp_unslash( $_POST['nm_live_shiur_zoom_link'] ) : '',
+				'meeting_id' => isset( $_POST['nm_live_shiur_meeting_id'] ) ? wp_unslash( $_POST['nm_live_shiur_meeting_id'] ) : '',
+				'schedule'   => isset( $_POST['nm_live_shiur_schedule'] ) ? wp_unslash( $_POST['nm_live_shiur_schedule'] ) : '',
+			)
 		)
 	);
+}
+
+/**
+ * The one place the live-shiur rules live, shared by the wp-admin form
+ * and the REST route. An invalid Zoom URL is stored as blank rather
+ * than kept as-is, so the homepage never links somewhere broken.
+ */
+function ner_michoel_sanitize_live_shiur( array $raw ) {
+	return array(
+		'zoom_link'  => isset( $raw['zoom_link'] ) ? esc_url_raw( trim( (string) $raw['zoom_link'] ) ) : '',
+		'meeting_id' => isset( $raw['meeting_id'] ) ? sanitize_text_field( (string) $raw['meeting_id'] ) : '',
+		'schedule'   => isset( $raw['schedule'] ) ? sanitize_textarea_field( (string) $raw['schedule'] ) : '',
+	);
+}
+
+/**
+ * Site Control Panel > Live Shiur / Zoom saves here (settings engine,
+ * custom-admin-settings-api.php). edit_posts, matching the tab's
+ * capability and the wp-admin screen above.
+ */
+function ner_michoel_register_live_shiur_settings_route() {
+	register_rest_route(
+		'ner-michoel/v1',
+		'/live-shiur-settings',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ner_michoel_handle_live_shiur_settings_rest',
+			'permission_callback' => function () {
+				return current_user_can( 'edit_posts' );
+			},
+		)
+	);
+}
+add_action( 'rest_api_init', 'ner_michoel_register_live_shiur_settings_route' );
+
+function ner_michoel_handle_live_shiur_settings_rest( WP_REST_Request $request ) {
+	update_option(
+		'nm_live_shiur',
+		ner_michoel_sanitize_live_shiur(
+			array(
+				'zoom_link'  => $request->get_param( 'zoom_link' ),
+				'meeting_id' => $request->get_param( 'meeting_id' ),
+				'schedule'   => $request->get_param( 'schedule' ),
+			)
+		)
+	);
+
+	return new WP_REST_Response( ner_michoel_get_live_shiur(), 200 );
 }
 
 /**
@@ -101,4 +151,13 @@ function ner_michoel_get_live_shiur_meeting_id() {
 
 function ner_michoel_get_live_shiur_schedule() {
 	return ner_michoel_get_live_shiur()['schedule'];
+}
+
+/**
+ * True when there's something worth showing visitors — a Zoom link or a
+ * schedule. A meeting ID on its own isn't enough to be useful.
+ */
+function ner_michoel_live_shiur_is_set() {
+	$live = ner_michoel_get_live_shiur();
+	return '' !== $live['zoom_link'] || '' !== $live['schedule'];
 }
