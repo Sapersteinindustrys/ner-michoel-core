@@ -254,29 +254,37 @@ function ner_michoel_get_user_saved( $user_id, $post_type = '', $limit = 0 ) {
 }
 
 /**
- * "More like what you've heard": the speakers and series appearing
- * most often in the user's shiur history, then the newest shiurim
- * from those the user hasn't already seen — topped up with the
- * newest shiurim overall if that leaves fewer than $limit (a new
- * speaker/series with little else published, or a user with thin
- * history). A user with no shiur history yet gets the site's newest
- * shiurim, same as "Recent" elsewhere.
+ * How strongly a signed-in visitor is tied to each speaker/series,
+ * from two signals: shiurim in their History (something they actually
+ * listened to) and shiurim in their Saved list (something they picked
+ * out deliberately, even if not heard yet) — both count, on the
+ * theory that either one says something real about what this visitor
+ * is interested in. Shared by the Suggested tab
+ * (ner_michoel_get_suggested_for_user()) and the signed-in Next Up
+ * boost (ner-michoel-child's next-up.php), so the two don't drift
+ * into computing "what this visitor likes" two different ways.
  *
- * Written shiurim aren't suggested (this is title/name-based taxonomy
- * weighting, the same signal the Shiurim sidebar/search already use —
- * nothing here needs the content itself, so it stays fast at any
- * library size without a separate recommendation index to maintain).
+ * Returns speaker/series weights (term_id => count, unsorted) and
+ * heard_ids — shiur IDs from History specifically, for a caller that
+ * wants to exclude what's already been listened to. Written shiurim
+ * never contribute a weight (series/speaker weighting is enough of a
+ * signal on its own, and this stays fast without needing to look past
+ * taxonomy terms at any library size).
  */
-function ner_michoel_get_suggested_for_user( $user_id, $limit = 12 ) {
-	$seen_ids       = array();
+function ner_michoel_user_affinity_weights( $user_id, $history_limit = 50 ) {
 	$speaker_weight = array();
 	$series_weight  = array();
+	$heard_ids      = array();
 
-	foreach ( ner_michoel_get_user_history( $user_id, 50 ) as $row ) {
-		$seen_ids[ (int) $row->post_id ] = true;
+	if ( ! $user_id ) {
+		return array( 'speaker' => $speaker_weight, 'series' => $series_weight, 'heard_ids' => $heard_ids );
+	}
+
+	foreach ( ner_michoel_get_user_history( $user_id, $history_limit ) as $row ) {
 		if ( 'shiur' !== $row->post_type ) {
 			continue;
 		}
+		$heard_ids[] = (int) $row->post_id;
 
 		$speaker_terms = get_the_terms( $row->post_id, 'speaker' );
 		if ( $speaker_terms && ! is_wp_error( $speaker_terms ) ) {
@@ -293,8 +301,49 @@ function ner_michoel_get_suggested_for_user( $user_id, $limit = 12 ) {
 		}
 	}
 
-	$exclude   = array_keys( $seen_ids );
-	$suggested = array();
+	foreach ( ner_michoel_get_user_saved( $user_id, 'shiur' ) as $row ) {
+		$speaker_terms = get_the_terms( $row->post_id, 'speaker' );
+		if ( $speaker_terms && ! is_wp_error( $speaker_terms ) ) {
+			foreach ( $speaker_terms as $term ) {
+				$speaker_weight[ $term->term_id ] = ( isset( $speaker_weight[ $term->term_id ] ) ? $speaker_weight[ $term->term_id ] : 0 ) + 1;
+			}
+		}
+
+		$series_terms = get_the_terms( $row->post_id, 'series' );
+		if ( $series_terms && ! is_wp_error( $series_terms ) ) {
+			foreach ( $series_terms as $term ) {
+				$series_weight[ $term->term_id ] = ( isset( $series_weight[ $term->term_id ] ) ? $series_weight[ $term->term_id ] : 0 ) + 1;
+			}
+		}
+	}
+
+	return array(
+		'speaker'   => $speaker_weight,
+		'series'    => $series_weight,
+		'heard_ids' => array_values( array_unique( $heard_ids ) ),
+	);
+}
+
+/**
+ * "More like what you've heard (and saved)": the speakers and series
+ * this visitor is most tied to (ner_michoel_user_affinity_weights()),
+ * then the newest shiurim from those they haven't already heard —
+ * topped up with the newest shiurim overall if that leaves fewer than
+ * $limit (a new speaker/series with little else published, or a
+ * visitor with thin history/saves). Nothing in either signal yet: the
+ * site's newest shiurim, same as "Recent" elsewhere.
+ *
+ * Written shiurim aren't suggested (this is title/name-based taxonomy
+ * weighting, the same signal the Shiurim sidebar/search already use —
+ * nothing here needs the content itself, so it stays fast at any
+ * library size without a separate recommendation index to maintain).
+ */
+function ner_michoel_get_suggested_for_user( $user_id, $limit = 12 ) {
+	$affinity       = ner_michoel_user_affinity_weights( $user_id );
+	$speaker_weight = $affinity['speaker'];
+	$series_weight  = $affinity['series'];
+	$exclude        = $affinity['heard_ids'];
+	$suggested      = array();
 
 	if ( $speaker_weight || $series_weight ) {
 		arsort( $speaker_weight );
