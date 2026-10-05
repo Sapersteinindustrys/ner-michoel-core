@@ -22,6 +22,9 @@ change.
 == Changelog ==
 
 = 0.9.0 =
+* Shiurim search ranks by title: titles with the whole search come first,
+  then titles with the most of its words, newest first within each group,
+  each under its own heading. Only titles are searched, not content.
 * Written Shiurim: a new post type for PDF lectures (title, speaker,
   series, description, one PDF), at /written-shiurim/. Shares the
   Speaker and Series taxonomies with Shiurim. Listed under Content in the
