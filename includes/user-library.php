@@ -119,7 +119,14 @@ function ner_michoel_maybe_create_user_library_tables() {
 		ner_michoel_create_user_library_tables();
 	}
 }
-add_action( 'admin_init', 'ner_michoel_maybe_create_user_library_tables' );
+// init, not admin_init (unlike the otherwise-identical pageviews-table
+// backstop this was modeled on): a visitor could hit the Save button
+// on the front end before any admin happens to next load a wp-admin
+// screen, and a REST deploy (ner-michoel/v1/update-now) never fires
+// admin_init at all — same reasoning already documented at
+// ner_michoel_maybe_flush_written_rewrite() in written-shiurim.php,
+// which chose init for the same reason.
+add_action( 'init', 'ner_michoel_maybe_create_user_library_tables', 20 );
 
 /**
  * Records (or re-dates) one history row. Silently does nothing for a
