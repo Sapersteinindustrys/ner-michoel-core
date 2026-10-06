@@ -350,6 +350,19 @@ function ner_michoel_shiur_search_pre_get_posts( $query ) {
 		return;
 	}
 
+	/*
+	 * A theme whose search page filters the cached index in the browser (the live
+	 * search, shiur-index.php) returns false here, and the main query then finds
+	 * nothing, cheaply. Themes that don't know this filter keep the ranking.
+	 */
+	if ( ! apply_filters( 'ner_michoel_shiur_search_server_ranking', true, $query ) ) {
+		$query->set( 'post__in', array( 0 ) );
+		$query->set( 'posts_per_page', 1 );
+		$query->set( 'no_found_rows', true );
+		$query->set( 'ignore_sticky_posts', true );
+		return;
+	}
+
 	$ranking = ner_michoel_shiur_search_ranking( $query->get( 's' ), ner_michoel_search_scope( $query ) );
 	$ids     = $ranking['ids'] ? $ranking['ids'] : array( 0 ); // array(0): no shiur matches an ID 0.
 
