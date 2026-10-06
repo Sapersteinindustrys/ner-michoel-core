@@ -239,6 +239,57 @@ function ner_michoel_bunny_fix_sized_image_url( $downsize, $id, $size ) {
 add_filter( 'image_downsize', 'ner_michoel_bunny_fix_sized_image_url', 10, 3 );
 
 /**
+ * srcset is built from the uploads folder for every size, the full size
+ * included (wp_calculate_image_srcset()), so for an offloaded image the
+ * full-size candidate points at the local copy that was deleted after upload,
+ * and a browser that picks it shows a broken image. Points that one candidate
+ * at Bunny. The smaller sizes were never uploaded there and are still on this
+ * server, so they keep their local URLs.
+ */
+function ner_michoel_bunny_fix_srcset( $sources, $size_array, $image_src, $image_meta, $attachment_id ) {
+	if ( ! $attachment_id || ! is_array( $sources ) || ! get_post_meta( $attachment_id, '_nm_bunny_offloaded', true ) ) {
+		return $sources;
+	}
+
+	$remote_path = ner_michoel_bunny_remote_path_for_attachment( $attachment_id );
+	if ( ! $remote_path ) {
+		return $sources;
+	}
+
+	$main = wp_basename( $remote_path );
+	foreach ( $sources as $key => $source ) {
+		if ( isset( $source['url'] ) && wp_basename( $source['url'] ) === $main ) {
+			$sources[ $key ]['url'] = ner_michoel_bunny_public_url( $remote_path );
+		}
+	}
+
+	return $sources;
+}
+add_filter( 'wp_calculate_image_srcset', 'ner_michoel_bunny_fix_srcset', 10, 5 );
+
+/**
+ * The same for images in post content: an image inserted at full size before
+ * it was offloaded still has the local URL in its src. Swaps the full-size file's
+ * URL (http or https) for the Bunny one; the smaller sizes' URLs don't contain
+ * it, so they're left alone.
+ */
+function ner_michoel_bunny_fix_content_image( $image, $context, $attachment_id ) {
+	if ( ! $attachment_id || ! get_post_meta( $attachment_id, '_nm_bunny_offloaded', true ) ) {
+		return $image;
+	}
+
+	$local       = ner_michoel_bunny_local_base_url( $attachment_id );
+	$remote_path = ner_michoel_bunny_remote_path_for_attachment( $attachment_id );
+	if ( ! $local || ! $remote_path ) {
+		return $image;
+	}
+
+	$path = preg_replace( '#^https?:#', '', $local );
+	return str_replace( array( 'https:' . $path, 'http:' . $path ), ner_michoel_bunny_public_url( $remote_path ), $image );
+}
+add_filter( 'wp_content_img_tag', 'ner_michoel_bunny_fix_content_image', 10, 3 );
+
+/**
  * Deleting the attachment should delete it from Bunny too, not just
  * locally — otherwise storage quietly fills up with orphaned files no
  * post ever references again.
