@@ -315,7 +315,10 @@ add_action( 'rest_api_init', 'ner_michoel_register_shiur_index_route' );
 function ner_michoel_shiur_index_rest( WP_REST_Request $request ) {
 	list( $gzip, $json ) = ner_michoel_shiur_index_stored();
 
-	$php_compresses = filter_var( ini_get( 'zlib.output_compression' ), FILTER_VALIDATE_BOOLEAN ) || in_array( 'ob_gzhandler', (array) ob_list_handlers(), true );
+	// zlib.output_compression can be On, 1, or a buffer size such as 4096; any of
+	// those means PHP compresses the output itself.
+	$zlib           = strtolower( trim( (string) ini_get( 'zlib.output_compression' ) ) );
+	$php_compresses = ! in_array( $zlib, array( '', '0', 'off', 'false', 'no' ), true ) || in_array( 'ob_gzhandler', (array) ob_list_handlers(), true );
 	$wants_gzip     = false !== stripos( (string) $request->get_header( 'accept_encoding' ), 'gzip' );
 
 	$headers = array( 'Vary' => 'Accept-Encoding' );
@@ -346,4 +349,6 @@ function ner_michoel_shiur_index_serve_raw( $served, $result, $request ) {
 	echo $result->get_data(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON (or its gzip bytes) built by this file, served as application/json.
 	return true;
 }
-add_filter( 'rest_pre_serve_request', 'ner_michoel_shiur_index_serve_raw', 10, 3 );
+// Late, so WordPress's own rest_pre_serve_request filters (the CORS headers) have
+// sent their headers before the body starts.
+add_filter( 'rest_pre_serve_request', 'ner_michoel_shiur_index_serve_raw', 100, 3 );
