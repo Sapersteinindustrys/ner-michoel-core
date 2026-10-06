@@ -41,6 +41,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 define( 'NER_MICHOEL_IMPORT_QUEUE_DB_VERSION', '1.0' );
 define( 'NER_MICHOEL_IMPORT_LISTING_BASE', 'https://nermichoel.org/index/shiur' );
 define( 'NER_MICHOEL_IMPORT_TOTAL_PAGES', 671 ); // From the archive's own "25 of 16756 results" — re-verify if this changes.
+define( 'NER_MICHOEL_IMPORT_CHECK_PAGES', 2 ); // The listing is newest first, so page 1 and 2 cover the latest 50 shiurim for the new-shiur check.
 
 function ner_michoel_import_queue_table_name() {
 	global $wpdb;
@@ -281,9 +282,14 @@ function ner_michoel_run_discovery_tick() {
 }
 add_action( 'nm_import_discover_page', 'ner_michoel_run_discovery_tick' );
 
+/**
+ * Queues listing items that aren't queued yet. Returns how many were new, so
+ * the new-shiur check knows whether there's anything to process.
+ */
 function ner_michoel_queue_discovered_items( array $items ) {
 	global $wpdb;
 	$table = ner_michoel_import_queue_table_name();
+	$added = 0;
 
 	foreach ( $items as $item ) {
 		if ( empty( $item['source_url'] ) ) {
@@ -291,7 +297,7 @@ function ner_michoel_queue_discovered_items( array $items ) {
 		}
 		// INSERT IGNORE via the unique source_url key — safe to
 		// re-run discovery without duplicating already-queued rows.
-		$wpdb->query(
+		$result = $wpdb->query(
 			$wpdb->prepare(
 				"INSERT IGNORE INTO {$table} (source_url, title, speaker, series, shiur_date, duration, media_url, media_type, status, discovered_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'discovered', %s)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$item['source_url'],
@@ -305,7 +311,10 @@ function ner_michoel_queue_discovered_items( array $items ) {
 				current_time( 'mysql', true )
 			)
 		);
+		$added += (int) $result;
 	}
+
+	return $added;
 }
 
 /**
@@ -548,10 +557,29 @@ function ner_michoel_mark_queue_row( $id, $status, $error = '', $post_id = null 
 }
 
 /**
- * One tick: process a small batch (default 5) of 'discovered' rows,
- * then reschedule. Batch size and delay are both deliberately small —
- * each row can mean downloading a full audio file from someone else's
- * server, not just a page fetch.
+ * How long one cron run keeps working before handing over to the next. Kept
+ * under the usual 30-second PHP limit on shared hosting. Filterable with
+ * nm_import_tick_seconds.
+ */
+function ner_michoel_import_tick_seconds() {
+	return max( 5, (int) apply_filters( 'nm_import_tick_seconds', 25 ) );
+}
+
+/**
+ * Queue rows still to process. Rows that have failed three times are left out,
+ * so they can't hold the importer up.
+ */
+function ner_michoel_import_discovered_remaining() {
+	global $wpdb;
+	$table = ner_michoel_import_queue_table_name();
+	return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} WHERE status = 'discovered' AND attempts < 3" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+}
+
+/**
+ * One cron run: works through the queue until the time budget is used up, then
+ * schedules the next run. Non-stop while there's work: each run hands over to
+ * the next straight away, after the short request delay. Once the queue is
+ * empty and the listing is done, it hands over to the summary batch instead.
  */
 function ner_michoel_run_processing_tick() {
 	if ( ! ner_michoel_import_is_running() ) {
@@ -560,30 +588,155 @@ function ner_michoel_run_processing_tick() {
 
 	global $wpdb;
 	$table      = ner_michoel_import_queue_table_name();
-	$batch_size = (int) get_option( 'nm_import_batch_size', 3 );
+	$batch_size = max( 1, (int) get_option( 'nm_import_batch_size', 3 ) );
+	$deadline   = time() + ner_michoel_import_tick_seconds();
+	$worked     = false;
 
-	$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table} WHERE status = 'discovered' AND attempts < 3 ORDER BY id ASC LIMIT %d", $batch_size ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	while ( time() < $deadline && ner_michoel_import_is_running() ) {
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table} WHERE status = 'discovered' AND attempts < 3 ORDER BY id ASC LIMIT %d", $batch_size ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
-	$first = true;
-	foreach ( $rows as $row ) {
-		// A beat between items within the same batch, not just between
-		// batches — each one can mean downloading a full media file
-		// from someone else's server, this is meant to run slowly.
-		if ( ! $first ) {
-			sleep( 1 );
+		if ( ! $rows ) {
+			break;
 		}
-		$first = false;
 
-		$wpdb->query( $wpdb->prepare( "UPDATE {$table} SET attempts = attempts + 1 WHERE id = %d", $row->id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		ner_michoel_process_queue_row( $row );
+		foreach ( $rows as $row ) {
+			// A beat between items, not just between runs: each one can mean
+			// downloading a whole media file from someone else's server.
+			if ( $worked ) {
+				sleep( 1 );
+			}
+			$worked = true;
+
+			$wpdb->query( $wpdb->prepare( "UPDATE {$table} SET attempts = attempts + 1 WHERE id = %d", $row->id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			ner_michoel_process_queue_row( $row );
+
+			if ( time() >= $deadline || ! ner_michoel_import_is_running() ) {
+				break 2;
+			}
+		}
 	}
 
-	if ( ner_michoel_import_is_running() ) {
-		$delay = (int) get_option( 'nm_import_request_delay', 5 );
-		wp_schedule_single_event( time() + max( 1, $delay ), 'nm_import_process_batch' );
+	if ( ! ner_michoel_import_is_running() ) {
+		return;
+	}
+
+	$delay = max( 1, (int) get_option( 'nm_import_request_delay', 5 ) );
+
+	if ( ner_michoel_import_discovered_remaining() > 0 ) {
+		if ( ! wp_next_scheduled( 'nm_import_process_batch' ) ) {
+			wp_schedule_single_event( time() + $delay, 'nm_import_process_batch' );
+		}
+	} elseif ( ! get_option( 'nm_import_discovery_done' ) ) {
+		// Queue empty but the listing is still being crawled: check back for rows
+		// it adds, once a minute.
+		if ( ! wp_next_scheduled( 'nm_import_process_batch' ) ) {
+			wp_schedule_single_event( time() + 60, 'nm_import_process_batch' );
+		}
+	} else {
+		// New files are all in. The summary batch runs next, and the processing
+		// tick schedules it again after each drain.
+		ner_michoel_schedule_summary_batch( 1 );
 	}
 }
 add_action( 'nm_import_process_batch', 'ner_michoel_run_processing_tick' );
+
+/**
+ * ============================================================
+ * ONGOING: check for new shiurim on every cron run, then the summary batch.
+ * ============================================================
+ */
+
+function ner_michoel_import_cron_schedules( $schedules ) {
+	$schedules['nm_every_15_minutes'] = array(
+		'interval' => 15 * MINUTE_IN_SECONDS,
+		'display'  => __( 'Every 15 minutes', 'ner-michoel-core' ),
+	);
+	return $schedules;
+}
+add_filter( 'cron_schedules', 'ner_michoel_import_cron_schedules' );
+
+/**
+ * Keeps the recurring new-shiur check scheduled. Runs on every load, which is
+ * cheap, so existing installs get it without reactivating.
+ */
+function ner_michoel_import_ensure_cron() {
+	if ( ! wp_next_scheduled( 'nm_import_check_new' ) ) {
+		wp_schedule_event( time() + 60, 'nm_every_15_minutes', 'nm_import_check_new' );
+	}
+}
+add_action( 'init', 'ner_michoel_import_ensure_cron' );
+
+function ner_michoel_schedule_summary_batch( $delay = 5 ) {
+	if ( ! wp_next_scheduled( 'nm_import_summary_batch' ) ) {
+		wp_schedule_single_event( time() + max( 1, (int) $delay ), 'nm_import_summary_batch' );
+	}
+}
+
+/**
+ * Every 15 minutes: checks the newest listing pages for shiurim not yet queued,
+ * and queues them. Also restarts the importer if its chain stopped (a PHP limit
+ * or a host restart can end a run), and the summary batch if it has work left.
+ * Does nothing until the first full crawl is done, because the crawl already
+ * covers everything then.
+ */
+function ner_michoel_run_new_check_tick() {
+	if ( ! ner_michoel_import_is_running() || ! get_option( 'nm_import_discovery_done' ) ) {
+		return;
+	}
+
+	$added = 0;
+	$error = '';
+
+	for ( $page = 1; $page <= NER_MICHOEL_IMPORT_CHECK_PAGES; $page++ ) {
+		$response = wp_remote_get(
+			ner_michoel_import_listing_url( $page ),
+			array(
+				'timeout'    => 30,
+				'user-agent' => 'NerMichoelSiteMigration/1.0 (+https://nermichoel.org)',
+			)
+		);
+
+		if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+			$error = sprintf( 'Page %d: %s', $page, is_wp_error( $response ) ? $response->get_error_message() : wp_remote_retrieve_response_code( $response ) );
+			break;
+		}
+
+		$added += ner_michoel_queue_discovered_items( ner_michoel_extract_listing_items( wp_remote_retrieve_body( $response ) ) );
+	}
+
+	update_option( 'nm_import_last_check', time() );
+	update_option( 'nm_import_last_check_added', $added );
+	update_option( 'nm_import_last_check_error', $error );
+
+	if ( ner_michoel_import_discovered_remaining() > 0 ) {
+		if ( ! wp_next_scheduled( 'nm_import_process_batch' ) ) {
+			wp_schedule_single_event( time() + 1, 'nm_import_process_batch' );
+		}
+	} elseif ( ner_michoel_summary_batch_pending_count() > 0 ) {
+		ner_michoel_schedule_summary_batch( 1 );
+	}
+}
+add_action( 'nm_import_check_new', 'ner_michoel_run_new_check_tick' );
+
+/**
+ * The summary batch: only once the queue is drained (new files are imported
+ * first). Works until its time budget is used up, then comes back.
+ */
+function ner_michoel_run_summary_batch_tick() {
+	if ( ! ner_michoel_import_is_running() || ! get_option( 'nm_import_discovery_done' ) ) {
+		return;
+	}
+	if ( ner_michoel_import_discovered_remaining() > 0 ) {
+		return;
+	}
+
+	$pending = ner_michoel_summary_batch_run( time() + ner_michoel_import_tick_seconds() );
+
+	if ( $pending > 0 && ner_michoel_import_is_running() ) {
+		ner_michoel_schedule_summary_batch( 5 );
+	}
+}
+add_action( 'nm_import_summary_batch', 'ner_michoel_run_summary_batch_tick' );
 
 /**
  * ============================================================
@@ -689,6 +842,10 @@ function ner_michoel_handle_import_control_rest( WP_REST_Request $request ) {
 			'total_pages'        => (int) NER_MICHOEL_IMPORT_TOTAL_PAGES,
 			'counts'             => ner_michoel_import_counts(),
 			'last_discovery_error' => get_option( 'nm_import_last_discovery_error', '' ),
+			'summary_pending'    => ner_michoel_summary_batch_pending_count(),
+			'last_check'         => (int) get_option( 'nm_import_last_check', 0 ),
+			'last_check_added'   => (int) get_option( 'nm_import_last_check_added', 0 ),
+			'last_check_error'   => get_option( 'nm_import_last_check_error', '' ),
 		),
 		200
 	);
@@ -700,6 +857,7 @@ function ner_michoel_render_library_import_page() {
 	$disc_page  = (int) get_option( 'nm_import_discovery_page', 1 );
 	$disc_done  = (bool) get_option( 'nm_import_discovery_done' );
 	$last_error = get_option( 'nm_import_last_discovery_error', '' );
+	$last_check = (int) get_option( 'nm_import_last_check', 0 );
 	?>
 	<div class="wrap nm-dashboard">
 		<h1><?php esc_html_e( 'Full Library Import', 'ner-michoel-core' ); ?></h1>
@@ -711,7 +869,7 @@ function ner_michoel_render_library_import_page() {
 			</p>
 		</div>
 
-		<p><?php esc_html_e( 'Imports the entire nermichoel.org shiur archive in the background — this runs over hours to days, not instantly, and is safe to pause/resume.', 'ner-michoel-core' ); ?></p>
+		<p><?php esc_html_e( 'Imports the entire nermichoel.org shiur archive in the background — this runs over hours to days, not instantly, and is safe to pause/resume. Once the archive is in, it checks for new shiurim every 15 minutes and imports them, then fills in the Summary of written shiurim from their PDFs.', 'ner-michoel-core' ); ?></p>
 
 		<table class="widefat striped" style="max-width:700px;">
 			<tbody>
@@ -734,6 +892,8 @@ function ner_michoel_render_library_import_page() {
 				<tr><th><?php esc_html_e( 'Imported', 'ner-michoel-core' ); ?></th><td><?php echo esc_html( number_format_i18n( $counts['imported'] ) ); ?></td></tr>
 				<tr><th><?php esc_html_e( 'Skipped (already existed)', 'ner-michoel-core' ); ?></th><td><?php echo esc_html( number_format_i18n( $counts['skipped'] ) ); ?></td></tr>
 				<tr><th><?php esc_html_e( 'Failed', 'ner-michoel-core' ); ?></th><td><?php echo esc_html( number_format_i18n( $counts['failed'] ) ); ?></td></tr>
+				<tr><th><?php esc_html_e( 'Written summaries waiting', 'ner-michoel-core' ); ?></th><td><?php echo esc_html( number_format_i18n( ner_michoel_summary_batch_pending_count() ) ); ?></td></tr>
+				<tr><th><?php esc_html_e( 'Last new-shiur check', 'ner-michoel-core' ); ?></th><td><?php echo $last_check ? esc_html( wp_date( 'j M Y, H:i', $last_check ) ) . ' — ' . esc_html( sprintf( /* translators: %d: number of new shiurim found */ __( '%d new', 'ner-michoel-core' ), (int) get_option( 'nm_import_last_check_added', 0 ) ) ) : esc_html__( 'Not yet', 'ner-michoel-core' ); ?></td></tr>
 			</tbody>
 		</table>
 
