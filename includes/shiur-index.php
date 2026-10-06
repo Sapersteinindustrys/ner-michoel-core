@@ -218,9 +218,20 @@ function ner_michoel_shiur_index_stored() {
 /**
  * URL of the index for the current version. Browsers may keep it for a year,
  * because the next rebuild gives a new URL.
+ *
+ * In the ?rest_route= form, not /wp-json/: the host sends no-store on every
+ * /wp-json/ URL, which would make each visit download the index again. The
+ * ?rest_route= form keeps this file's Cache-Control, and the host's proxy caches
+ * it too. It works under any permalink setting, and the route is the same.
  */
 function ner_michoel_shiur_index_url() {
-	return add_query_arg( 'v', (int) get_option( NER_MICHOEL_SHIUR_INDEX_VERSION_OPTION, 0 ), rest_url( 'ner-michoel/v1/shiur-index' ) );
+	return add_query_arg(
+		array(
+			'rest_route' => '/ner-michoel/v1/shiur-index',
+			'v'          => (int) get_option( NER_MICHOEL_SHIUR_INDEX_VERSION_OPTION, 0 ),
+		),
+		home_url( '/' )
+	);
 }
 
 /**
