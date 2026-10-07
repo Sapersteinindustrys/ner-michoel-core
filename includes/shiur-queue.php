@@ -2,7 +2,8 @@
 /**
  * Play queues without the page doing the work. A card or Play All button used to
  * carry its whole queue in the HTML, and building that queue cost several database
- * queries per shiur. The archive built about 17,000 of them on one visit, and a
+ * queries per shiur. The archive built about 5,800 of them on one visit (every
+ * series and speaker card), and a
  * shiur page built a speaker's whole list (1,212 shiurim for one speaker) to show six
  * related shiurim.
  *
@@ -132,6 +133,32 @@ function ner_michoel_term_shiur_counts( $taxonomy ) {
 		FROM {$wpdb->term_relationships} tr
 		INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
 		INNER JOIN {$wpdb->posts} p ON p.ID = tr.object_id
+		WHERE tt.taxonomy = %s AND p.post_type = 'shiur' AND p.post_status = 'publish'
+		GROUP BY tt.term_id",
+		$taxonomy
+	) );
+
+	$counts = array();
+	foreach ( (array) $rows as $row ) {
+		$counts[ (int) $row->term_id ] = (int) $row->n;
+	}
+	return $counts;
+}
+
+/**
+ * Shiurim with an audio file, per term: term ID => count. A term with none has
+ * nothing to play, so its card gets no Play button. Counts the audio attachment
+ * the queue uses, in one query for the whole taxonomy.
+ */
+function ner_michoel_term_playable_counts( $taxonomy ) {
+	global $wpdb;
+
+	$rows = $wpdb->get_results( $wpdb->prepare(
+		"SELECT tt.term_id, COUNT(DISTINCT p.ID) AS n
+		FROM {$wpdb->term_relationships} tr
+		INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+		INNER JOIN {$wpdb->posts} p ON p.ID = tr.object_id
+		INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID AND pm.meta_key = '_shiur_audio_id' AND pm.meta_value NOT IN ('', '0')
 		WHERE tt.taxonomy = %s AND p.post_type = 'shiur' AND p.post_status = 'publish'
 		GROUP BY tt.term_id",
 		$taxonomy
