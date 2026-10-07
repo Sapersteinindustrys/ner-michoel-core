@@ -235,3 +235,32 @@ select.nm-cms-input { min-width: 160px; }
 	.nm-cms-table td { border-bottom: none; padding: 4px 16px; }
 	.nm-cms-col-actions { text-align: left; }
 }
+
+/* Several-term field (Topics on a shiur): a filter box over a checkbox list. */
+.nm-cms-multi__filter {
+	margin-bottom: 6px;
+}
+
+.nm-cms-multi__list {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 2px 12px;
+	max-height: 220px;
+	overflow-y: auto;
+	padding: 6px 8px;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	background: #fff;
+}
+
+.nm-cms-multi__item {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 0;
+	cursor: pointer;
+}
+
+.nm-cms-multi__item[hidden] {
+	display: none;
+}

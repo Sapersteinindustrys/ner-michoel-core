@@ -20,6 +20,14 @@
 		return $( '<div>' ).text( str === null || str === undefined ? '' : String( str ) ).html();
 	}
 
+	// Term names arrive HTML-encoded (&amp;, &#8217;). Decoded for showing as text; a
+	// textarea's value never runs markup.
+	function decodeName( str ) {
+		var el = document.createElement( 'textarea' );
+		el.innerHTML = String( str === null || str === undefined ? '' : str );
+		return el.value;
+	}
+
 	function debounce( fn, wait ) {
 		var timer;
 		return function () {
@@ -105,6 +113,13 @@
 				return '<select class="nm-cms-input nm-cms-taxonomy-select"' +
 					( field.picker === 'recent' ? ' data-series-picker data-placeholder="Search series…" data-recent-label="Recent" data-all-label="All series"' : '' ) +
 					' data-taxonomy="' + esc( field.taxonomy ) + '" data-selected="' + esc( value || '' ) + '"><option value="">— None —</option></select>';
+			case 'taxonomy_multi':
+				// Several terms (topics): a filter box over a checkbox list, filled once the
+				// terms have loaded (bindFieldWidgets).
+				return '<div class="nm-cms-multi" data-taxonomy="' + esc( field.taxonomy ) + '" data-selected="' + esc( $.isArray( value ) ? value.join( ',' ) : '' ) + '">' +
+					'<input type="search" class="nm-cms-input nm-cms-multi__filter" placeholder="Filter…" aria-label="Filter">' +
+					'<div class="nm-cms-multi__list" role="group"><span class="nm-cms-muted">Loading…</span></div>' +
+					'</div>';
 			case 'term_parent':
 				return '<select class="nm-cms-input nm-cms-parent-select" data-selected="' + esc( value || '' ) + '"><option value="">— None (top level) —</option></select>';
 			case 'image':
@@ -480,6 +495,44 @@
 			} );
 		} );
 
+		// Several-term fields (topics). Marked loaded only once the list is in, so a save
+		// before then leaves the post's terms alone instead of clearing them.
+		$body.find( '.nm-cms-multi' ).each( function () {
+			var $wrap   = $( this );
+			var $list   = $wrap.find( '.nm-cms-multi__list' );
+			var $filter = $wrap.find( '.nm-cms-multi__filter' );
+			var chosen  = {};
+			$.each( String( $wrap.attr( 'data-selected' ) || '' ).split( ',' ), function ( i, id ) {
+				if ( id ) {
+					chosen[ id ] = true;
+				}
+			} );
+			getTerms( $wrap.data( 'taxonomy' ), self.type ).then( function ( terms ) {
+				// The ones already chosen first, then the rest by name.
+				var sorted = terms.slice().sort( function ( a, b ) {
+					var ca = chosen[ String( a.id ) ] ? 0 : 1;
+					var cb = chosen[ String( b.id ) ] ? 0 : 1;
+					return ca - cb || decodeName( a.name ).localeCompare( decodeName( b.name ) );
+				} );
+				$list.empty();
+				$.each( sorted, function ( i, term ) {
+					var $box = $( '<input type="checkbox">' ).val( term.id ).prop( 'checked', !! chosen[ String( term.id ) ] );
+					$list.append( $( '<label class="nm-cms-multi__item"></label>' ).append( $box ).append( $( '<span></span>' ).text( decodeName( term.name ) ) ) );
+				} );
+				if ( ! terms.length ) {
+					$list.append( $( '<span class="nm-cms-muted"></span>' ).text( 'None yet.' ) );
+				}
+				$wrap.attr( 'data-loaded', '1' );
+			} );
+			$filter.on( 'input', function () {
+				var q = String( $filter.val() || '' ).toLowerCase().trim();
+				$list.find( '.nm-cms-multi__item' ).each( function () {
+					var $item = $( this );
+					$item.prop( 'hidden', !! q && $item.text().toLowerCase().indexOf( q ) === -1 );
+				} );
+			} );
+		} );
+
 		var $parentSelect = $body.find( '.nm-cms-parent-select' );
 		if ( $parentSelect.length && schema.kind === 'taxonomy' ) {
 			var selectedParent = String( $parentSelect.data( 'selected' ) || '' );
@@ -568,6 +621,17 @@
 					break;
 				case 'select':
 					data[ key ] = $field.find( 'select' ).val();
+					break;
+				case 'taxonomy_multi':
+					// Not sent until the list has loaded, so a quick save can't clear the terms.
+					if ( $field.find( '.nm-cms-multi' ).attr( 'data-loaded' ) !== '1' ) {
+						break;
+					}
+					var termIds = [];
+					$field.find( '.nm-cms-multi__item input:checked' ).each( function () {
+						termIds.push( parseInt( $( this ).val(), 10 ) );
+					} );
+					data[ key ] = termIds;
 					break;
 				case 'image':
 				case 'media':

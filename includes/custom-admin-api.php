@@ -37,6 +37,15 @@ function ner_michoel_cms_registry() {
 		'draft'   => __( 'Draft', 'ner-michoel-core' ),
 	);
 
+	// Seasonal topics (topics.php). No key is a plain number: the panel builds its
+	// options from a JS object, and a browser puts number-like keys first, in
+	// numeric order. So '' stays first, the days run d01–d30, and Tishrei leads.
+	$hebrew_days = array( '' => '—' );
+	for ( $d = 1; $d <= 30; $d++ ) {
+		$hebrew_days[ sprintf( 'd%02d', $d ) ] = (string) $d;
+	}
+	$hebrew_months = array_merge( array( '' => '—' ), function_exists( 'ner_michoel_hebrew_months' ) ? ner_michoel_hebrew_months() : array() );
+
 	$registry = array(
 		'shiur'         => array(
 			'kind'         => 'post',
@@ -44,7 +53,7 @@ function ner_michoel_cms_registry() {
 			'capability'   => 'edit_posts',
 			'label'        => __( 'Shiur', 'ner-michoel-core' ),
 			'label_plural' => __( 'Shiurim', 'ner-michoel-core' ),
-			'taxonomies'   => array( 'speaker', 'series' ),
+			'taxonomies'   => array( 'speaker', 'series', 'topic' ),
 			'list_columns' => array(
 				array( 'key' => 'title', 'label' => __( 'Title', 'ner-michoel-core' ), 'render' => 'title' ),
 				array( 'key' => 'speaker', 'label' => __( 'Speaker', 'ner-michoel-core' ), 'render' => 'taxonomy', 'taxonomy' => 'speaker' ),
@@ -58,6 +67,7 @@ function ner_michoel_cms_registry() {
 				'content'    => array( 'type' => 'textarea', 'label' => __( 'Description', 'ner-michoel-core' ), 'target' => 'post_content', 'rows' => 5 ),
 				'speaker'    => array( 'type' => 'taxonomy', 'label' => __( 'Speaker', 'ner-michoel-core' ), 'taxonomy' => 'speaker' ),
 				'series'     => array( 'type' => 'taxonomy', 'label' => __( 'Series', 'ner-michoel-core' ), 'taxonomy' => 'series', 'picker' => 'recent' ),
+				'topics'     => array( 'type' => 'taxonomy_multi', 'label' => __( 'Topics', 'ner-michoel-core' ), 'taxonomy' => 'topic' ),
 				'audio'      => array( 'type' => 'media', 'label' => __( 'Audio / Video File', 'ner-michoel-core' ), 'meta' => '_shiur_audio_id' ),
 				'vimeo_id'   => array( 'type' => 'text', 'label' => __( 'Vimeo ID (externally-hosted video, no file upload)', 'ner-michoel-core' ), 'meta' => '_shiur_vimeo_id' ),
 				'duration'   => array( 'type' => 'readonly', 'label' => __( 'Duration (set from the file)', 'ner-michoel-core' ), 'meta' => '_shiur_duration' ),
@@ -73,7 +83,7 @@ function ner_michoel_cms_registry() {
 			'capability'   => 'edit_posts',
 			'label'        => __( 'Written Shiur', 'ner-michoel-core' ),
 			'label_plural' => __( 'Written Shiurim', 'ner-michoel-core' ),
-			'taxonomies'   => array( 'speaker', 'series' ),
+			'taxonomies'   => array( 'speaker', 'series', 'topic' ),
 			'list_columns' => array(
 				array( 'key' => 'title', 'label' => __( 'Title', 'ner-michoel-core' ), 'render' => 'title' ),
 				array( 'key' => 'speaker', 'label' => __( 'Speaker', 'ner-michoel-core' ), 'render' => 'taxonomy', 'taxonomy' => 'speaker' ),
@@ -87,6 +97,7 @@ function ner_michoel_cms_registry() {
 				'excerpt'   => array( 'type' => 'textarea', 'label' => __( 'Summary: the opening line, shown on the homepage card (optional)', 'ner-michoel-core' ), 'target' => 'post_excerpt', 'rows' => 2 ),
 				'speaker'   => array( 'type' => 'taxonomy', 'label' => __( 'Speaker', 'ner-michoel-core' ), 'taxonomy' => 'speaker' ),
 				'series'    => array( 'type' => 'taxonomy', 'label' => __( 'Series', 'ner-michoel-core' ), 'taxonomy' => 'series', 'picker' => 'recent' ),
+				'topics'    => array( 'type' => 'taxonomy_multi', 'label' => __( 'Topics', 'ner-michoel-core' ), 'taxonomy' => 'topic' ),
 				'pdf'       => array( 'type' => 'media', 'kind' => 'pdf', 'label' => __( 'PDF File', 'ner-michoel-core' ), 'meta' => '_written_pdf_id' ),
 				'thumbnail' => array( 'type' => 'image', 'label' => __( 'Cover Image (optional)', 'ner-michoel-core' ), 'target' => 'thumbnail' ),
 				'status'    => array( 'type' => 'select', 'label' => __( 'Status', 'ner-michoel-core' ), 'target' => 'status', 'options' => $status_options ),
@@ -214,6 +225,39 @@ function ner_michoel_cms_registry() {
 				'description' => array( 'type' => 'textarea', 'label' => __( 'Description (optional)', 'ner-michoel-core' ), 'target' => 'description', 'rows' => 4 ),
 				'parent'      => array( 'type' => 'term_parent', 'label' => __( 'Parent Series (optional)', 'ner-michoel-core' ) ),
 				'image'       => array( 'type' => 'image', 'label' => __( 'Cover Image', 'ner-michoel-core' ), 'term_meta' => 'ner_michoel_image_id' ),
+			),
+		),
+		// Topics (topics.php): tags, and the seasonal boxes on the homepage.
+		'topic'         => array(
+			'kind'         => 'taxonomy',
+			'taxonomy'     => 'topic',
+			'capability'   => 'manage_categories',
+			'label'        => __( 'Topic', 'ner-michoel-core' ),
+			'label_plural' => __( 'Topics', 'ner-michoel-core' ),
+			'list_columns' => array(
+				array( 'key' => 'name', 'label' => __( 'Name', 'ner-michoel-core' ), 'render' => 'title' ),
+				array( 'key' => 'home', 'label' => __( 'On the homepage', 'ner-michoel-core' ), 'render' => 'term_meta' ),
+				array( 'key' => 'count', 'label' => __( 'Shiurim', 'ner-michoel-core' ), 'render' => 'term_count' ),
+			),
+			'fields'       => array(
+				'name'        => array( 'type' => 'text', 'label' => __( 'Name', 'ner-michoel-core' ), 'required' => true, 'target' => 'name' ),
+				'description' => array( 'type' => 'textarea', 'label' => __( 'Description (optional)', 'ner-michoel-core' ), 'target' => 'description', 'rows' => 3 ),
+				'home'        => array(
+					'type'          => 'select',
+					'label'         => __( 'Show on the homepage', 'ner-michoel-core' ),
+					'term_meta'     => 'nm_home',
+					'options'       => array(
+						''       => __( 'No', 'ner-michoel-core' ),
+						'always' => __( 'Always', 'ner-michoel-core' ),
+						'season' => __( 'Every year, between the Hebrew dates below', 'ner-michoel-core' ),
+					),
+					// The list shows "Always" or the dates, not the stored value.
+					'list_callback' => 'ner_michoel_topic_home_summary',
+				),
+				'from_day'    => array( 'type' => 'select', 'label' => __( 'From: day', 'ner-michoel-core' ), 'term_meta' => 'nm_season_from_day', 'options' => $hebrew_days ),
+				'from_month'  => array( 'type' => 'select', 'label' => __( 'From: Hebrew month', 'ner-michoel-core' ), 'term_meta' => 'nm_season_from_month', 'options' => $hebrew_months ),
+				'to_day'      => array( 'type' => 'select', 'label' => __( 'Until: day', 'ner-michoel-core' ), 'term_meta' => 'nm_season_to_day', 'options' => $hebrew_days ),
+				'to_month'    => array( 'type' => 'select', 'label' => __( 'Until: Hebrew month', 'ner-michoel-core' ), 'term_meta' => 'nm_season_to_month', 'options' => $hebrew_months ),
 			),
 		),
 	);
@@ -454,7 +498,10 @@ function ner_michoel_cms_list_terms( $config, WP_REST_Request $request ) {
 			if ( ! isset( $field['term_meta'] ) ) {
 				continue;
 			}
-			$row[ $key ] = get_term_meta( $term->term_id, $field['term_meta'], true );
+			// A field can give the list its own text (a topic's "Always" or dates).
+			$row[ $key ] = ( isset( $field['list_callback'] ) && is_callable( $field['list_callback'] ) )
+				? (string) call_user_func( $field['list_callback'], $term )
+				: get_term_meta( $term->term_id, $field['term_meta'], true );
 		}
 		$items[] = $row;
 	}
@@ -526,6 +573,9 @@ function ner_michoel_cms_format_post_full( $post, $config ) {
 		if ( 'taxonomy' === $field['type'] ) {
 			$terms        = get_the_terms( $post->ID, $field['taxonomy'] );
 			$data[ $key ] = ( $terms && ! is_wp_error( $terms ) ) ? (int) $terms[0]->term_id : 0;
+		} elseif ( 'taxonomy_multi' === $field['type'] ) {
+			$terms        = get_the_terms( $post->ID, $field['taxonomy'] );
+			$data[ $key ] = ( $terms && ! is_wp_error( $terms ) ) ? array_map( 'intval', wp_list_pluck( $terms, 'term_id' ) ) : array();
 		} elseif ( isset( $field['meta'] ) ) {
 			$val = get_post_meta( $post->ID, $field['meta'], true );
 			if ( 'media' === $field['type'] ) {
@@ -681,6 +731,10 @@ function ner_michoel_cms_save_post( $id, $config, WP_REST_Request $request ) {
 		if ( 'taxonomy' === $field['type'] ) {
 			$term_id = absint( $value );
 			wp_set_object_terms( $post_id, $term_id ? array( $term_id ) : array(), $field['taxonomy'] );
+		} elseif ( 'taxonomy_multi' === $field['type'] ) {
+			// Term IDs, so a topic named like a number isn't read as an ID by mistake.
+			$term_ids = is_array( $value ) ? array_values( array_unique( array_filter( array_map( 'absint', $value ) ) ) ) : array();
+			wp_set_object_terms( $post_id, $term_ids, $field['taxonomy'] );
 		} elseif ( 'media' === $field['type'] && isset( $field['meta'] ) ) {
 			$attachment_id = absint( $value );
 			if ( $attachment_id ) {

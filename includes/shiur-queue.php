@@ -17,6 +17,7 @@
  *   shiur=ID & mode=series    the rest of its series from this shiur (a card)
  *   series=ID                 the whole series, in series order
  *   speaker=ID                the speaker's shiurim, newest first
+ *   topic=ID                  the topic's newest shiurim, up to 200 (topics.php)
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -148,7 +149,8 @@ function ner_michoel_term_shiur_counts( $taxonomy ) {
 /**
  * Shiurim with an audio file, per term: term ID => count. A term with none has
  * nothing to play, so its card gets no Play button. Counts the audio attachment
- * the queue uses, in one query for the whole taxonomy.
+ * the queue uses, in one query for the whole taxonomy. A video file under the
+ * same meta key isn't counted: ner_michoel_get_shiur_audio_url() skips it too.
  */
 function ner_michoel_term_playable_counts( $taxonomy ) {
 	global $wpdb;
@@ -159,6 +161,7 @@ function ner_michoel_term_playable_counts( $taxonomy ) {
 		INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
 		INNER JOIN {$wpdb->posts} p ON p.ID = tr.object_id
 		INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID AND pm.meta_key = '_shiur_audio_id' AND pm.meta_value NOT IN ('', '0')
+		INNER JOIN {$wpdb->posts} att ON att.ID = pm.meta_value AND att.post_mime_type NOT LIKE 'video/%%'
 		WHERE tt.taxonomy = %s AND p.post_type = 'shiur' AND p.post_status = 'publish'
 		GROUP BY tt.term_id",
 		$taxonomy
@@ -221,6 +224,7 @@ function ner_michoel_register_queue_route() {
 				'shiur'   => array( 'sanitize_callback' => 'absint' ),
 				'series'  => array( 'sanitize_callback' => 'absint' ),
 				'speaker' => array( 'sanitize_callback' => 'absint' ),
+				'topic'   => array( 'sanitize_callback' => 'absint' ),
 				'mode'    => array( 'sanitize_callback' => 'sanitize_key' ),
 			),
 		)
@@ -232,6 +236,7 @@ function ner_michoel_queue_rest( WP_REST_Request $request ) {
 	$shiur   = (int) $request->get_param( 'shiur' );
 	$series  = (int) $request->get_param( 'series' );
 	$speaker = (int) $request->get_param( 'speaker' );
+	$topic   = (int) $request->get_param( 'topic' );
 	$mode    = 'series' === $request->get_param( 'mode' ) ? 'series' : 'autoplay';
 
 	if ( $shiur ) {
@@ -244,8 +249,27 @@ function ner_michoel_queue_rest( WP_REST_Request $request ) {
 		$posts = ner_michoel_get_series_shiurim( $series );
 	} elseif ( $speaker ) {
 		$posts = ner_michoel_get_speaker_shiurim( $speaker );
+	} elseif ( $topic ) {
+		// Newest first and capped: a topic like Gemara holds over a thousand shiurim.
+		$posts = get_posts(
+			array(
+				'post_type'      => 'shiur',
+				'post_status'    => 'publish',
+				'posts_per_page' => 200,
+				'orderby'        => 'date',
+				'order'          => 'DESC',
+				'no_found_rows'  => true,
+				'tax_query'      => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
+					array(
+						'taxonomy' => 'topic',
+						'field'    => 'term_id',
+						'terms'    => $topic,
+					),
+				),
+			)
+		);
 	} else {
-		return new WP_Error( 'nm_queue_missing', __( 'Give a shiur, series or speaker.', 'ner-michoel-core' ), array( 'status' => 400 ) );
+		return new WP_Error( 'nm_queue_missing', __( 'Give a shiur, series, speaker or topic.', 'ner-michoel-core' ), array( 'status' => 400 ) );
 	}
 
 	ner_michoel_prime_shiur_caches( wp_list_pluck( $posts, 'ID' ) );

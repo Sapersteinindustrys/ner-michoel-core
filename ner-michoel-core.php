@@ -3,7 +3,7 @@
  * Plugin Name:       Ner Michoel Core
  * Plugin URI:
  * Description:       Site functionality (custom post types, forms, integrations) for the Ner Michoel rebuild. Kept independent of the theme so content/data survive a future redesign.
- * Version:           0.9.18
+ * Version:           0.9.19
  * Requires at least: 6.0
  * Requires PHP:       7.4
  * Author:             Tomo
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NER_MICHOEL_CORE_VERSION', '0.9.18' );
+define( 'NER_MICHOEL_CORE_VERSION', '0.9.19' );
 define( 'NER_MICHOEL_CORE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'NER_MICHOEL_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -23,6 +23,8 @@ require_once NER_MICHOEL_CORE_PATH . 'includes/shiur-meta.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/shiur-duration.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/series-picker.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/written-shiurim.php';
+require_once NER_MICHOEL_CORE_PATH . 'includes/hebrew-calendar.php';
+require_once NER_MICHOEL_CORE_PATH . 'includes/topics.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/navigation-settings.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/shiur-search.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/autoplay.php';
@@ -85,6 +87,7 @@ function ner_michoel_core_activate() {
 	ner_michoel_register_shiur_post_type();
 	ner_michoel_register_shiur_taxonomies();
 	ner_michoel_register_written_shiur_post_type();
+	ner_michoel_register_topic_taxonomy();
 	ner_michoel_register_gallery_post_type();
 	ner_michoel_register_gallery_type_taxonomy();
 	ner_michoel_register_mazal_tov_post_type();

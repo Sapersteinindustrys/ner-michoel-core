@@ -59,6 +59,7 @@ function ner_michoel_custom_admin_structure() {
 				'written'     => array( 'label' => __( 'Written Shiurim', 'ner-michoel-core' ), 'cms_type' => 'written_shiur' ),
 				'speakers'    => array( 'label' => __( 'Speakers', 'ner-michoel-core' ), 'cms_type' => 'speaker', 'capability' => 'manage_categories' ),
 				'series'      => array( 'label' => __( 'Series', 'ner-michoel-core' ), 'cms_type' => 'series', 'capability' => 'manage_categories' ),
+				'topics'      => array( 'label' => __( 'Topics', 'ner-michoel-core' ), 'cms_type' => 'topic', 'capability' => 'manage_categories' ),
 				'galleries'   => array( 'label' => __( 'Galleries', 'ner-michoel-core' ), 'cms_type' => 'gallery' ),
 				'mazaltov'    => array( 'label' => __( 'Mazal Tov', 'ner-michoel-core' ), 'cms_type' => 'mazal_tov' ),
 				'mazaltovadd' => array( 'label' => __( 'Post a Mazal Tov', 'ner-michoel-core' ), 'callback' => 'ner_michoel_render_mazal_tov_quick_add_page' ),

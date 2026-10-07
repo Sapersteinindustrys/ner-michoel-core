@@ -434,6 +434,10 @@ function ner_michoel_process_queue_row( $row ) {
 			wp_set_object_terms( $post_id, array( $series_id ), 'series' );
 		}
 	}
+	// Topics from the old site's categories in the series name (topics.php).
+	if ( $row->series && function_exists( 'ner_michoel_add_topics_from_series' ) ) {
+		ner_michoel_add_topics_from_series( $post_id, $row->series );
+	}
 
 	if ( 'pdf' === $media_type ) {
 		$attachment_id = ner_michoel_import_sideload_pdf( $media_url, $post_id, $row->title );

@@ -24,7 +24,9 @@
  *      and it's the date get_the_date() shows)
  *   c  kind: a audio, v video, w written (PDF)
  *   u  relative link        d  duration, when known
- * The speaker and series names are in `speakers` and `series`, keyed by term ID.
+ *   g  topic term IDs, when it has any (topics.php)
+ * The speaker, series and topic names are in `speakers`, `series` and `topics`,
+ * keyed by term ID.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -53,18 +55,22 @@ function ner_michoel_shiur_index_build( $version ) {
 	$posts = $wpdb->get_results( "SELECT ID, post_title, post_name, post_date, post_type, post_parent FROM {$wpdb->posts} WHERE post_status = 'publish' AND post_type IN ('shiur','written_shiur') ORDER BY post_date DESC, ID DESC", ARRAY_N ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
 	// Speaker and series: the first of each by name, which is the order
-	// get_the_terms() gives everywhere else on the site.
-	$first = array();
-	$names = array(
+	// get_the_terms() gives everywhere else on the site. Topics: all of them.
+	$first  = array();
+	$topics = array();
+	$names  = array(
 		'speaker' => array(),
 		'series'  => array(),
+		'topic'   => array(),
 	);
-	$rows  = $wpdb->get_results( "SELECT tr.object_id, tt.taxonomy, t.term_id, t.name FROM {$wpdb->term_relationships} tr INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id WHERE tt.taxonomy IN ('speaker','series') ORDER BY t.name ASC, t.term_id ASC", ARRAY_N ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	$rows   = $wpdb->get_results( "SELECT tr.object_id, tt.taxonomy, t.term_id, t.name FROM {$wpdb->term_relationships} tr INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id WHERE tt.taxonomy IN ('speaker','series','topic') ORDER BY t.name ASC, t.term_id ASC", ARRAY_N ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	foreach ( (array) $rows as $row ) {
 		$object_id = (int) $row[0];
 		$taxonomy  = $row[1];
 		$term_id   = (int) $row[2];
-		if ( ! isset( $first[ $object_id ][ $taxonomy ] ) ) {
+		if ( 'topic' === $taxonomy ) {
+			$topics[ $object_id ][] = $term_id;
+		} elseif ( ! isset( $first[ $object_id ][ $taxonomy ] ) ) {
 			$first[ $object_id ][ $taxonomy ] = $term_id;
 		}
 		$names[ $taxonomy ][ $term_id ] = $row[3];
@@ -102,6 +108,7 @@ function ner_michoel_shiur_index_build( $version ) {
 	$used  = array(
 		'speaker' => array(),
 		'series'  => array(),
+		'topic'   => array(),
 	);
 
 	foreach ( (array) $posts as $row ) {
@@ -147,6 +154,9 @@ function ner_michoel_shiur_index_build( $version ) {
 		if ( ! empty( $values['_shiur_duration'] ) ) {
 			$item['d'] = (string) $values['_shiur_duration'];
 		}
+		if ( ! empty( $topics[ $id ] ) ) {
+			$item['g'] = $topics[ $id ];
+		}
 
 		$json = wp_json_encode( $item, $flags );
 		if ( false === $json ) {
@@ -160,12 +170,17 @@ function ner_michoel_shiur_index_build( $version ) {
 		if ( $series ) {
 			$used['series'][ $series ] = true;
 		}
+		if ( ! empty( $item['g'] ) ) {
+			foreach ( $item['g'] as $topic_id ) {
+				$used['topic'][ $topic_id ] = true;
+			}
+		}
 	}
-	unset( $posts, $meta, $first );
+	unset( $posts, $meta, $first, $topics );
 
 	// Names only for terms the items use, decoded (names can be stored as &#8217;).
 	$lists = array();
-	foreach ( array( 'speaker', 'series' ) as $taxonomy ) {
+	foreach ( array( 'speaker', 'series', 'topic' ) as $taxonomy ) {
 		$list = array();
 		foreach ( array_keys( $used[ $taxonomy ] ) as $term_id ) {
 			$list[ $term_id ] = html_entity_decode( (string) $names[ $taxonomy ][ $term_id ], ENT_QUOTES, 'UTF-8' );
@@ -174,7 +189,7 @@ function ner_michoel_shiur_index_build( $version ) {
 		$lists[ $taxonomy ] = wp_json_encode( (object) $list, $flags );
 	}
 
-	return '{"v":' . (int) $version . ',"speakers":' . $lists['speaker'] . ',"series":' . $lists['series'] . ',"items":[' . implode( ',', $parts ) . ']}';
+	return '{"v":' . (int) $version . ',"speakers":' . $lists['speaker'] . ',"series":' . $lists['series'] . ',"topics":' . $lists['topic'] . ',"items":[' . implode( ',', $parts ) . ']}';
 }
 
 /**
@@ -288,14 +303,14 @@ add_action( 'updated_post_meta', 'ner_michoel_shiur_index_on_meta', 10, 3 );
 add_action( 'deleted_post_meta', 'ner_michoel_shiur_index_on_meta', 10, 3 );
 
 function ner_michoel_shiur_index_on_terms( $object_id, $terms, $tt_ids, $taxonomy ) {
-	if ( in_array( $taxonomy, array( 'speaker', 'series' ), true ) ) {
+	if ( in_array( $taxonomy, array( 'speaker', 'series', 'topic' ), true ) ) {
 		ner_michoel_shiur_index_schedule();
 	}
 }
 add_action( 'set_object_terms', 'ner_michoel_shiur_index_on_terms', 10, 4 );
 
 function ner_michoel_shiur_index_on_term_change( $term_id, $tt_id = 0, $taxonomy = '' ) {
-	if ( in_array( $taxonomy, array( 'speaker', 'series' ), true ) ) {
+	if ( in_array( $taxonomy, array( 'speaker', 'series', 'topic' ), true ) ) {
 		ner_michoel_shiur_index_schedule();
 	}
 }
