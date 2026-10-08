@@ -82,6 +82,7 @@ function ner_michoel_custom_admin_structure() {
 				'live'  => array( 'label' => __( 'Live Shiur / Zoom', 'ner-michoel-core' ), 'settings_type' => 'live_shiur' ),
 				'menu'  => array( 'label' => __( 'Menu', 'ner-michoel-core' ), 'settings_type' => 'navigation', 'capability' => 'manage_options' ),
 				'login' => array( 'label' => __( 'Admin Login Shortcut', 'ner-michoel-core' ), 'settings_type' => 'admin_login', 'capability' => 'manage_options' ),
+				'security' => array( 'label' => __( 'Security', 'ner-michoel-core' ), 'settings_type' => 'security', 'capability' => 'manage_options' ),
 			),
 		),
 		'data'       => array(

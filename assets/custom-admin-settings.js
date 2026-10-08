@@ -207,13 +207,20 @@
 		this.init();
 	}
 
-	SettingsApp.prototype.init = function () {
+	/**
+	 * Loads and draws the screen. `flash`: a success message to show once it's
+	 * drawn (after a save that reloads the screen to refresh its status lines).
+	 */
+	SettingsApp.prototype.init = function ( flash ) {
 		var self = this;
 		this.$root.html( '<div class="nm-cms-loading">Loading…</div>' );
 		apiFetch( 'settings/' + this.key )
 			.then( function ( schema ) {
 				self.schema = schema;
 				self.render();
+				if ( flash ) {
+					self.$root.find( '.nm-settings-message' ).addClass( 'nm-settings-message--success' ).text( flash ).show();
+				}
 			} )
 			.catch( function ( err ) {
 				self.$root.html( '<div class="nm-cms-error">' + esc( err.message ) + '</div>' );
@@ -246,6 +253,13 @@
 				? 'A shortcut password is set for ' + schema.extra.admin_url + '.'
 				: schema.extra.admin_url + ' currently falls back to the normal WordPress login.';
 			html += '<p class="nm-settings-status">' + esc( statusText ) + '</p>';
+		}
+
+		// What a screen reports about itself (Security: what's on, what's been turned away).
+		if ( schema.extra && schema.extra.status_lines && schema.extra.status_lines.length ) {
+			html += '<div class="nm-settings-status">' + $.map( schema.extra.status_lines, function ( line ) {
+				return '<div>' + esc( line ) + '</div>';
+			} ).join( '' ) + '</div>';
 		}
 
 		html += '<div class="nm-settings-form">';
@@ -491,8 +505,8 @@
 			.then( function () {
 				$btn.prop( 'disabled', false ).text( 'Save' );
 				$msg.removeClass( 'nm-settings-message--error' ).addClass( 'nm-settings-message--success' ).text( 'Saved.' ).show();
-				if ( 'admin_login' === self.key ) {
-					self.init(); // Re-fetch so the status line reflects the new state.
+				if ( 'admin_login' === self.key || 'security' === self.key ) {
+					self.init( 'Saved.' ); // Re-fetch so the status line reflects the new state.
 				}
 			} )
 			.catch( function ( err ) {

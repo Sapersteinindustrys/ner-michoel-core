@@ -47,17 +47,26 @@ function ner_michoel_register_submission_post_type() {
 add_action( 'init', 'ner_michoel_register_submission_post_type' );
 
 /**
- * Records one submission. $type is 'contact' or 'magid'. $data keys:
+ * Records one submission. $type is 'contact' or 'magid'. $spam_reason, when
+ * given, marks it as spam (form-guard.php's message checks): its type is
+ * stored as 'spam', with the form it came from and the reason beside it, and
+ * it isn't emailed. $data keys:
  * name, email, phone (optional), message, speaker (magid only, the
  * speaker term's display name — stored as a plain string snapshot so
  * the record still reads correctly if that speaker is later renamed
  * or deleted), shiur_title (magid only, optional — same snapshot
  * reasoning as speaker, for a tagged shiur of either media type).
  */
-function ner_michoel_record_submission( $type, array $data ) {
+function ner_michoel_record_submission( $type, array $data, $spam_reason = '' ) {
 	$name = isset( $data['name'] ) ? $data['name'] : '';
 
-	if ( 'magid' === $type && ! empty( $data['speaker'] ) ) {
+	if ( '' !== $spam_reason ) {
+		$title = sprintf(
+			/* translators: %s: sender name */
+			__( 'Possible spam: %s', 'ner-michoel-core' ),
+			$name
+		);
+	} elseif ( 'magid' === $type && ! empty( $data['speaker'] ) ) {
 		$title = sprintf(
 			/* translators: 1: sender name, 2: speaker name */
 			__( 'Magid Shiur request: %1$s → %2$s', 'ner-michoel-core' ),
@@ -85,7 +94,11 @@ function ner_michoel_record_submission( $type, array $data ) {
 		return;
 	}
 
-	update_post_meta( $post_id, '_nm_submission_type', sanitize_key( $type ) );
+	update_post_meta( $post_id, '_nm_submission_type', '' !== $spam_reason ? 'spam' : sanitize_key( $type ) );
+	if ( '' !== $spam_reason ) {
+		update_post_meta( $post_id, '_nm_spam_form', sanitize_key( $type ) );
+		update_post_meta( $post_id, '_nm_spam_reason', sanitize_key( $spam_reason ) );
+	}
 	update_post_meta( $post_id, '_nm_submission_name', sanitize_text_field( $name ) );
 	update_post_meta( $post_id, '_nm_submission_email', isset( $data['email'] ) ? sanitize_email( $data['email'] ) : '' );
 	update_post_meta( $post_id, '_nm_submission_phone', isset( $data['phone'] ) ? sanitize_text_field( $data['phone'] ) : '' );
@@ -120,6 +133,11 @@ function ner_michoel_submission_column_content( $column, $post_id ) {
 	switch ( $column ) {
 		case 'nm_type':
 			$type = get_post_meta( $post_id, '_nm_submission_type', true );
+			if ( 'spam' === $type ) {
+				echo esc_html__( 'Possible spam (not emailed)', 'ner-michoel-core' );
+				echo '<br /><span class="description">' . esc_html( get_post_meta( $post_id, '_nm_spam_reason', true ) ) . '</span>';
+				break;
+			}
 			echo 'magid' === $type
 				? esc_html__( 'Email a Magid Shiur', 'ner-michoel-core' )
 				: esc_html__( 'Contact', 'ner-michoel-core' );

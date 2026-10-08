@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.20
+Stable tag: 0.9.21
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,18 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.21 =
+* Bot and spam protection on the public forms (Contact, Email a Magid Shiur,
+  Sign Up, Log In, Forgot Password): an invisible browser check (proof of
+  work), optional Cloudflare Turnstile, per-address rate limits, repeat and
+  spam-content checks (flagged messages kept under Submissions, not emailed),
+  and a cap of 3 reset emails an hour per address.
+* Login lockout after 10 wrong passwords from one address in 15 minutes,
+  for every login. Application-password REST calls are not affected.
+* Hides the site's login names from the public, and turns off XML-RPC.
+* New Site Settings > Security screen: Turnstile keys, the two switches, and
+  what's been turned away.
 
 = 0.9.20 =
 * Shiurim and Written Shiurim admin lists: a new Topics column, next to

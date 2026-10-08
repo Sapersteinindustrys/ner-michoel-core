@@ -82,6 +82,44 @@ function ner_michoel_settings_registry() {
 				);
 			},
 		),
+		'security'      => array(
+			'capability' => 'manage_options',
+			'label'      => __( 'Security', 'ner-michoel-core' ),
+			'rest_path'  => 'form-guard-settings',
+			'fields'     => array(
+				'turnstile_site_key'   => array(
+					'type'        => 'text',
+					'label'       => __( 'Cloudflare Turnstile site key (optional)', 'ner-michoel-core' ),
+					'placeholder' => '0x4AAAAAAA…',
+					'desc'        => __( 'Adds Cloudflare’s human check to every form, on top of the built-in one. It’s free and usually invisible. In the Cloudflare dashboard go to Turnstile, add a widget for this site’s domain (mode “Managed”), and paste its two keys here. Clear this box to turn Turnstile off.', 'ner-michoel-core' ),
+				),
+				'turnstile_secret_key' => array(
+					'type'  => 'password',
+					'label' => __( 'Cloudflare Turnstile secret key', 'ner-michoel-core' ),
+					'desc'  => __( 'Never shown again once saved. Leave blank to keep the saved key.', 'ner-michoel-core' ),
+				),
+				'hide_users'           => array(
+					'type'  => 'checkbox',
+					'label' => __( 'Hide the site’s login names from the public (recommended)', 'ner-michoel-core' ),
+				),
+				'disable_xmlrpc'       => array(
+					'type'  => 'checkbox',
+					'label' => __( 'Turn off XML-RPC, an old remote login that bots use to guess passwords in bulk (recommended)', 'ner-michoel-core' ),
+				),
+			),
+			'get_values' => function () {
+				$settings = ner_michoel_form_guard_settings();
+				return array(
+					'turnstile_site_key'   => $settings['turnstile_site_key'],
+					'turnstile_secret_key' => '',
+					'hide_users'           => (bool) $settings['hide_users'],
+					'disable_xmlrpc'       => (bool) $settings['disable_xmlrpc'],
+				);
+			},
+			'get_extra'  => function () {
+				return array( 'status_lines' => ner_michoel_form_guard_status_lines() );
+			},
+		),
 		'layout_toggle' => array(
 			'capability' => 'edit_posts',
 			'label'      => __( 'Layout Toggle', 'ner-michoel-core' ),

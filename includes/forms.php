@@ -14,6 +14,13 @@ if ( ! defined( 'ABSPATH' ) ) {
  * nm_email, nm_message required; nm_phone optional; nm_contact_hp is
  * a honeypot (real visitors never see/reach it — any value there is
  * treated as spam and silently dropped, no error shown, nothing sent).
+ *
+ * Then the bot check (includes/form-guard.php): the browser check, the rate
+ * limit and Turnstile, which send a person back with ?nm_contact=verify or
+ * ?nm_contact=slow. After the fields are validated, a message already
+ * received in the last day is dropped, and one that reads like spam (links,
+ * markup) is kept under Submissions as spam but not emailed. Both report
+ * "sent", so a bot learns nothing from them.
  */
 function ner_michoel_handle_contact_submit() {
 	$redirect = wp_get_referer() ? wp_get_referer() : home_url( '/contact/' );
@@ -27,7 +34,14 @@ function ner_michoel_handle_contact_submit() {
 	// Redirect as if it succeeded — telling a bot it failed just
 	// teaches it to adapt.
 	if ( ! empty( $_POST['nm_contact_hp'] ) ) {
+		ner_michoel_form_guard_log( 'honeypot' );
 		wp_safe_redirect( esc_url_raw( add_query_arg( 'nm_contact', 'sent', $redirect ) ) );
+		exit;
+	}
+
+	$guard = ner_michoel_form_guard_verify( 'contact', wp_unslash( $_POST ) );
+	if ( true !== $guard ) {
+		wp_safe_redirect( esc_url_raw( add_query_arg( 'nm_contact', 'rate_limited' === $guard ? 'slow' : 'verify', $redirect ) ) );
 		exit;
 	}
 
@@ -41,15 +55,18 @@ function ner_michoel_handle_contact_submit() {
 		exit;
 	}
 
-	ner_michoel_record_submission(
-		'contact',
-		array(
-			'name'    => $name,
-			'email'   => $email,
-			'phone'   => $phone,
-			'message' => $message,
-		)
+	$submission = array(
+		'name'    => $name,
+		'email'   => $email,
+		'phone'   => $phone,
+		'message' => $message,
 	);
+	if ( ner_michoel_form_message_is_spam( 'contact', $submission, $_POST ) ) {
+		wp_safe_redirect( esc_url_raw( add_query_arg( 'nm_contact', 'sent', $redirect ) ) );
+		exit;
+	}
+
+	ner_michoel_record_submission( 'contact', $submission );
 
 	$body_lines = array(
 		sprintf( 'Name: %s', $name ),
@@ -92,7 +109,14 @@ function ner_michoel_handle_email_magid_submit() {
 
 	// Honeypot: redirect as if it succeeded so a bot doesn't learn to adapt.
 	if ( ! empty( $_POST['nm_magid_hp'] ) ) {
+		ner_michoel_form_guard_log( 'honeypot' );
 		wp_safe_redirect( esc_url_raw( add_query_arg( 'nm_magid', 'sent', $redirect ) ) );
+		exit;
+	}
+
+	$guard = ner_michoel_form_guard_verify( 'magid', wp_unslash( $_POST ) );
+	if ( true !== $guard ) {
+		wp_safe_redirect( esc_url_raw( add_query_arg( 'nm_magid', 'rate_limited' === $guard ? 'slow' : 'verify', $redirect ) ) );
 		exit;
 	}
 
@@ -118,16 +142,19 @@ function ner_michoel_handle_email_magid_submit() {
 		? get_post( $shiur_id )
 		: null;
 
-	ner_michoel_record_submission(
-		'magid',
-		array(
-			'name'        => $name,
-			'email'       => $email,
-			'message'     => $message,
-			'speaker'     => $speaker->name,
-			'shiur_title' => $shiur ? $shiur->post_title : '',
-		)
+	$submission = array(
+		'name'        => $name,
+		'email'       => $email,
+		'message'     => $message,
+		'speaker'     => $speaker->name,
+		'shiur_title' => $shiur ? $shiur->post_title : '',
 	);
+	if ( ner_michoel_form_message_is_spam( 'magid', $submission, $_POST ) ) {
+		wp_safe_redirect( esc_url_raw( add_query_arg( 'nm_magid', 'sent', $redirect ) ) );
+		exit;
+	}
+
+	ner_michoel_record_submission( 'magid', $submission );
 
 	$speaker_email = ner_michoel_get_speaker_email( $speaker_id );
 	$to            = $speaker_email ? $speaker_email : get_option( 'admin_email' );
@@ -155,3 +182,27 @@ function ner_michoel_handle_email_magid_submit() {
 }
 add_action( 'admin_post_nm_email_magid_submit', 'ner_michoel_handle_email_magid_submit' );
 add_action( 'admin_post_nopriv_nm_email_magid_submit', 'ner_michoel_handle_email_magid_submit' );
+
+/**
+ * The message checks shared by both forms, run once the fields are valid.
+ * True when the message shouldn't be emailed: a repeat of one already
+ * received in the last day (dropped), or one that reads like spam (kept under
+ * Submissions as spam, for a look in case it's real). $posted is the raw
+ * $_POST, so markup the sanitizing removed can still be seen.
+ */
+function ner_michoel_form_message_is_spam( $type, array $submission, array $posted ) {
+	if ( ner_michoel_form_guard_is_repeat( $type, $submission['message'] ) ) {
+		ner_michoel_form_guard_log( 'duplicate' );
+		return true;
+	}
+
+	$raw_message = isset( $posted['nm_message'] ) && is_string( $posted['nm_message'] ) ? wp_unslash( $posted['nm_message'] ) : '';
+	$reason      = ner_michoel_form_guard_spam_reason( $submission['name'], $raw_message );
+	if ( '' === $reason ) {
+		return false;
+	}
+
+	ner_michoel_form_guard_log( 'spam_content' );
+	ner_michoel_record_submission( $type, $submission, $reason );
+	return true;
+}

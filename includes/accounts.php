@@ -14,6 +14,9 @@
  *
  * Nonces: register/login/forgot-password have no prior session to
  * protect, so they're public (permission_callback => '__return_true').
+ * They're guarded instead by the bot check (form-guard.php): the browser
+ * check, a rate limit and Turnstile on each, the login lockout, and a cap on
+ * reset emails to any one address.
  * update-profile and avatar require is_user_logged_in(); WordPress's
  * own REST cookie-auth middleware (rest_cookie_check_errors(), always
  * active) already rejects those with a bad/missing X-WP-Nonce header
@@ -124,7 +127,13 @@ function ner_michoel_handle_account_register( WP_REST_Request $request ) {
 	// no account created, rather than an error that would teach it to
 	// adapt.
 	if ( ! empty( $request->get_param( 'website' ) ) ) {
+		ner_michoel_form_guard_log( 'honeypot' );
 		return new WP_REST_Response( array( 'success' => true ), 200 );
+	}
+
+	$guard = ner_michoel_form_guard_verify( 'signup', $request->get_params() );
+	if ( true !== $guard ) {
+		return ner_michoel_account_guard_error( $guard );
 	}
 
 	$name     = sanitize_text_field( (string) $request->get_param( 'name' ) );
@@ -203,6 +212,11 @@ function ner_michoel_sign_in_user( $user_id ) {
  * 'email', ... ) internally), so the form just has one "Email" field.
  */
 function ner_michoel_handle_account_login( WP_REST_Request $request ) {
+	$guard = ner_michoel_form_guard_verify( 'login', $request->get_params() );
+	if ( true !== $guard ) {
+		return ner_michoel_account_guard_error( $guard );
+	}
+
 	$email    = sanitize_text_field( (string) $request->get_param( 'email' ) );
 	$password = (string) $request->get_param( 'password' );
 
@@ -219,6 +233,9 @@ function ner_michoel_handle_account_login( WP_REST_Request $request ) {
 		is_ssl()
 	);
 
+	if ( is_wp_error( $user ) && 'nm_too_many_attempts' === $user->get_error_code() ) {
+		return ner_michoel_account_error( 'too_many_attempts', $user->get_error_message(), 429 );
+	}
 	if ( is_wp_error( $user ) ) {
 		// Same message either way — confirming "that email isn't
 		// registered" to an anonymous caller is a free account-enumeration
@@ -235,10 +252,22 @@ function ner_michoel_handle_account_login( WP_REST_Request $request ) {
  * accepts an email directly (same email-or-login handling as login).
  */
 function ner_michoel_handle_account_forgot_password( WP_REST_Request $request ) {
+	$guard = ner_michoel_form_guard_verify( 'forgot', $request->get_params() );
+	if ( true !== $guard ) {
+		return ner_michoel_account_guard_error( $guard );
+	}
+
 	$email = sanitize_email( (string) $request->get_param( 'email' ) );
 
+	// At most three reset emails an hour to one address, however many
+	// networks ask: the form can't be used to flood someone's inbox.
 	if ( is_email( $email ) && email_exists( $email ) ) {
-		retrieve_password( $email );
+		if ( ner_michoel_rate_count( 'forgot_email', strtolower( $email ) ) >= 3 ) {
+			ner_michoel_form_guard_log( 'email_limited' );
+		} else {
+			ner_michoel_rate_bump( 'forgot_email', strtolower( $email ), HOUR_IN_SECONDS );
+			retrieve_password( $email );
+		}
 	}
 
 	return new WP_REST_Response(
@@ -389,6 +418,17 @@ function ner_michoel_get_current_account() {
 	);
 }
 
-function ner_michoel_account_error( $code, $message ) {
-	return new WP_REST_Response( array( 'success' => false, 'code' => $code, 'message' => $message ), 400 );
+function ner_michoel_account_error( $code, $message, $status = 400 ) {
+	return new WP_REST_Response( array( 'success' => false, 'code' => $code, 'message' => $message ), $status );
+}
+
+/**
+ * The bot check turned a logged-out form away (form-guard.php): what the
+ * person sees. account.js gets a fresh check ready, so trying again works.
+ */
+function ner_michoel_account_guard_error( $reason ) {
+	if ( 'rate_limited' === $reason ) {
+		return ner_michoel_account_error( 'rate_limited', __( 'Too many tries from your network. Please wait a while and try again.', 'ner-michoel-core' ), 429 );
+	}
+	return ner_michoel_account_error( 'verify_failed', __( 'We couldn’t confirm you’re a person. Please try again.', 'ner-michoel-core' ) );
 }
