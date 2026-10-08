@@ -38,6 +38,7 @@ function ner_michoel_render_bulk_upload_page() {
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="nm_bulk_upload_form">
 			<?php wp_nonce_field( 'nm_bulk_create_shiurim', 'nm_bulk_upload_nonce' ); ?>
 			<input type="hidden" name="action" value="nm_bulk_create_shiurim" />
+			<?php ner_michoel_panel_form_field(); ?>
 			<table class="widefat striped" id="nm_bulk_upload_table" style="display:none;max-width:720px;">
 				<thead>
 					<tr>
@@ -93,13 +94,13 @@ function ner_michoel_handle_bulk_create_shiurim() {
 	}
 
 	if ( empty( $created ) ) {
-		wp_safe_redirect( admin_url( 'admin.php?page=nm-bulk-upload&nm_bulk=empty' ) );
+		wp_safe_redirect( ner_michoel_panel_redirect_url( admin_url( 'admin.php?page=nm-bulk-upload' ), 'bulk', array( 'nm_bulk' => 'empty' ) ) );
 		exit;
 	}
 
 	set_transient( ner_michoel_bulk_upload_transient_key(), $created, HOUR_IN_SECONDS );
 
-	wp_safe_redirect( admin_url( 'admin.php?page=nm-bulk-assign' ) );
+	wp_safe_redirect( ner_michoel_panel_redirect_url( admin_url( 'admin.php?page=nm-bulk-assign' ), 'bulkassign' ) );
 	exit;
 }
 add_action( 'admin_post_nm_bulk_create_shiurim', 'ner_michoel_handle_bulk_create_shiurim' );
@@ -112,7 +113,7 @@ function ner_michoel_render_bulk_assign_page() {
 		<div class="wrap nm-dashboard">
 			<h1><?php esc_html_e( 'Assign Batch', 'ner-michoel-core' ); ?></h1>
 			<p><?php esc_html_e( 'No pending batch found — it may have expired (batches last an hour), or already been assigned.', 'ner-michoel-core' ); ?></p>
-			<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=nm-bulk-upload' ) ); ?>"><?php esc_html_e( 'Start a new bulk upload', 'ner-michoel-core' ); ?></a></p>
+			<p><a class="button" href="<?php echo esc_url( ner_michoel_is_custom_admin_render() ? ner_michoel_custom_admin_url( 'bulk' ) : admin_url( 'admin.php?page=nm-bulk-upload' ) ); ?>"><?php esc_html_e( 'Start a new bulk upload', 'ner-michoel-core' ); ?></a></p>
 		</div>
 		<?php
 		return;
@@ -151,7 +152,7 @@ function ner_michoel_render_bulk_assign_page() {
 				<li>
 					<?php echo esc_html( get_the_title( $post_id ) ); ?>
 					&mdash;
-					<a href="<?php echo esc_url( get_edit_post_link( $post_id ) ); ?>"><?php esc_html_e( 'edit', 'ner-michoel-core' ); ?></a>
+					<a href="<?php echo esc_url( ner_michoel_is_custom_admin_render() ? ner_michoel_custom_admin_url( 'shiurim', array( 'edit' => $post_id ) ) : get_edit_post_link( $post_id ) ); ?>"><?php esc_html_e( 'edit', 'ner-michoel-core' ); ?></a>
 				</li>
 			<?php endforeach; ?>
 		</ul>
@@ -159,6 +160,7 @@ function ner_michoel_render_bulk_assign_page() {
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<?php wp_nonce_field( 'nm_bulk_assign_shiurim', 'nm_bulk_assign_nonce' ); ?>
 			<input type="hidden" name="action" value="nm_bulk_assign_shiurim" />
+			<?php ner_michoel_panel_form_field(); ?>
 			<table class="form-table">
 				<tr>
 					<th scope="row"><label for="nm_bulk_speaker"><?php esc_html_e( 'Speaker', 'ner-michoel-core' ); ?></label></th>
@@ -199,7 +201,7 @@ function ner_michoel_handle_bulk_assign_shiurim() {
 
 	$post_ids = get_transient( ner_michoel_bulk_upload_transient_key() );
 	if ( ! $post_ids ) {
-		wp_safe_redirect( admin_url( 'admin.php?page=nm-bulk-upload' ) );
+		wp_safe_redirect( ner_michoel_panel_redirect_url( admin_url( 'admin.php?page=nm-bulk-upload' ), 'bulk' ) );
 		exit;
 	}
 
@@ -226,7 +228,7 @@ function ner_michoel_handle_bulk_assign_shiurim() {
 
 	delete_transient( ner_michoel_bulk_upload_transient_key() );
 
-	wp_safe_redirect( admin_url( 'edit.php?post_type=shiur&nm_bulk=done' ) );
+	wp_safe_redirect( ner_michoel_panel_redirect_url( admin_url( 'edit.php?post_type=shiur' ), 'shiurim', array( 'nm_bulk' => 'done' ) ) );
 	exit;
 }
 add_action( 'admin_post_nm_bulk_assign_shiurim', 'ner_michoel_handle_bulk_assign_shiurim' );

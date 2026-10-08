@@ -799,7 +799,7 @@ function ner_michoel_handle_import_toggle() {
 
 	ner_michoel_apply_import_action( isset( $_GET['nm_action'] ) ? sanitize_key( $_GET['nm_action'] ) : '' );
 
-	wp_safe_redirect( admin_url( 'admin.php?page=nm-library-import' ) );
+	wp_safe_redirect( ner_michoel_panel_redirect_url( admin_url( 'admin.php?page=nm-library-import' ), 'library' ) );
 	exit;
 }
 add_action( 'admin_action_nm_import_toggle', 'ner_michoel_handle_import_toggle' );
@@ -862,6 +862,14 @@ function ner_michoel_render_library_import_page() {
 	$disc_done  = (bool) get_option( 'nm_import_discovery_done' );
 	$last_error = get_option( 'nm_import_last_discovery_error', '' );
 	$last_check = (int) get_option( 'nm_import_last_check', 0 );
+	// From the Site Control Panel, the buttons come back to the panel.
+	$toggle_url = function ( $action ) {
+		$args = array( 'action' => 'nm_import_toggle', 'nm_action' => $action );
+		if ( ner_michoel_is_custom_admin_render() ) {
+			$args['nm_from_panel'] = 1;
+		}
+		return wp_nonce_url( add_query_arg( $args, admin_url( 'admin.php' ) ), 'nm_import_toggle' );
+	};
 	?>
 	<div class="wrap nm-dashboard">
 		<h1><?php esc_html_e( 'Full Library Import', 'ner-michoel-core' ); ?></h1>
@@ -907,11 +915,11 @@ function ner_michoel_render_library_import_page() {
 
 		<p>
 			<?php if ( $running ) : ?>
-				<a class="button" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin.php?action=nm_import_toggle&nm_action=pause' ), 'nm_import_toggle' ) ); ?>"><?php esc_html_e( 'Pause', 'ner-michoel-core' ); ?></a>
+				<a class="button" href="<?php echo esc_url( $toggle_url( 'pause' ) ); ?>"><?php esc_html_e( 'Pause', 'ner-michoel-core' ); ?></a>
 			<?php else : ?>
-				<a class="button button-primary" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin.php?action=nm_import_toggle&nm_action=start' ), 'nm_import_toggle' ) ); ?>"><?php esc_html_e( 'Start / Resume', 'ner-michoel-core' ); ?></a>
+				<a class="button button-primary" href="<?php echo esc_url( $toggle_url( 'start' ) ); ?>"><?php esc_html_e( 'Start / Resume', 'ner-michoel-core' ); ?></a>
 			<?php endif; ?>
-			<a class="button button-link-delete" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin.php?action=nm_import_toggle&nm_action=reset' ), 'nm_import_toggle' ) ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Clear the entire import queue and start over? Already-imported shiurim are not affected.', 'ner-michoel-core' ) ); ?>');"><?php esc_html_e( 'Reset Queue', 'ner-michoel-core' ); ?></a>
+			<a class="button button-link-delete" href="<?php echo esc_url( $toggle_url( 'reset' ) ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Clear the entire import queue and start over? Already-imported shiurim are not affected.', 'ner-michoel-core' ) ); ?>');"><?php esc_html_e( 'Reset Queue', 'ner-michoel-core' ); ?></a>
 		</p>
 
 		<p class="description"><?php esc_html_e( 'Relies on WP-Cron, which fires on site visits — a real system cron hitting wp-cron.php periodically keeps this moving even with low admin traffic.', 'ner-michoel-core' ); ?></p>

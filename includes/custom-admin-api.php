@@ -66,15 +66,15 @@ function ner_michoel_cms_registry() {
 			'fields'       => array(
 				'title'      => array( 'type' => 'text', 'label' => __( 'Title', 'ner-michoel-core' ), 'required' => true, 'target' => 'post_title' ),
 				'content'    => array( 'type' => 'textarea', 'label' => __( 'Description', 'ner-michoel-core' ), 'target' => 'post_content', 'rows' => 5 ),
-				'speaker'    => array( 'type' => 'taxonomy', 'label' => __( 'Speaker', 'ner-michoel-core' ), 'taxonomy' => 'speaker' ),
-				'series'     => array( 'type' => 'taxonomy', 'label' => __( 'Series', 'ner-michoel-core' ), 'taxonomy' => 'series', 'picker' => 'recent' ),
-				'topics'     => array( 'type' => 'taxonomy_multi', 'label' => __( 'Topics', 'ner-michoel-core' ), 'taxonomy' => 'topic' ),
-				'audio'      => array( 'type' => 'media', 'label' => __( 'Audio / Video File', 'ner-michoel-core' ), 'meta' => '_shiur_audio_id' ),
-				'vimeo_id'   => array( 'type' => 'text', 'label' => __( 'Vimeo ID (externally-hosted video, no file upload)', 'ner-michoel-core' ), 'meta' => '_shiur_vimeo_id' ),
+				'speaker'    => array( 'type' => 'taxonomy', 'label' => __( 'Speaker', 'ner-michoel-core' ), 'taxonomy' => 'speaker', 'hint' => __( 'Who gave the shiur. Not in the list? Add them under Shiurim → Speakers first.', 'ner-michoel-core' ) ),
+				'series'     => array( 'type' => 'taxonomy', 'label' => __( 'Series', 'ner-michoel-core' ), 'taxonomy' => 'series', 'picker' => 'recent', 'hint' => __( 'The group it belongs to. Type to search; the ones you used most recently are at the top.', 'ner-michoel-core' ) ),
+				'topics'     => array( 'type' => 'taxonomy_multi', 'label' => __( 'Topics', 'ner-michoel-core' ), 'taxonomy' => 'topic', 'hint' => __( 'Optional. Tick any subjects that fit.', 'ner-michoel-core' ) ),
+				'audio'      => array( 'type' => 'media', 'label' => __( 'Audio / Video File', 'ner-michoel-core' ), 'meta' => '_shiur_audio_id', 'hint' => __( 'Upload a new file, or pick one you’ve already uploaded. The length is filled in for you.', 'ner-michoel-core' ) ),
+				'vimeo_id'   => array( 'type' => 'text', 'label' => __( 'Vimeo ID (externally-hosted video, no file upload)', 'ner-michoel-core' ), 'meta' => '_shiur_vimeo_id', 'hint' => __( 'Only for a video kept on Vimeo: the number at the end of its link. Leave empty otherwise.', 'ner-michoel-core' ) ),
 				'duration'   => array( 'type' => 'readonly', 'label' => __( 'Duration (set from the file)', 'ner-michoel-core' ), 'meta' => '_shiur_duration' ),
 				'dedication' => array( 'type' => 'textarea', 'label' => __( 'Dedication (optional)', 'ner-michoel-core' ), 'meta' => '_shiur_dedication', 'rows' => 3 ),
 				'thumbnail'  => array( 'type' => 'image', 'label' => __( 'Featured Image', 'ner-michoel-core' ), 'target' => 'thumbnail' ),
-				'menu_order' => array( 'type' => 'number', 'label' => __( 'Order (within series)', 'ner-michoel-core' ), 'target' => 'menu_order' ),
+				'menu_order' => array( 'type' => 'number', 'label' => __( 'Order (within series)', 'ner-michoel-core' ), 'target' => 'menu_order', 'hint' => __( 'Lower numbers play first inside the series. Leave at 0 if the order doesn’t matter.', 'ner-michoel-core' ) ),
 				'status'     => array( 'type' => 'select', 'label' => __( 'Status', 'ner-michoel-core' ), 'target' => 'status', 'options' => $status_options ),
 			),
 		),
@@ -100,7 +100,7 @@ function ner_michoel_cms_registry() {
 				'speaker'   => array( 'type' => 'taxonomy', 'label' => __( 'Speaker', 'ner-michoel-core' ), 'taxonomy' => 'speaker' ),
 				'series'    => array( 'type' => 'taxonomy', 'label' => __( 'Series', 'ner-michoel-core' ), 'taxonomy' => 'series', 'picker' => 'recent' ),
 				'topics'    => array( 'type' => 'taxonomy_multi', 'label' => __( 'Topics', 'ner-michoel-core' ), 'taxonomy' => 'topic' ),
-				'pdf'       => array( 'type' => 'media', 'kind' => 'pdf', 'label' => __( 'PDF File', 'ner-michoel-core' ), 'meta' => '_written_pdf_id' ),
+				'pdf'       => array( 'type' => 'media', 'kind' => 'pdf', 'label' => __( 'PDF File', 'ner-michoel-core' ), 'meta' => '_written_pdf_id', 'hint' => __( 'Choosing a PDF fills in an empty Summary from its first line.', 'ner-michoel-core' ) ),
 				'thumbnail' => array( 'type' => 'image', 'label' => __( 'Cover Image (optional)', 'ner-michoel-core' ), 'target' => 'thumbnail' ),
 				'status'    => array( 'type' => 'select', 'label' => __( 'Status', 'ner-michoel-core' ), 'target' => 'status', 'options' => $status_options ),
 			),
@@ -207,7 +207,7 @@ function ner_michoel_cms_registry() {
 			'fields'       => array(
 				'name'        => array( 'type' => 'text', 'label' => __( 'Name', 'ner-michoel-core' ), 'required' => true, 'target' => 'name' ),
 				'description' => array( 'type' => 'textarea', 'label' => __( 'Bio (optional)', 'ner-michoel-core' ), 'target' => 'description', 'rows' => 4 ),
-				'image'       => array( 'type' => 'image', 'label' => __( 'Photo', 'ner-michoel-core' ), 'term_meta' => 'ner_michoel_image_id' ),
+				'image'       => array( 'type' => 'image', 'label' => __( 'Photo', 'ner-michoel-core' ), 'term_meta' => 'ner_michoel_image_id', 'hint' => __( 'A square photo looks best.', 'ner-michoel-core' ) ),
 				'email'       => array( 'type' => 'email', 'label' => __( 'Forwarding Email (optional — "Email a Magid Shiur" goes here)', 'ner-michoel-core' ), 'term_meta' => '_speaker_email' ),
 			),
 		),
@@ -225,7 +225,7 @@ function ner_michoel_cms_registry() {
 			'fields'       => array(
 				'name'        => array( 'type' => 'text', 'label' => __( 'Name', 'ner-michoel-core' ), 'required' => true, 'target' => 'name' ),
 				'description' => array( 'type' => 'textarea', 'label' => __( 'Description (optional)', 'ner-michoel-core' ), 'target' => 'description', 'rows' => 4 ),
-				'parent'      => array( 'type' => 'term_parent', 'label' => __( 'Parent Series (optional)', 'ner-michoel-core' ) ),
+				'parent'      => array( 'type' => 'term_parent', 'label' => __( 'Parent Series (optional)', 'ner-michoel-core' ), 'hint' => __( 'Only if this series sits inside a bigger one. Most series leave this empty.', 'ner-michoel-core' ) ),
 				'image'       => array( 'type' => 'image', 'label' => __( 'Cover Image', 'ner-michoel-core' ), 'term_meta' => 'ner_michoel_image_id' ),
 			),
 		),
@@ -255,6 +255,7 @@ function ner_michoel_cms_registry() {
 					),
 					// The list shows "Always" or the dates, not the stored value.
 					'list_callback' => 'ner_michoel_topic_home_summary',
+					'hint'          => __( 'Seasonal topics appear on the homepage only between the two Hebrew dates below, every year.', 'ner-michoel-core' ),
 				),
 				'from_day'    => array( 'type' => 'select', 'label' => __( 'From: day', 'ner-michoel-core' ), 'term_meta' => 'nm_season_from_day', 'options' => $hebrew_days ),
 				'from_month'  => array( 'type' => 'select', 'label' => __( 'From: Hebrew month', 'ner-michoel-core' ), 'term_meta' => 'nm_season_from_month', 'options' => $hebrew_months ),
@@ -263,6 +264,13 @@ function ner_michoel_cms_registry() {
 			),
 		),
 	);
+
+	// Every Status field gets the same plain-language hint.
+	foreach ( $registry as $type_key => $config ) {
+		if ( isset( $config['fields']['status'] ) && empty( $config['fields']['status']['hint'] ) ) {
+			$registry[ $type_key ]['fields']['status']['hint'] = __( 'Draft keeps it hidden from visitors until you’re ready.', 'ner-michoel-core' );
+		}
+	}
 
 	return $registry;
 }

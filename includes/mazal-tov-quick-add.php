@@ -31,6 +31,7 @@ function ner_michoel_render_mazal_tov_quick_add_page() {
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="max-width:600px;">
 			<?php wp_nonce_field( 'nm_mazal_tov_quick_add', 'nm_mazal_tov_quick_add_nonce' ); ?>
 			<input type="hidden" name="action" value="nm_mazal_tov_quick_add" />
+			<?php ner_michoel_panel_form_field(); ?>
 			<table class="form-table">
 				<tr>
 					<th scope="row"><label for="nm_mt_honoree"><?php esc_html_e( 'Honoree', 'ner-michoel-core' ); ?></label></th>
@@ -74,7 +75,7 @@ function ner_michoel_render_mazal_tov_quick_add_page() {
 					__( 'Need a photo on the announcement? Use the <a href="%s">full Mazal Tov screen</a> instead.', 'ner-michoel-core' ),
 					array( 'a' => array( 'href' => array() ) )
 				),
-				esc_url( admin_url( 'post-new.php?post_type=mazal_tov' ) )
+				esc_url( ner_michoel_is_custom_admin_render() ? ner_michoel_custom_admin_url( 'mazaltov', array( 'new' => 1 ) ) : admin_url( 'post-new.php?post_type=mazal_tov' ) )
 			);
 			?>
 		</p>
@@ -88,7 +89,8 @@ function ner_michoel_handle_mazal_tov_quick_add() {
 	}
 	check_admin_referer( 'nm_mazal_tov_quick_add', 'nm_mazal_tov_quick_add_nonce' );
 
-	$redirect = admin_url( 'admin.php?page=nm-mazal-tov-quick-add' );
+	// Back to the Site Control Panel when the form was posted from there.
+	$redirect = ner_michoel_panel_redirect_url( admin_url( 'admin.php?page=nm-mazal-tov-quick-add' ), 'mazaltovadd' );
 
 	$honoree      = isset( $_POST['nm_mt_honoree'] ) ? sanitize_text_field( wp_unslash( $_POST['nm_mt_honoree'] ) ) : '';
 	$relationship = isset( $_POST['nm_mt_relationship'] ) ? sanitize_text_field( wp_unslash( $_POST['nm_mt_relationship'] ) ) : '';

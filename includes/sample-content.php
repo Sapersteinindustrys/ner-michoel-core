@@ -124,6 +124,7 @@ function ner_michoel_render_sample_content_page() {
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<?php wp_nonce_field( 'nm_import_sample_content', 'nm_import_sample_content_nonce' ); ?>
 			<input type="hidden" name="action" value="nm_import_sample_content" />
+			<?php ner_michoel_panel_form_field(); ?>
 			<p>
 				<button type="submit" class="button button-primary"><?php esc_html_e( 'Import Sample Content Now', 'ner-michoel-core' ); ?></button>
 			</p>
@@ -269,15 +270,15 @@ function ner_michoel_handle_import_sample_content() {
 	}
 
 	wp_safe_redirect(
-		add_query_arg(
+		ner_michoel_panel_redirect_url(
+			admin_url( 'admin.php?page=nm-import-sample-content' ),
+			'sample',
 			array(
-				'page'         => 'nm-import-sample-content',
 				'nm_import'    => 'done',
 				'created'      => $created,
 				'skipped'      => $skipped,
 				'audio_failed' => $audio_failed,
-			),
-			admin_url( 'admin.php' )
+			)
 		)
 	);
 	exit;

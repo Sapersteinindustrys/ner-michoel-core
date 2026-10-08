@@ -137,15 +137,17 @@ function ner_michoel_settings_registry() {
 			'label'      => __( 'Admin Login Shortcut', 'ner-michoel-core' ),
 			'rest_path'  => 'admin-login-settings',
 			'fields'     => array(
-				'new_password'     => array( 'type' => 'password', 'label' => __( 'New Password', 'ner-michoel-core' ) ),
-				'confirm_password' => array( 'type' => 'password', 'label' => __( 'Confirm Password', 'ner-michoel-core' ) ),
-				'login_as'         => array( 'type' => 'select', 'label' => __( 'Logs In As', 'ner-michoel-core' ) ),
+				'new_password'     => array( 'type' => 'password', 'label' => __( 'New password', 'ner-michoel-core' ), 'desc' => __( 'Leave both password boxes empty to keep the current password.', 'ner-michoel-core' ) ),
+				'confirm_password' => array( 'type' => 'password', 'label' => __( 'Type the new password again', 'ner-michoel-core' ) ),
+				'login_as'         => array( 'type' => 'select', 'label' => __( 'Logs in as', 'ner-michoel-core' ), 'desc' => __( 'A shared password isn’t tied to one person, so it signs in as the account chosen here.', 'ner-michoel-core' ) ),
+				'remove_password'  => array( 'type' => 'checkbox', 'label' => __( 'Turn off the shortcut password (back to the normal WordPress login)', 'ner-michoel-core' ) ),
 			),
 			'get_values' => function () {
 				return array(
 					'new_password'     => '',
 					'confirm_password' => '',
 					'login_as'         => (int) get_option( 'nm_admin_panel_user_id' ),
+					'remove_password'  => false,
 				);
 			},
 			'get_extra'  => function () {

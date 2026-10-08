@@ -97,28 +97,40 @@ function ner_michoel_render_admin_panel_login( $dashboard_url ) {
 		<meta charset="<?php bloginfo( 'charset' ); ?>" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title><?php echo esc_html( get_bloginfo( 'name' ) ); ?></title>
+		<meta name="robots" content="noindex, nofollow" />
 		<style>
 			html, body { height: 100%; margin: 0; }
-			body { display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f0f0f1; }
-			.nm-login-box { background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,.08); width: 100%; max-width: 340px; box-sizing: border-box; }
-			.nm-login-box h1 { font-size: 1.15rem; margin: 0 0 20px; text-align: center; }
-			.nm-login-box input[type="password"] { width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 1rem; border: 1px solid #ccd0d4; border-radius: 4px; margin-bottom: 14px; }
-			.nm-login-box button { width: 100%; padding: 10px; font-size: 1rem; background: #2f8f5b; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-			.nm-login-box button:hover { background: #267249; }
-			.nm-login-error { color: #b32d2e; font-size: .9rem; margin: 0 0 14px; }
+			body { display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif; color: #17211d; background: radial-gradient(120% 90% at 0% 0%, #e3f3ea 0%, rgba(227,243,234,0) 60%), radial-gradient(100% 80% at 100% 100%, #e8efe9 0%, rgba(232,239,233,0) 55%), #f4f6f5; -webkit-font-smoothing: antialiased; }
+			.nm-login-box { background: #fff; padding: 36px 34px 30px; border-radius: 22px; border: 1px solid #e3e8e5; box-shadow: 0 24px 60px -24px rgba(16,32,24,.28), 0 4px 12px rgba(16,32,24,.05); width: 100%; max-width: 380px; box-sizing: border-box; text-align: center; }
+			.nm-login-mark { width: 52px; height: 52px; margin: 0 auto 18px; border-radius: 15px; display: grid; place-items: center; background: linear-gradient(140deg, #2a9a6a, #1e7d55 55%, #155e40); color: #fff; font-size: 22px; font-weight: 700; box-shadow: 0 10px 22px -10px rgba(30,125,85,.8); }
+			.nm-login-box h1 { font-size: 1.35rem; margin: 0 0 6px; letter-spacing: -.01em; }
+			.nm-login-box p.nm-login-sub { margin: 0 0 24px; color: #4b5852; font-size: .95rem; line-height: 1.5; }
+			.nm-login-box label { display: block; text-align: left; font-size: .9rem; font-weight: 600; margin-bottom: 7px; }
+			.nm-login-box input[type="password"] { width: 100%; box-sizing: border-box; padding: 12px 14px; font-size: 1rem; border: 1px solid #cdd5d1; border-radius: 12px; margin-bottom: 16px; font-family: inherit; transition: border-color .15s, box-shadow .15s; }
+			.nm-login-box input[type="password"]:focus { outline: none; border-color: #1e7d55; box-shadow: 0 0 0 4px rgba(30,125,85,.22); }
+			.nm-login-box button { width: 100%; padding: 13px; font-size: 1rem; font-weight: 600; font-family: inherit; background: #1e7d55; color: #fff; border: none; border-radius: 12px; cursor: pointer; transition: background .15s, box-shadow .15s; }
+			.nm-login-box button:hover { background: #176645; box-shadow: 0 8px 18px -8px rgba(30,125,85,.7); }
+			.nm-login-error { display: flex; gap: 8px; align-items: center; text-align: left; color: #8f2626; background: #fdeded; border: 1px solid #f6c9c9; border-radius: 12px; padding: 10px 12px; font-size: .9rem; margin: 0 0 18px; }
+			.nm-login-foot { margin: 20px 0 0; font-size: .85rem; color: #75827c; }
+			.nm-login-foot a { color: #1e7d55; font-weight: 600; text-decoration: none; }
+			.nm-login-foot a:hover { text-decoration: underline; }
 		</style>
 	</head>
 	<body>
 		<div class="nm-login-box">
+			<div class="nm-login-mark" aria-hidden="true"><?php echo esc_html( strtoupper( mb_substr( get_bloginfo( 'name' ) ? get_bloginfo( 'name' ) : 'N', 0, 1 ) ) ); ?></div>
 			<h1><?php echo esc_html( get_bloginfo( 'name' ) ); ?></h1>
+			<p class="nm-login-sub"><?php esc_html_e( 'Welcome! Enter the control panel password to continue.', 'ner-michoel-core' ); ?></p>
 			<?php if ( $error ) : ?>
-				<p class="nm-login-error"><?php echo esc_html( $error ); ?></p>
+				<p class="nm-login-error" role="alert"><?php echo esc_html( $error ); ?></p>
 			<?php endif; ?>
 			<form method="post">
 				<?php wp_nonce_field( 'nm_admin_panel_login', 'nm_admin_panel_nonce' ); ?>
-				<input type="password" name="nm_admin_panel_password" placeholder="<?php esc_attr_e( 'Password', 'ner-michoel-core' ); ?>" autofocus required />
-				<button type="submit"><?php esc_html_e( 'Log In', 'ner-michoel-core' ); ?></button>
+				<label for="nm_admin_panel_password"><?php esc_html_e( 'Password', 'ner-michoel-core' ); ?></label>
+				<input type="password" id="nm_admin_panel_password" name="nm_admin_panel_password" autocomplete="current-password" autofocus required />
+				<button type="submit"><?php esc_html_e( 'Open the Control Panel', 'ner-michoel-core' ); ?></button>
 			</form>
+			<p class="nm-login-foot"><?php esc_html_e( 'Have your own account?', 'ner-michoel-core' ); ?> <a href="<?php echo esc_url( wp_login_url( $dashboard_url ) ); ?>"><?php esc_html_e( 'Log in with it instead', 'ner-michoel-core' ); ?></a></p>
 		</div>
 	</body>
 	</html>
@@ -255,17 +267,24 @@ function ner_michoel_register_admin_login_rest_route() {
 }
 add_action( 'rest_api_init', 'ner_michoel_register_admin_login_rest_route' );
 
+/**
+ * Unlike the wp-admin form above, empty password boxes here keep the
+ * current password: the panel's form always shows them empty, so a save
+ * made only to change "Logs In As" mustn't switch the shortcut off. It's
+ * switched off only by ticking 'remove_password'.
+ */
 function ner_michoel_handle_admin_login_settings_rest( WP_REST_Request $request ) {
 	$password = (string) $request->get_param( 'new_password' );
 	$confirm  = (string) $request->get_param( 'confirm_password' );
+	$remove   = (bool) $request->get_param( 'remove_password' );
 
-	if ( '' !== $password || '' !== $confirm ) {
+	if ( $remove ) {
+		delete_option( 'nm_admin_panel_password' );
+	} elseif ( '' !== $password || '' !== $confirm ) {
 		if ( $password !== $confirm ) {
 			return new WP_Error( 'nm_password_mismatch', __( "The two passwords didn't match — nothing was changed.", 'ner-michoel-core' ), array( 'status' => 400 ) );
 		}
 		update_option( 'nm_admin_panel_password', wp_hash_password( $password ) );
-	} else {
-		delete_option( 'nm_admin_panel_password' );
 	}
 
 	$login_as = absint( $request->get_param( 'login_as' ) );

@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.21
+Stable tag: 0.9.22
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,27 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.22 =
+* Site Control Panel redesigned to be easier for a beginner: a sidebar grouped
+  by task (Shiurim, Announcements, Messages, Homepage & Look, Reports, and a
+  collapsed Advanced group), a Home page with shortcuts, at-a-glance numbers,
+  a Getting Started checklist, and the latest shiurim and messages.
+* Help on every page (what it's for, step by step), a one-minute guided tour
+  offered on the first visit, and Ctrl+K search to jump to any page.
+* Lists: friendly status labels and dates, click a row to edit, empty states,
+  and phone-friendly cards. Forms open in a panel from the right, with hints
+  under the trickier fields and a warning before closing with unsaved changes.
+* Settings screens have a save bar that shows unsaved changes, warn before
+  leaving with unsaved changes, and number the homepage banner slides.
+* Confirmations and "Saved" messages are in-page, not browser pop-ups.
+* Quick Mazal Tov, Upload Many at Once and the import screens now return to
+  the panel after submitting instead of opening wp-admin.
+* Login Shortcut: empty password boxes now keep the current password; a new
+  tick box turns the shortcut off. (Before, saving with the boxes empty
+  removed the password.)
+* The theme's styles, the WordPress toolbar and the audio player bar are kept
+  off the panel. The /admin password page has a matching look.
 
 = 0.9.21 =
 * Bot and spam protection on the public forms (Contact, Email a Magid Shiur,
