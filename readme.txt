@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.0
+Stable tag: 0.9.20
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,11 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.20 =
+* Shiurim and Written Shiurim admin lists: a new Topics column, next to
+  Series, showing every topic tag a shiur has — no need to open the edit
+  form to see them.
 
 = 0.9.0 =
 * Shiurim search ranks by title: titles with the whole search come first,
