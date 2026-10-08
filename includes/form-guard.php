@@ -504,21 +504,33 @@ function ner_michoel_form_guard_enqueue() {
 		return;
 	}
 	wp_enqueue_script( 'ner-michoel-form-guard', NER_MICHOEL_CORE_URL . 'assets/form-guard.js', array(), NER_MICHOEL_CORE_VERSION, true );
-	wp_localize_script(
-		'ner-michoel-form-guard',
-		'nmFormGuardSettings',
-		array(
-			'challengeUrl' => rest_url( 'ner-michoel/v1/form-challenge' ),
-			'checking'     => __( 'Checking you’re not a bot…', 'ner-michoel-core' ),
-			'failed'       => __( 'We couldn’t run the spam check. Please reload the page and try again.', 'ner-michoel-core' ),
-			'turnstile'    => __( 'Please complete the check above, then send again.', 'ner-michoel-core' ),
-		)
+	$settings = array(
+		'challengeUrl' => rest_url( 'ner-michoel/v1/form-challenge' ),
+		'checking'     => __( 'Checking you’re not a bot…', 'ner-michoel-core' ),
+		'failed'       => __( 'We couldn’t run the spam check. Please reload the page and try again.', 'ner-michoel-core' ),
+		'turnstile'    => __( 'Please complete the check above, then send again.', 'ner-michoel-core' ),
 	);
 	if ( ner_michoel_turnstile_enabled() ) {
 		// Cloudflare asks that this be loaded from its own address, unversioned.
-		wp_enqueue_script( 'cloudflare-turnstile', 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=nmFormGuardTurnstile', array( 'ner-michoel-form-guard' ), null, array( 'in_footer' => true, 'strategy' => 'defer' ) ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
+		// The script adds it the first time a form needs the widget.
+		$settings['turnstileApi'] = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=nmFormGuardTurnstile';
+	}
+	wp_localize_script( 'ner-michoel-form-guard', 'nmFormGuardSettings', $settings );
+}
+
+/**
+ * The theme's page router (nm-router.js) swaps a page's content in without
+ * running that page's scripts, so a visitor who clicks through to Contact never
+ * gets the browser check if only the Contact page loads it. A theme that carries
+ * the check in its forms gets the script on every page; it looks for new forms
+ * after each swap.
+ */
+function ner_michoel_form_guard_enqueue_site_wide() {
+	if ( ner_michoel_form_guard_theme_ready() ) {
+		ner_michoel_form_guard_enqueue();
 	}
 }
+add_action( 'wp_enqueue_scripts', 'ner_michoel_form_guard_enqueue_site_wide' );
 
 /* ------------------------------------------------------------------
  * Logins: a lockout after repeated wrong passwords.

@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.22
+Stable tag: 0.9.23
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,12 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.23 =
+* The bot check on the public forms now works on pages the theme's page router
+  swaps in: its script loads on every page (for a theme that carries the check),
+  looks for new forms after each swap, and the Cloudflare widget script is added
+  only when a form needs it.
 
 = 0.9.22 =
 * Site Control Panel redesigned to be easier for a beginner: a sidebar grouped

@@ -710,6 +710,7 @@ function ner_michoel_custom_admin_isolate_assets() {
 	}
 	wp_dequeue_style( 'admin-bar' );
 	wp_dequeue_script( 'admin-bar' );
+	wp_dequeue_script( 'ner-michoel-form-guard' ); // public forms only
 }
 
 /**

@@ -308,6 +308,23 @@
 		waitingForTurnstile.splice( 0 ).forEach( renderTurnstile );
 	};
 
+	var turnstileRequested = false;
+
+	// Cloudflare's script, added the first time a form needs the widget (so
+	// pages without a form never fetch it, and a form swapped in by the page
+	// router still gets it).
+	function loadTurnstile() {
+		if ( turnstileRequested || ! cfg.turnstileApi ) {
+			return;
+		}
+		turnstileRequested = true;
+		var script = document.createElement( 'script' );
+		script.src = cfg.turnstileApi;
+		script.async = true;
+		script.defer = true;
+		document.head.appendChild( script );
+	}
+
 	function renderTurnstile( state ) {
 		if ( ! state.slot || null !== state.widget ) {
 			return;
@@ -316,6 +333,7 @@
 			if ( -1 === waitingForTurnstile.indexOf( state ) ) {
 				waitingForTurnstile.push( state );
 			}
+			loadTurnstile();
 			return;
 		}
 		state.widget = window.turnstile.render( state.slot, {
@@ -537,6 +555,10 @@
 			} );
 		}
 	} );
+
+	// The theme's page router swaps in a page's content without running its
+	// scripts: look for the new page's forms after each swap.
+	document.addEventListener( 'nm:content-swapped', init );
 
 	if ( 'loading' === document.readyState ) {
 		document.addEventListener( 'DOMContentLoaded', init );
