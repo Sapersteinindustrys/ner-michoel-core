@@ -12,6 +12,10 @@
  * Rendered by ner-michoel-child (page-templates/account.php). Every
  * route below is read by that page's assets/js/account.js.
  *
+ * New accounts are verified by email (account-verification.php): sign-up
+ * creates the account switched off and emails a 6-digit code, and
+ * account-verify turns it on and signs the person in.
+ *
  * Nonces: register/login/forgot-password have no prior session to
  * protect, so they're public (permission_callback => '__return_true').
  * They're guarded instead by the bot check (form-guard.php): the browser
@@ -92,6 +96,26 @@ function ner_michoel_register_account_routes() {
 
 	register_rest_route(
 		'ner-michoel/v1',
+		'/account-verify',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ner_michoel_handle_account_verify',
+			'permission_callback' => '__return_true',
+		)
+	);
+
+	register_rest_route(
+		'ner-michoel/v1',
+		'/account-resend-code',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ner_michoel_handle_account_resend_code',
+			'permission_callback' => '__return_true',
+		)
+	);
+
+	register_rest_route(
+		'ner-michoel/v1',
 		'/account-update-profile',
 		array(
 			'methods'             => 'POST',
@@ -117,8 +141,13 @@ function ner_michoel_register_account_routes() {
 add_action( 'rest_api_init', 'ner_michoel_register_account_routes' );
 
 /**
- * Sign up: name, email, password. Creates a `subscriber`, then signs
- * them straight in — an extra "now go log in" step buys nothing here.
+ * Sign up: name, email (which is also the username) and password. Creates a
+ * `subscriber`.
+ *
+ * With email verification on (account-verification.php, once the theme has the
+ * code step) the account is created switched off, a 6-digit code is emailed, and
+ * the reply says so; nobody is signed in until the code is entered. Without it
+ * (an older theme), they're signed straight in, as before.
  */
 function ner_michoel_handle_account_register( WP_REST_Request $request ) {
 	// Honeypot: same off-screen-field trick as the contact form
@@ -137,8 +166,9 @@ function ner_michoel_handle_account_register( WP_REST_Request $request ) {
 	}
 
 	$name     = sanitize_text_field( (string) $request->get_param( 'name' ) );
-	$email    = sanitize_email( (string) $request->get_param( 'email' ) );
+	$email    = strtolower( sanitize_email( (string) $request->get_param( 'email' ) ) );
 	$password = (string) $request->get_param( 'password' );
+	$verify   = ner_michoel_email_verification_enabled();
 
 	if ( '' === $name ) {
 		return ner_michoel_account_error( 'missing_name', __( 'Please enter your name.', 'ner-michoel-core' ) );
@@ -146,33 +176,80 @@ function ner_michoel_handle_account_register( WP_REST_Request $request ) {
 	if ( ! is_email( $email ) ) {
 		return ner_michoel_account_error( 'invalid_email', __( 'Please enter a valid email address.', 'ner-michoel-core' ) );
 	}
-	if ( email_exists( $email ) ) {
-		return ner_michoel_account_error( 'email_taken', __( 'An account with this email already exists. Try logging in instead.', 'ner-michoel-core' ) );
+
+	// An address that signed up but never entered its code can sign up again:
+	// the newest sign-up (new password, new code) replaces the old one. An
+	// address with a confirmed account can't.
+	$pending  = false;
+	$existing = get_user_by( 'email', $email );
+	if ( $existing ) {
+		if ( ! $verify || ! ner_michoel_user_is_unverified( $existing->ID ) ) {
+			return ner_michoel_account_error( 'email_taken', __( 'An account with this email already exists. Try logging in instead.', 'ner-michoel-core' ) );
+		}
+		$pending = $existing;
 	}
 	if ( strlen( $password ) < 8 ) {
 		return ner_michoel_account_error( 'weak_password', __( 'Password must be at least 8 characters.', 'ner-michoel-core' ) );
 	}
 
-	$user_id = wp_insert_user(
-		array(
-			'user_login'   => ner_michoel_generate_username( $email ),
-			'user_email'   => $email,
-			'user_pass'    => $password,
-			'display_name' => $name,
-			'first_name'   => $name,
-			'role'         => 'subscriber',
-		)
-	);
-
-	if ( is_wp_error( $user_id ) ) {
-		return ner_michoel_account_error( 'register_failed', $user_id->get_error_message() );
-	}
-
 	// Two separate, optional choices made at sign-up: general updates, and
 	// alerts when new shiurim are posted. Kept as separate flags so either
 	// can be honoured on its own later. Sending is not built yet.
-	update_user_meta( $user_id, 'nm_pref_updates', $request->get_param( 'pref_updates' ) ? 1 : 0 );
-	update_user_meta( $user_id, 'nm_pref_new_shiur_alerts', $request->get_param( 'pref_new_shiur_alerts' ) ? 1 : 0 );
+	$prefs = array(
+		'updates' => $request->get_param( 'pref_updates' ) ? 1 : 0,
+		'alerts'  => $request->get_param( 'pref_new_shiur_alerts' ) ? 1 : 0,
+	);
+
+	if ( $pending ) {
+		$user_id = $pending->ID;
+		wp_set_password( $password, $user_id ); // No "password changed" email, and any old session is cleared.
+		wp_update_user(
+			array(
+				'ID'           => $user_id,
+				'display_name' => $name,
+				'first_name'   => $name,
+			)
+		);
+		update_user_meta( $user_id, 'nm_verify_prefs', $prefs );
+	} else {
+		$userdata = array(
+			'user_login'    => ner_michoel_generate_username( $email ),
+			'user_nicename' => ner_michoel_generate_nicename( $name ),
+			'user_email'    => $email,
+			'user_pass'     => $password,
+			'display_name'  => $name,
+			'first_name'    => $name,
+			'role'          => 'subscriber',
+		);
+		if ( $verify ) {
+			$userdata['meta_input'] = ner_michoel_verification_initial_meta( $prefs ); // On from the first moment: never an account without it.
+		}
+		$user_id = wp_insert_user( $userdata );
+
+		if ( is_wp_error( $user_id ) ) {
+			return ner_michoel_account_error( 'register_failed', $user_id->get_error_message() );
+		}
+	}
+
+	if ( $verify ) {
+		$begin = ner_michoel_verification_begin( $user_id );
+		return new WP_REST_Response(
+			array(
+				'success'    => true,
+				'verify'     => true,
+				'email'      => $email,
+				'token'      => $begin['token'],
+				'status'     => $begin['status'],
+				'resend_in'  => $begin['wait'],
+				'expires_in' => NER_MICHOEL_VERIFY_CODE_TTL,
+				'message'    => ner_michoel_verification_message( 'signup', $begin['status'], $email ),
+			),
+			200
+		);
+	}
+
+	update_user_meta( $user_id, 'nm_pref_updates', $prefs['updates'] );
+	update_user_meta( $user_id, 'nm_pref_new_shiur_alerts', $prefs['alerts'] );
 
 	ner_michoel_sign_in_user( $user_id );
 
@@ -180,16 +257,31 @@ function ner_michoel_handle_account_register( WP_REST_Request $request ) {
 }
 
 /**
- * A free-text username field is one more thing to fill in and one more
- * thing to forget — the email address already uniquely identifies the
- * account (wp_authenticate_username_password() accepts either), so the
- * login name is derived from it instead and never shown to the user.
+ * The email address is the username: it's what the person types to sign up
+ * and to log in, and what wp-admin's Users screen shows. (WordPress accepts it
+ * as the login name, and wp_authenticate_username_password() takes either.)
+ *
+ * Falls back to the part before the @, numbered if it's taken, when the address
+ * can't be a login name as it stands: over WordPress's 60 characters, a
+ * character WordPress strips from login names (a "+", say) that would make it
+ * collide with another account, or a clash with someone else's login or email.
  */
 function ner_michoel_generate_username( $email ) {
+	$email = strtolower( $email );
+	$whole = sanitize_user( $email, true );
+
+	if ( '' !== $whole && strlen( $whole ) <= 60 && ! username_exists( $whole ) ) {
+		$owner = email_exists( $whole ); // Someone else's address as this login would make that person's login ambiguous.
+		if ( ! $owner || $whole === $email ) {
+			return $whole;
+		}
+	}
+
 	$base = sanitize_user( current( explode( '@', $email ) ), true );
 	if ( '' === $base ) {
 		$base = 'member';
 	}
+	$base = substr( $base, 0, 50 );
 
 	$username = $base;
 	$suffix   = 1;
@@ -199,6 +291,16 @@ function ner_michoel_generate_username( $email ) {
 	}
 
 	return $username;
+}
+
+/**
+ * The URL-safe name WordPress keeps beside the login (it's in the address of an
+ * author page). From the person's name, so an email address never appears
+ * there; WordPress numbers it if another account has the same.
+ */
+function ner_michoel_generate_nicename( $name ) {
+	$nicename = sanitize_title( $name );
+	return '' === $nicename ? 'member' : substr( $nicename, 0, 50 );
 }
 
 function ner_michoel_sign_in_user( $user_id ) {
@@ -235,6 +337,9 @@ function ner_michoel_handle_account_login( WP_REST_Request $request ) {
 
 	if ( is_wp_error( $user ) && 'nm_too_many_attempts' === $user->get_error_code() ) {
 		return ner_michoel_account_error( 'too_many_attempts', $user->get_error_message(), 429 );
+	}
+	if ( is_wp_error( $user ) && 'nm_email_unverified' === $user->get_error_code() ) {
+		return ner_michoel_account_verification_required( $email );
 	}
 	if ( is_wp_error( $user ) ) {
 		// Same message either way — confirming "that email isn't
@@ -418,8 +523,42 @@ function ner_michoel_get_current_account() {
 	);
 }
 
-function ner_michoel_account_error( $code, $message, $status = 400 ) {
-	return new WP_REST_Response( array( 'success' => false, 'code' => $code, 'message' => $message ), $status );
+/**
+ * They gave the right password for an account whose email isn't confirmed yet
+ * (its login is refused: account-verification.php). Sends them to the code step,
+ * with a new code if one may be sent now. Only reached with the right password,
+ * so it tells nobody else that the account exists.
+ */
+function ner_michoel_account_verification_required( $login ) {
+	$user = is_email( $login ) ? get_user_by( 'email', $login ) : get_user_by( 'login', $login );
+	if ( ! $user || ! ner_michoel_user_is_unverified( $user->ID ) ) {
+		return ner_michoel_account_error( 'login_failed', __( 'Incorrect email or password.', 'ner-michoel-core' ) );
+	}
+
+	if ( ! ner_michoel_email_verification_enabled() ) {
+		// A theme without the code step: a reset link does the same job.
+		return ner_michoel_account_error( 'unverified', __( 'Your email address isn’t confirmed yet. Use “Forgot password?” and we’ll email you a link that confirms it.', 'ner-michoel-core' ) );
+	}
+
+	$begin = ner_michoel_verification_begin( $user->ID );
+	return new WP_REST_Response(
+		array(
+			'success'    => false,
+			'verify'     => true,
+			'code'       => 'verification_required',
+			'email'      => strtolower( $user->user_email ),
+			'token'      => $begin['token'],
+			'status'     => $begin['status'],
+			'resend_in'  => $begin['wait'],
+			'expires_in' => NER_MICHOEL_VERIFY_CODE_TTL,
+			'message'    => ner_michoel_verification_message( 'login', $begin['status'], $user->user_email ),
+		),
+		200
+	);
+}
+
+function ner_michoel_account_error( $code, $message, $status = 400, array $extra = array() ) {
+	return new WP_REST_Response( array_merge( array( 'success' => false, 'code' => $code, 'message' => $message ), $extra ), $status );
 }
 
 /**

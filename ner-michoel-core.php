@@ -3,7 +3,7 @@
  * Plugin Name:       Ner Michoel Core
  * Plugin URI:
  * Description:       Site functionality (custom post types, forms, integrations) for the Ner Michoel rebuild. Kept independent of the theme so content/data survive a future redesign.
- * Version:           0.9.23
+ * Version:           0.9.24
  * Requires at least: 6.0
  * Requires PHP:       7.4
  * Author:             Tomo
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NER_MICHOEL_CORE_VERSION', '0.9.23' );
+define( 'NER_MICHOEL_CORE_VERSION', '0.9.24' );
 define( 'NER_MICHOEL_CORE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'NER_MICHOEL_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -30,7 +30,9 @@ require_once NER_MICHOEL_CORE_PATH . 'includes/shiur-search.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/autoplay.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/next-up.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/form-guard.php';
+require_once NER_MICHOEL_CORE_PATH . 'includes/email-sender.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/accounts.php';
+require_once NER_MICHOEL_CORE_PATH . 'includes/account-verification.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/user-library.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/term-meta.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/shiur-functions.php';
@@ -107,6 +109,7 @@ register_activation_hook( __FILE__, 'ner_michoel_core_activate' );
 
 function ner_michoel_core_deactivate() {
 	wp_clear_scheduled_hook( 'nm_prune_pageviews' );
+	wp_clear_scheduled_hook( 'nm_purge_unverified_accounts' );
 	wp_clear_scheduled_hook( 'nm_import_discover_page' );
 	wp_clear_scheduled_hook( 'nm_import_process_batch' );
 	wp_clear_scheduled_hook( 'nm_import_check_new' );

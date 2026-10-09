@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.23
+Stable tag: 0.9.24
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,29 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.24 =
+* New sign-ups confirm their email. The email address is the username; a
+  6-digit code is emailed and the account only works once it is entered on the
+  Account page (the code works for 30 minutes, with 5 tries per code and at most
+  10 codes per sign-up). Needs the theme's new code step; until the theme has it,
+  sign-up works as before.
+* The confirmation email says it is from Yeshivas Toras Moshe: that is the sender
+  name shown in the inbox, and it is in the subject ("123456 is your Yeshivas
+  Toras Moshe verification code"), the message and its footer. WordPress's own
+  emails (password reset and so on) now come from that name too, instead of
+  "WordPress". The name can be changed with the nm_email_sender_name option or
+  the ner_michoel_email_sender_name filter.
+* Logging in to an account that isn't confirmed yet goes to the code step, and
+  a password-reset link also confirms the address.
+* The Control Panel's Home warns when sign-up emails can't be sent, and the
+  wp-admin Users screen shows who is waiting, with a "Confirm email" action for
+  someone whose email never arrives.
+* Sign-ups nobody finishes are removed after 7 days.
+* Page-view statistics no longer keep passwords, codes, email addresses or names
+  that end up in a web address, and a one-time clean-up removes any that were
+  saved earlier (the Control Panel's Home mentions it for two weeks if it found
+  any).
 
 = 0.9.23 =
 * The bot check on the public forms now works on pages the theme's page router

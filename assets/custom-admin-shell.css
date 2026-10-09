@@ -895,6 +895,34 @@ body.nm-app-body {
 .nm-mini-list__main strong em { font-style: normal; font-weight: 500; color: var(--nm-text-3); }
 .nm-mini-list__main span { font-size: 12.5px; color: var(--nm-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* A warning at the top of Home (for example, sign-up emails aren't going out). */
+.nm-alert {
+	display: flex;
+	gap: 14px;
+	align-items: flex-start;
+	margin: 0 0 22px;
+	padding: 16px 18px;
+	border-radius: var(--nm-radius-lg);
+	border: 1px solid #f1ddb1;
+	background: var(--nm-warn-soft);
+	color: #5f4a1e;
+}
+.nm-alert__icon {
+	width: 36px;
+	height: 36px;
+	flex: none;
+	border-radius: 11px;
+	display: grid;
+	place-items: center;
+	background: #fff;
+	color: var(--nm-warn);
+	box-shadow: var(--nm-shadow-xs);
+}
+.nm-alert__body { min-width: 0; }
+.nm-alert strong { display: block; font-size: 15px; color: #7a4b00; }
+.nm-app .nm-alert p { margin: 5px 0 0; font-size: 14px; line-height: 1.55; }
+.nm-app .nm-alert .nm-alert__detail { color: var(--nm-text-3); font-size: 13px; overflow-wrap: anywhere; }
+
 .nm-tip-card {
 	display: flex;
 	gap: 14px;

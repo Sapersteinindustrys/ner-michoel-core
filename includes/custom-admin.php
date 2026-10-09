@@ -866,6 +866,13 @@ function ner_michoel_render_custom_admin_overview() {
 	$live           = function_exists( 'ner_michoel_get_live_shiur' ) ? ner_michoel_get_live_shiur() : array();
 	$live_set       = ! empty( $live['zoom_link'] ) || ! empty( $live['schedule'] );
 
+	// New members confirm their email with a code, so if the site's email isn't
+	// going out nobody can finish signing up (account-verification.php notes it).
+	$mail_problem = function_exists( 'ner_michoel_verification_mail_problem' ) ? ner_michoel_verification_mail_problem() : false;
+
+	// The one-time clean-up of the page statistics (site-stats.php), mentioned for two weeks, only if it removed something.
+	$stats_cleaned = ( current_user_can( 'manage_options' ) && function_exists( 'ner_michoel_pageview_scrub_report' ) ) ? ner_michoel_pageview_scrub_report() : false;
+
 	$actions = array(
 		array( 'tab' => 'shiurim', 'args' => array( 'new' => 1 ), 'icon' => 'headphones', 'title' => __( 'Add a shiur', 'ner-michoel-core' ), 'desc' => __( 'One audio or video shiur', 'ner-michoel-core' ), 'tone' => 'green' ),
 		array( 'tab' => 'bulk', 'args' => array(), 'icon' => 'upload', 'title' => __( 'Upload many shiurim', 'ner-michoel-core' ), 'desc' => __( 'A whole batch at once', 'ner-michoel-core' ), 'tone' => 'blue' ),
@@ -940,6 +947,67 @@ function ner_michoel_render_custom_admin_overview() {
 	);
 	$tip = $tips[ array_rand( $tips ) ];
 	?>
+	<?php if ( $mail_problem ) : ?>
+		<div class="nm-alert nm-alert--warn" role="alert">
+			<span class="nm-alert__icon"><?php echo ner_michoel_admin_icon( 'warning' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
+			<div class="nm-alert__body">
+				<strong><?php esc_html_e( 'New members aren’t getting their sign-up code', 'ner-michoel-core' ); ?></strong>
+				<p>
+					<?php
+					echo esc_html(
+						sprintf(
+							/* translators: %d: how many emails failed */
+							_n(
+								'The website tried to email a sign-up code, and the email didn’t go out. Until email works, nobody new can finish creating an account.',
+								'The website tried to email a sign-up code %d times, and the emails didn’t go out. Until email works, nobody new can finish creating an account.',
+								(int) $mail_problem['count'],
+								'ner-michoel-core'
+							),
+							(int) $mail_problem['count']
+						)
+					);
+					?>
+					<?php esc_html_e( 'Ask whoever hosts the site to check that it can send email.', 'ner-michoel-core' ); ?>
+				</p>
+				<p class="nm-alert__tip"><?php esc_html_e( 'Meanwhile, someone who is stuck can be let in by hand: in WordPress, open Users and use “Confirm email” under their name.', 'ner-michoel-core' ); ?></p>
+				<?php if ( current_user_can( 'manage_options' ) && ! empty( $mail_problem['error'] ) ) : ?>
+					<p class="nm-alert__detail">
+						<?php
+						/* translators: %s: the mail system's own error message */
+						echo esc_html( sprintf( __( 'What the mail system said: “%s”', 'ner-michoel-core' ), $mail_problem['error'] ) );
+						?>
+					</p>
+				<?php endif; ?>
+			</div>
+		</div>
+	<?php endif; ?>
+
+	<?php if ( $stats_cleaned ) : ?>
+		<div class="nm-alert nm-alert--warn" role="status">
+			<span class="nm-alert__icon"><?php echo ner_michoel_admin_icon( 'warning' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
+			<div class="nm-alert__body">
+				<strong><?php esc_html_e( 'Private details were cleaned out of your page statistics', 'ner-michoel-core' ); ?></strong>
+				<p>
+					<?php
+					echo esc_html(
+						sprintf(
+							/* translators: %s: how many saved addresses were cleaned */
+							_n(
+								'%s saved address in the page statistics contained something private, such as a password, a sign-in code or an email address, because it had ended up in the web address of a page. It has been removed, and new visits no longer keep anything like it.',
+								'%s saved addresses in the page statistics contained something private, such as a password, a sign-in code or an email address, because it had ended up in the web address of a page. They have been removed, and new visits no longer keep anything like it.',
+								(int) $stats_cleaned['fixed'],
+								'ner-michoel-core'
+							),
+							number_format_i18n( (int) $stats_cleaned['fixed'] )
+						)
+					);
+					?>
+				</p>
+				<p class="nm-alert__tip"><?php esc_html_e( 'Web hosts keep their own logs of the addresses visited. If you think people typed their passwords on the site during that time, you could suggest they change them.', 'ner-michoel-core' ); ?></p>
+			</div>
+		</div>
+	<?php endif; ?>
+
 	<section class="nm-hero" aria-labelledby="nm-hero-title">
 		<div class="nm-hero__text">
 			<p class="nm-hero__eyebrow" data-nm-date></p>

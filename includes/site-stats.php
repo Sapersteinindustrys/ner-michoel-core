@@ -168,6 +168,111 @@ function ner_michoel_is_bot_user_agent( $user_agent ) {
 	return false;
 }
 
+/**
+ * The address a page view is stored under, minus anything that looks like a
+ * secret. The page-view script sends the whole query string, and the list of top
+ * pages in the Control Panel shows what is stored, so a password, a code, a name or an
+ * email address that ever reached a web address (a form sent the wrong way, a
+ * reset link) must not be kept. Whole parameters are dropped by name.
+ */
+function ner_michoel_pageview_clean_url( $url ) {
+	$parts = explode( '?', $url, 2 );
+	if ( 2 !== count( $parts ) ) {
+		return $url;
+	}
+
+	$kept = array();
+	foreach ( explode( '&', $parts[1] ) as $pair ) {
+		if ( '' === $pair ) {
+			continue;
+		}
+		$name = urldecode( current( explode( '=', $pair, 2 ) ) );
+		if ( ! preg_match( '/pass|pwd|secret|token|code|otp|key|nonce|e-?mail|login|phone|^(first_|last_|user_|display_)?name$/i', $name ) ) {
+			$kept[] = $pair;
+		}
+	}
+
+	return $parts[0] . ( $kept ? '?' . implode( '&', $kept ) : '' );
+}
+
+/**
+ * One-time clean-up of addresses stored before ner_michoel_pageview_clean_url()
+ * existed. For a while, the page router in theme 0.2.59 put a form's fields,
+ * passwords included, into the web address, and the page-view script stored it.
+ * This rewrites any stored address with the same rules, a few hundred rows at a
+ * time, and remembers how far it got in the option nm_pageview_scrub:
+ * 'last_id' (rows up to here are done), 'fixed' (addresses that had to change),
+ * 'done', and 'finished' (when). Once it has been through the whole table it
+ * never runs again, because new rows are cleaned as they are stored.
+ *
+ * Runs when an administrator opens the admin, and from the daily pruning job.
+ */
+function ner_michoel_pageview_scrub_stored() {
+	$state = get_option( 'nm_pageview_scrub' );
+	$state = is_array( $state ) ? $state : array();
+	if ( ! empty( $state['done'] ) ) {
+		return;
+	}
+
+	global $wpdb;
+	$table   = ner_michoel_pageviews_table_name();
+	$last_id = isset( $state['last_id'] ) ? (int) $state['last_id'] : 0;
+	$fixed   = isset( $state['fixed'] ) ? (int) $state['fixed'] : 0;
+	$done    = false;
+	$started = microtime( true );
+
+	do {
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, url FROM {$table} WHERE id > %d AND url LIKE %s ORDER BY id ASC LIMIT 500", $last_id, '%' . $wpdb->esc_like( '?' ) . '%' ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+		if ( $wpdb->last_error ) {
+			break; // The table isn't readable right now: try again next time, from the same place.
+		}
+		if ( ! $rows ) {
+			$done = true;
+			break;
+		}
+		foreach ( $rows as $row ) {
+			$last_id = (int) $row->id;
+			$clean   = ner_michoel_pageview_clean_url( $row->url );
+			if ( $clean !== $row->url ) {
+				$wpdb->update( $table, array( 'url' => $clean ), array( 'id' => (int) $row->id ) );
+				$fixed++;
+			}
+		}
+	} while ( microtime( true ) - $started < 2 );
+
+	update_option(
+		'nm_pageview_scrub',
+		array(
+			'last_id'  => $last_id,
+			'fixed'    => $fixed,
+			'done'     => $done,
+			'finished' => $done ? time() : 0,
+		)
+	);
+}
+add_action( 'nm_prune_pageviews', 'ner_michoel_pageview_scrub_stored', 20 );
+
+function ner_michoel_pageview_maybe_scrub_stored() {
+	if ( wp_doing_ajax() || ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+	ner_michoel_pageview_scrub_stored();
+}
+add_action( 'admin_init', 'ner_michoel_pageview_maybe_scrub_stored' );
+
+/**
+ * What the clean-up above found, for the Control Panel's Home to mention for two
+ * weeks after it finished, and only if it had something to remove:
+ * array( 'fixed' => how many addresses ). Otherwise false.
+ */
+function ner_michoel_pageview_scrub_report() {
+	$state = get_option( 'nm_pageview_scrub' );
+	if ( is_array( $state ) && ! empty( $state['done'] ) && ! empty( $state['fixed'] ) && ! empty( $state['finished'] ) && $state['finished'] > time() - 2 * WEEK_IN_SECONDS ) {
+		return array( 'fixed' => (int) $state['fixed'] );
+	}
+	return false;
+}
+
 function ner_michoel_handle_pageview( WP_REST_Request $request ) {
 	if ( current_user_can( 'edit_posts' ) ) {
 		return new WP_REST_Response( array( 'recorded' => false ), 200 );
@@ -180,7 +285,7 @@ function ner_michoel_handle_pageview( WP_REST_Request $request ) {
 
 	$url = (string) $request->get_param( 'url' );
 	$url = wp_strip_all_tags( $url );
-	$url = substr( $url, 0, 255 );
+	$url = substr( ner_michoel_pageview_clean_url( $url ), 0, 255 );
 	if ( '' === $url ) {
 		return new WP_REST_Response( array( 'recorded' => false ), 200 );
 	}
