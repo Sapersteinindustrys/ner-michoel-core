@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.24
+Stable tag: 0.9.25
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,17 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.25 =
+* Search finds close spellings. A search with a letter or two off, or two
+  neighbouring letters swapped ("shabbso", "shabis"), now also finds the titles,
+  speakers and series it was meant for, after everything that matches as typed
+  and marked "Close matches". This is the server-side search behind the plain
+  results page; the theme's live search and each topic's new search box do the
+  same in the browser.
+* The plain results page shows up to 100 results a page again. Astra's own page
+  size was cutting it to ten, which hid everything after the first ten, the
+  close matches included.
 
 = 0.9.24 =
 * New sign-ups confirm their email. The email address is the username; a
