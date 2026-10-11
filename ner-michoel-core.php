@@ -3,7 +3,7 @@
  * Plugin Name:       Ner Michoel Core
  * Plugin URI:
  * Description:       Site functionality (custom post types, forms, integrations) for the Ner Michoel rebuild. Kept independent of the theme so content/data survive a future redesign.
- * Version:           0.9.28
+ * Version:           0.9.29
  * Requires at least: 6.0
  * Requires PHP:       7.4
  * Author:             Tomo
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NER_MICHOEL_CORE_VERSION', '0.9.28' );
+define( 'NER_MICHOEL_CORE_VERSION', '0.9.29' );
 define( 'NER_MICHOEL_CORE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'NER_MICHOEL_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -33,6 +33,8 @@ require_once NER_MICHOEL_CORE_PATH . 'includes/shiur-search.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/autoplay.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/next-up.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/form-guard.php';
+require_once NER_MICHOEL_CORE_PATH . 'includes/site-identity.php';
+require_once NER_MICHOEL_CORE_PATH . 'includes/mazal-icon.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/email-sender.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/accounts.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/account-verification.php';

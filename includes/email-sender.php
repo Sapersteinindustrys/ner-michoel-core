@@ -4,11 +4,12 @@
  *
  * WordPress sends every message as "WordPress" unless told otherwise, which is
  * not what someone who has just signed up expects to find in their inbox. Mail
- * from this site comes from Yeshivas Toras Moshe: that is the sender name shown
- * in the inbox list, and the verification code email also says it in its subject
- * and in the message itself.
+ * from this site comes from the site's own name (the Control Panel's Homepage &
+ * Look > Site Name & Logo): that is the sender name shown in the inbox list, and
+ * the verification code email also says it in its subject and in the message
+ * itself.
  *
- * The name can be changed without touching code: set the option
+ * Another name can be used without touching code: set the option
  * nm_email_sender_name, or use the ner_michoel_email_sender_name filter. The
  * address the mail is sent from is left to WordPress and the host.
  */
@@ -18,7 +19,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * The name emails come from: "Yeshivas Toras Moshe", unless the option
+ * The name emails come from when nothing else is set: the site's name, or, for a site with no name
+ * at all, its address.
+ */
+function ner_michoel_default_email_sender_name() {
+	$name = function_exists( 'ner_michoel_core_site_name' ) ? ner_michoel_core_site_name() : '';
+	if ( '' === $name ) {
+		$name = (string) wp_parse_url( home_url(), PHP_URL_HOST );
+	}
+	return $name;
+}
+
+/**
+ * The name emails come from: the site's name, unless the option
  * nm_email_sender_name holds another or the filter changes it. Plain text, no
  * HTML entities and no line breaks (it ends up in a mail header); whoever uses
  * it escapes it for where it goes.
@@ -26,13 +39,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 function ner_michoel_email_sender_name() {
 	$name = trim( wp_strip_all_tags( (string) get_option( 'nm_email_sender_name', '' ) ) );
 	if ( '' === $name ) {
-		$name = 'Yeshivas Toras Moshe';
+		$name = ner_michoel_default_email_sender_name();
 	}
 
 	$name = (string) apply_filters( 'ner_michoel_email_sender_name', $name );
 	$name = trim( preg_replace( '/\s+/', ' ', wp_specialchars_decode( $name, ENT_QUOTES ) ) );
 
-	return '' === $name ? 'Yeshivas Toras Moshe' : $name;
+	return '' === $name ? ner_michoel_default_email_sender_name() : $name;
 }
 
 /**

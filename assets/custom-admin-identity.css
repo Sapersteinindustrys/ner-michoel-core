@@ -1,0 +1,187 @@
+/*
+ * Control Panel: the Site Name & Logo screen's preview (includes/site-identity.php) and the Homepage
+ * screen's Mazal Tov icon picker (includes/mazal-icon.php). Drawn by assets/custom-admin-settings.js.
+ * Uses the panel's own colors (custom-admin-shell.css); the gold is the site's, so the preview and the
+ * badge look like what visitors will see.
+ */
+
+/* ---------------- Site Name & Logo: how the top of the page will look ---------------- */
+
+.nm-identity-preview {
+	margin-top: 26px;
+	padding-top: 22px;
+	border-top: 1px solid var(--nm-border);
+}
+
+.nm-app .nm-identity-preview__label {
+	margin: 0 0 10px;
+	color: var(--nm-text-3);
+	font-size: 11.5px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.nm-identity-preview__bar {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	min-height: 72px;
+	padding: 14px 20px;
+	border: 1px solid var(--nm-border);
+	border-radius: 14px;
+	background: #fff;
+	box-shadow: var(--nm-shadow-xs);
+}
+
+.nm-identity-preview__logo {
+	display: block;
+	flex: none;
+	width: auto;
+	height: 44px;
+	max-width: 160px;
+	object-fit: contain;
+}
+
+.nm-identity-preview__logo[hidden],
+.nm-identity-preview__tag[hidden] {
+	display: none;
+}
+
+.nm-identity-preview__text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.nm-identity-preview__name {
+	color: #1b2f52;
+	font: 600 1.3rem/1.15 "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+	overflow-wrap: anywhere;
+}
+
+.nm-identity-preview__name.is-empty {
+	color: var(--nm-text-3);
+	font-weight: 500;
+}
+
+.nm-identity-preview__tag {
+	margin-top: 4px;
+	color: #a87a26;
+	font-size: 0.66rem;
+	font-weight: 700;
+	letter-spacing: 0.16em;
+	line-height: 1.2;
+	text-transform: uppercase;
+	overflow-wrap: anywhere;
+}
+
+/* ---------------- Homepage: the Mazal Tov icon ---------------- */
+
+.nm-app .nm-icon-choice__hint {
+	margin: 0 0 12px;
+}
+
+.nm-icon-choice__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+	gap: 10px;
+}
+
+.nm-app-body .nm-icon-choice__tile {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	padding: 14px 8px 11px;
+	border: 1.5px solid var(--nm-border);
+	border-radius: 14px;
+	background: var(--nm-surface);
+	color: var(--nm-text-2);
+	text-align: center;
+	cursor: pointer;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s var(--nm-ease);
+}
+
+.nm-app-body .nm-icon-choice__tile:hover {
+	border-color: var(--nm-primary);
+	box-shadow: var(--nm-shadow);
+	transform: translateY(-2px);
+}
+
+.nm-app-body .nm-icon-choice__tile.is-picked {
+	border-color: var(--nm-primary);
+	box-shadow: 0 0 0 3px var(--nm-primary-ring);
+	color: var(--nm-text);
+}
+
+.nm-icon-choice__glyph {
+	display: grid;
+	place-items: center;
+	width: 46px;
+	height: 46px;
+	border-radius: 50%;
+	background: #fbf3e0;
+	color: #a87a26;
+}
+
+.nm-icon-choice__glyph svg {
+	width: 24px;
+	height: 24px;
+}
+
+.nm-icon-choice__label {
+	font-size: 12.5px;
+	font-weight: 600;
+	line-height: 1.25;
+}
+
+.nm-icon-choice__own {
+	margin-top: 14px;
+}
+
+.nm-icon-choice__own[hidden] {
+	display: none;
+}
+
+.nm-icon-choice__preview {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-top: 16px;
+	color: var(--nm-text-3);
+	font-size: 13px;
+}
+
+.nm-icon-choice__badge {
+	display: grid;
+	flex: none;
+	place-items: center;
+	width: 46px;
+	height: 46px;
+	overflow: hidden;
+	border-radius: 50%;
+	background: linear-gradient(145deg, #f3d48d, #c48f2c);
+	color: #fff;
+	box-shadow: 0 10px 22px -10px rgba(168, 122, 38, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.nm-icon-choice__badge svg {
+	width: 22px;
+	height: 22px;
+}
+
+.nm-icon-choice__badge.is-picture {
+	background: #fff;
+	box-shadow: 0 0 0 2px #e4be6c, 0 10px 22px -10px rgba(168, 122, 38, 0.6);
+	color: #a87a26;
+}
+
+.nm-icon-choice__badge img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	padding: 6px;
+	box-sizing: border-box;
+	object-fit: contain;
+}

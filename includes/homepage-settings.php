@@ -7,6 +7,7 @@
  *     paragraph under it, and the title and text of the bottom "Stay Connected"
  *     banner. Blank means the theme's own words.
  *   - The photos beside the welcome, and the seconds each one stays up.
+ *   - The icon in the round badge of the Mazal Tov box (includes/mazal-icon.php).
  *
  * The photos and timing are the same options the homepage slider always used
  * (nm_homepage_slider, nm_homepage_slider_interval, homepage-slider.php). The
@@ -35,12 +36,15 @@ function ner_michoel_homepage_text_fields() {
 /**
  * What the theme says when a field is blank. Shown as the box's placeholder so
  * an admin sees what a blank box means; the theme keeps its own copy of these
- * words (inc/home.php), used when this plugin is behind.
+ * words (inc/home.php), used when this plugin is behind. The welcome names the
+ * site (Homepage & Look > Site Name & Logo); the small line above it is the
+ * second, smaller name.
  */
 function ner_michoel_homepage_text_defaults() {
 	return array(
-		'eyebrow'   => __( 'Yeshivas Toras Moshe Alumni Association', 'ner-michoel-core' ),
-		'title'     => __( 'Welcome to Ner Michoel', 'ner-michoel-core' ),
+		'eyebrow'   => __( 'Ner Michoel Alumni Association', 'ner-michoel-core' ),
+		/* translators: %s: the site's name */
+		'title'     => sprintf( __( 'Welcome to %s', 'ner-michoel-core' ), ner_michoel_core_site_name() ),
 		'lede'      => __( 'Thousands of shiurim, community updates, and a way to stay close to the Yeshiva and each other — wherever you are.', 'ner-michoel-core' ),
 		'cta_title' => __( 'Stay Connected', 'ner-michoel-core' ),
 		'cta_text'  => __( 'Update your contact info, join the alumni WhatsApp group, or reach out any time — we\'d love to hear how you\'re doing.', 'ner-michoel-core' ),
@@ -63,8 +67,9 @@ function ner_michoel_get_homepage_text( $key ) {
  */
 function ner_michoel_homepage_settings_values() {
 	$values = array(
-		'interval' => ner_michoel_get_homepage_slider_interval_seconds(),
-		'slides'   => array(),
+		'interval'   => ner_michoel_get_homepage_slider_interval_seconds(),
+		'slides'     => array(),
+		'mazal_icon' => ner_michoel_mazal_icon_panel_value(),
 	);
 	foreach ( array_keys( ner_michoel_homepage_text_fields() ) as $key ) {
 		$values[ $key ] = ner_michoel_get_homepage_text( $key );
@@ -95,13 +100,22 @@ function ner_michoel_register_homepage_settings_rest_route() {
 add_action( 'rest_api_init', 'ner_michoel_register_homepage_settings_rest_route' );
 
 /**
- * Saves {eyebrow, title, lede, cta_title, cta_text, interval, slides: [{image_id}]}.
- * A key that is not sent is left as it was.
+ * Saves {eyebrow, title, lede, cta_title, cta_text, interval, slides: [{image_id}],
+ * mazal_icon: {choice, image_id}}. A key that is not sent is left as it was.
  */
 function ner_michoel_handle_homepage_settings_rest( WP_REST_Request $request ) {
 	$body = $request->get_json_params();
 	if ( ! is_array( $body ) ) {
 		$body = array();
+	}
+
+	// Checked first, so a mistake in the icon saves nothing at all.
+	$mazal_icon = null;
+	if ( isset( $body['mazal_icon'] ) ) {
+		$mazal_icon = ner_michoel_mazal_icon_from_input( $body['mazal_icon'] );
+		if ( is_wp_error( $mazal_icon ) ) {
+			return $mazal_icon;
+		}
 	}
 
 	$text = get_option( 'nm_homepage_text', array() );
@@ -154,6 +168,10 @@ function ner_michoel_handle_homepage_settings_rest( WP_REST_Request $request ) {
 	if ( isset( $body['interval'] ) ) {
 		$interval = absint( $body['interval'] );
 		update_option( 'nm_homepage_slider_interval', $interval ? max( 2, min( 60, $interval ) ) : 6 );
+	}
+
+	if ( null !== $mazal_icon ) {
+		update_option( 'nm_mazal_icon', $mazal_icon );
 	}
 
 	if ( function_exists( 'ner_michoel_purge_page_caches' ) ) {

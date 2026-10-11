@@ -84,7 +84,7 @@
 
 	/* ---------------- Field rendering ---------------- */
 
-	function renderField( key, field, value ) {
+	function renderField( key, field, value, url ) {
 		var maxlength = field.maxlength ? ' maxlength="' + parseInt( field.maxlength, 10 ) + '"' : '';
 		switch ( field.type ) {
 			case 'text':
@@ -117,7 +117,10 @@
 					'<input type="text" class="nm-cms-input nm-settings-color-text" data-key="' + esc( key ) + '" value="' + esc( value || '' ) + '" placeholder="#rrggbb">' +
 					'</div>';
 			case 'image':
-				return renderImageField( value, '' );
+				// A single picture (the Site Name & Logo screen's logo) has its address in "<field>_url".
+				return renderImageField( value, url || '' );
+			case 'icon_choice':
+				return renderIconChoice( key, field, value );
 			default:
 				return '<input type="text" class="nm-cms-input" data-key="' + esc( key ) + '" value="' + esc( value || '' ) + '">';
 		}
@@ -141,6 +144,56 @@
 			'</div>';
 	}
 
+	/**
+	 * The Homepage screen's Mazal Tov icon: a grid of ready-made icons (field.icons, drawn by the server),
+	 * a last tile for the administrator's own picture, and a small preview of the badge. The value is
+	 * {choice: an icon's key or "image", image_id, image_url}.
+	 */
+	function renderIconChoice( key, field, value ) {
+		value = value || {};
+		var choice = value.choice || '';
+		var own = 'image' === choice;
+		var html = '<div class="nm-icon-choice" data-key="' + esc( key ) + '">';
+		if ( field.desc ) {
+			html += '<p class="nm-cms-hint nm-icon-choice__hint">' + esc( field.desc ) + '</p>';
+		}
+		html += '<div class="nm-icon-choice__grid" role="radiogroup" aria-label="' + esc( field.label ) + '">';
+		$.each( field.icons || {}, function ( iconKey, item ) {
+			var picked = iconKey === choice;
+			html += '<button type="button" class="nm-icon-choice__tile' + ( picked ? ' is-picked' : '' ) + '" role="radio" aria-checked="' + ( picked ? 'true' : 'false' ) + '" data-choice="' + esc( iconKey ) + '">' +
+				'<span class="nm-icon-choice__glyph">' + item.svg + '</span>' + // The server's own fixed drawing, not user input.
+				'<span class="nm-icon-choice__label">' + esc( item.label ) + '</span></button>';
+		} );
+		html += '<button type="button" class="nm-icon-choice__tile' + ( own ? ' is-picked' : '' ) + '" role="radio" aria-checked="' + ( own ? 'true' : 'false' ) + '" data-choice="image">' +
+			'<span class="nm-icon-choice__glyph">' + icon( 'image' ) + '</span><span class="nm-icon-choice__label">Your own picture</span></button>';
+		html += '</div>';
+		html += '<div class="nm-icon-choice__own"' + ( own ? '' : ' hidden' ) + '>' + renderImageField( value.image_id, value.image_url ) +
+			'<p class="nm-cms-hint">A small, square picture on a clear background works best. It is shown inside the round badge.</p></div>';
+		html += '<div class="nm-icon-choice__preview"><span class="nm-icon-choice__badge" aria-hidden="true"></span><span class="nm-icon-choice__preview-text">How the badge looks in the Mazal Tov box</span></div>';
+		html += '</div>';
+		return html;
+	}
+
+	function readIconChoice( $f ) {
+		return {
+			choice: $f.find( '.nm-icon-choice__tile.is-picked' ).data( 'choice' ) || '',
+			image_id: $f.find( '.nm-icon-choice__own .nm-cms-media-id' ).val() || ''
+		};
+	}
+
+	/**
+	 * The Site Name & Logo screen's preview: the name, the small second name and the logo, laid out like
+	 * the top of the site's pages. Filled in by SettingsApp.updateIdentityPreview() as the boxes change.
+	 */
+	function renderIdentityPreview() {
+		return '<div class="nm-identity-preview">' +
+			'<p class="nm-identity-preview__label">How it looks at the top of the page</p>' +
+			'<div class="nm-identity-preview__bar">' +
+			'<img class="nm-identity-preview__logo" alt="" hidden>' +
+			'<span class="nm-identity-preview__text"><strong class="nm-identity-preview__name"></strong><small class="nm-identity-preview__tag"></small></span>' +
+			'</div></div>';
+	}
+
 	function readFieldValue( $f, type ) {
 		switch ( type ) {
 			case 'checkbox':
@@ -151,6 +204,8 @@
 				return $f.find( '.nm-settings-color-text' ).val();
 			case 'image':
 				return $f.find( '.nm-cms-media-id' ).val() || '';
+			case 'icon_choice':
+				return readIconChoice( $f );
 			case 'select':
 				return $f.find( 'select' ).val();
 			default:
@@ -311,8 +366,9 @@
 			if ( field.type !== 'checkbox' ) {
 				html += '<label>' + esc( field.label ) + '</label>';
 			}
-			html += renderField( key, field, schema.values[ key ] );
-			if ( field.desc ) {
+			html += renderField( key, field, schema.values[ key ], schema.values[ key + '_url' ] );
+			// The icon picker prints its own hint, above its tiles.
+			if ( field.desc && 'icon_choice' !== field.type ) {
 				html += '<p class="nm-cms-hint">' + esc( field.desc ) + '</p>';
 			}
 			html += '</div>';
@@ -385,6 +441,9 @@
 			html += '<p class="nm-settings-card__sub">' + esc( schema.options_sub || 'How the banner behaves. These apply to every slide.' ) + '</p>';
 		}
 		html += this.renderFields();
+		if ( 'site_identity' === this.key ) {
+			html += renderIdentityPreview();
+		}
 
 		html += '</div>';
 		html += '<div class="nm-settings-bar">' +
@@ -483,6 +542,36 @@
 		$rep.find( '.nm-settings-repeater__count' ).text( $items.length ? '(' + $items.length + ')' : '' );
 	};
 
+	/**
+	 * Redraws the small previews (the Site Name & Logo screen's top-of-page preview, the Homepage screen's
+	 * icon badge) from what the boxes hold now. Does nothing on a screen without them.
+	 */
+	SettingsApp.prototype.refreshWidgets = function () {
+		var $root = this.$root;
+
+		var $preview = $root.find( '.nm-identity-preview' );
+		if ( $preview.length ) {
+			var name = $.trim( $root.find( '.nm-settings-field[data-key="name"] .nm-cms-input' ).val() );
+			var tag = $.trim( $root.find( '.nm-settings-field[data-key="tagline"] .nm-cms-input' ).val() );
+			var logo = $root.find( '.nm-settings-field[data-key="logo_id"] .nm-cms-media-preview' ).attr( 'src' );
+			$preview.find( '.nm-identity-preview__name' ).text( name || 'Your site name' ).toggleClass( 'is-empty', ! name );
+			$preview.find( '.nm-identity-preview__tag' ).text( tag ).prop( 'hidden', ! tag );
+			$preview.find( '.nm-identity-preview__logo' ).attr( 'src', logo || '' ).prop( 'hidden', ! logo );
+		}
+
+		var $box = $root.find( '.nm-icon-choice' );
+		if ( $box.length ) {
+			var $picked = $box.find( '.nm-icon-choice__tile.is-picked' );
+			var $badge = $box.find( '.nm-icon-choice__badge' );
+			if ( 'image' === $picked.data( 'choice' ) ) {
+				var src = $box.find( '.nm-icon-choice__own .nm-cms-media-preview' ).attr( 'src' );
+				$badge.addClass( 'is-picture' ).html( src ? '<img src="' + esc( src ) + '" alt="">' : icon( 'image' ) );
+			} else {
+				$badge.removeClass( 'is-picture' ).html( $picked.find( '.nm-icon-choice__glyph' ).html() );
+			}
+		}
+	};
+
 	SettingsApp.prototype.bindWidgets = function () {
 		var self = this;
 		var $root = this.$root;
@@ -500,6 +589,7 @@
 				return;
 			}
 			dirty();
+			self.refreshWidgets();
 		} );
 
 		$root.on( 'change.nmset', '.nm-settings-checkbox input', function () {
@@ -555,8 +645,23 @@
 		}
 
 		$root.find( '.nm-settings-form .nm-cms-media-field' ).each( function () {
-			bindImagePicker( $( this ), dirty );
+			bindImagePicker( $( this ), function () {
+				dirty();
+				self.refreshWidgets();
+			} );
 		} );
+
+		// The Homepage screen's icon picker: one tile at a time, and the own-picture box only for the last tile.
+		$root.on( 'click.nmset', '.nm-icon-choice__tile', function () {
+			var $tile = $( this );
+			var $box = $tile.closest( '.nm-icon-choice' );
+			$box.find( '.nm-icon-choice__tile' ).removeClass( 'is-picked' ).attr( 'aria-checked', 'false' );
+			$tile.addClass( 'is-picked' ).attr( 'aria-checked', 'true' );
+			$box.find( '.nm-icon-choice__own' ).prop( 'hidden', 'image' !== $tile.data( 'choice' ) );
+			dirty();
+			self.refreshWidgets();
+		} );
+		this.refreshWidgets();
 
 		$root.find( '.nm-settings-repeater' ).each( function () {
 			var $rep = $( this );
@@ -698,6 +803,11 @@
 					self.onSaved();
 				}
 				toast( 'Saved. Your changes are live on the site.', 'success' );
+				if ( 'site_identity' === self.key && payload.name ) {
+					// The panel's own sidebar shows the site's name too.
+					$( '.nm-brand__text strong' ).text( payload.name );
+					$( '.nm-brand__mark:not(.nm-brand__mark--img)' ).text( payload.name.charAt( 0 ).toUpperCase() );
+				}
 				if ( 'admin_login' === self.key || 'security' === self.key ) {
 					self.init( 'Saved.' ); // Re-fetch so the status line reflects the new state.
 				} else {

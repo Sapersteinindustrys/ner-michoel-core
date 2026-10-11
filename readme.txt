@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.28
+Stable tag: 0.9.29
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,21 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.29 =
+* New Control Panel screen, Homepage & Look > Site Name & Logo: the site's name, a
+  small second name (the tagline) and the logo. They are WordPress's own Site Title,
+  Tagline and logo, so the header, the browser tab, the line at the bottom of the
+  page, the welcome words and the emails all follow. Nothing is saved until the
+  screen is saved, and a blank name or a logo that is not a picture saves nothing.
+* Homepage screen: choose the icon in the round gold badge of the Mazal Tov box,
+  from eight ready-made icons (a kiddush cup is the new default; the old sparkle is
+  on the list) or your own picture. The same icon is the badge of an announcement
+  with no photo.
+* The homepage welcome now reads "Welcome to <the site's name>", and its small line
+  above is "Ner Michoel Alumni Association". The email sender name (the sign-up code
+  email, and the note on the Account page) follows the site's name unless a sender
+  name has been set.
 
 = 0.9.28 =
 * Speed & Capacity: the share of pages served from the host's cache is worked out

@@ -55,6 +55,35 @@ function ner_michoel_settings_registry() {
 				return ner_michoel_site_look_panel_extra();
 			},
 		),
+		// Site Name & Logo: the site's name, a small second name and the logo (includes/site-identity.php).
+		'site_identity' => array(
+			'capability' => 'manage_options',
+			'label'      => __( 'Site Name & Logo', 'ner-michoel-core' ),
+			'rest_path'  => 'site-identity',
+			'fields'     => array(
+				'name'    => array(
+					'type'      => 'text',
+					'label'     => __( 'Site name', 'ner-michoel-core' ),
+					'maxlength' => 80,
+					'desc'      => __( 'Shown at the top of every page, at the bottom of the page, in the browser tab, in the “Welcome to …” on the homepage and in the emails the site sends.', 'ner-michoel-core' ),
+				),
+				'tagline' => array(
+					'type'        => 'text',
+					'label'       => __( 'Small second name (optional)', 'ner-michoel-core' ),
+					'maxlength'   => 100,
+					'placeholder' => __( 'For example: Ner Michoel', 'ner-michoel-core' ),
+					'desc'        => __( 'Shown smaller, under the name at the top of the page, and after the name in the browser tab on the homepage. Leave it empty to show just the name.', 'ner-michoel-core' ),
+				),
+				'logo_id' => array(
+					'type'  => 'image',
+					'label' => __( 'Logo (optional)', 'ner-michoel-core' ),
+					'desc'  => __( 'A picture shown at the top left, before the name. A wide picture on a clear background looks best. Without a logo, the name is shown as text.', 'ner-michoel-core' ),
+				),
+			),
+			'get_values' => function () {
+				return ner_michoel_site_identity_values();
+			},
+		),
 		// Homepage: what the new homepage shows (includes/homepage-settings.php).
 		'homepage'      => array(
 			'capability'    => 'edit_posts',
@@ -98,6 +127,13 @@ function ner_michoel_settings_registry() {
 					'section' => __( 'Photos', 'ner-michoel-core' ),
 					'min'     => 2,
 					'max'     => 60,
+				),
+				'mazal_icon' => array(
+					'type'    => 'icon_choice',
+					'label'   => __( 'Icon', 'ner-michoel-core' ),
+					'section' => __( 'Mazal Tov icon', 'ner-michoel-core' ),
+					'desc'    => __( 'The round gold badge in the corner of the Mazal Tov box on the homepage. Pick a ready-made icon, or use your own picture.', 'ner-michoel-core' ),
+					'icons'   => ner_michoel_mazal_icon_panel_options(),
 				),
 				'cta_title' => array(
 					'type'        => 'text',

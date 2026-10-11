@@ -382,9 +382,26 @@ function ner_michoel_custom_admin_structure() {
 						'steps' => array(
 							__( 'Click “Add Photo” and choose a picture. The photos rotate beside the welcome words. Drag one by its number to change the order.', 'ner-michoel-core' ),
 							__( 'Change the welcome words if you like: the small line, the title and the paragraph under it. Leave a box empty to keep the site’s own words.', 'ner-michoel-core' ),
-							__( 'Set how many seconds each photo stays up, and the title and text of the banner at the bottom, then press Save.', 'ner-michoel-core' ),
+							__( 'Set how many seconds each photo stays up, and choose the icon in the Mazal Tov box (a ready-made one, or your own picture).', 'ner-michoel-core' ),
+							__( 'Change the title and text of the banner at the bottom if you like, then press Save.', 'ner-michoel-core' ),
 						),
 						'tip'   => __( 'The newest shiurim, the Mazal Tov box and the galleries on the homepage fill themselves in from what you post. The Zoom banner has its own page.', 'ner-michoel-core' ),
+					),
+				),
+				'identity' => array(
+					'label'         => __( 'Site Name & Logo', 'ner-michoel-core' ),
+					'icon'          => 'globe',
+					'settings_type' => 'site_identity',
+					'capability'    => 'manage_options',
+					'desc'          => __( 'The name of the site, a small second name, and the logo at the top of every page.', 'ner-michoel-core' ),
+					'keywords'      => 'name title site name tagline logo header brand yeshiva ner michoel second name',
+					'help'          => array(
+						'steps' => array(
+							__( 'Type the site’s name in “Site name”. It shows at the top of every page, at the bottom of the page, in the browser tab and in the emails the site sends.', 'ner-michoel-core' ),
+							__( '“Small second name” is a short line shown smaller under the name, for example “Ner Michoel”. Leave it empty to show just the name.', 'ner-michoel-core' ),
+							__( 'A logo is optional. With one, the picture shows at the top left beside the name; without one the name is shown as text. Then press Save.', 'ner-michoel-core' ),
+						),
+						'tip'   => __( 'The preview under the boxes shows how the name and the second name will look at the top of the page.', 'ner-michoel-core' ),
 					),
 				),
 				'live'   => array(
@@ -775,6 +792,9 @@ function ner_michoel_enqueue_custom_admin_assets() {
 	wp_enqueue_style( 'ner-michoel-admin-speed', NER_MICHOEL_CORE_URL . 'assets/site-speed.css', array( 'ner-michoel-admin-shell' ), NER_MICHOEL_CORE_VERSION );
 	wp_enqueue_script( 'ner-michoel-admin-speed', NER_MICHOEL_CORE_URL . 'assets/site-speed.js', array(), NER_MICHOEL_CORE_VERSION, true );
 	wp_localize_script( 'ner-michoel-admin-speed', 'nmSpeedConfig', ner_michoel_speed_script_config() );
+
+	// Site Name & Logo and the Homepage screen's icon picker (includes/site-identity.php, includes/mazal-icon.php).
+	wp_enqueue_style( 'ner-michoel-admin-identity', NER_MICHOEL_CORE_URL . 'assets/custom-admin-identity.css', array( 'ner-michoel-admin-shell' ), NER_MICHOEL_CORE_VERSION );
 
 	// Our own Settings screens — see includes/custom-admin-settings-api.php.
 	wp_enqueue_script( 'ner-michoel-admin-settings', NER_MICHOEL_CORE_URL . 'assets/custom-admin-settings.js', array( 'jquery', 'jquery-ui-sortable', 'ner-michoel-admin-shell', 'ner-michoel-admin-look' ), NER_MICHOEL_CORE_VERSION, true );
