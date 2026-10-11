@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.29
+Stable tag: 0.9.30
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,13 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.30 =
+* Site Name & Logo: removing the logo now works on every site. WordPress keeps a
+  logo in two places, the theme's own setting and its site_logo option, and the
+  option wins wherever it exists (a logo chosen in the Site Editor, or through the
+  settings API, is only stored there). Removing only the theme's setting reported
+  "saved" and left the logo in the header; now both are cleared.
 
 = 0.9.29 =
 * New Control Panel screen, Homepage & Look > Site Name & Logo: the site's name, a

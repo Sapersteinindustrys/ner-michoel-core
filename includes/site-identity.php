@@ -116,9 +116,13 @@ function ner_michoel_handle_site_identity_rest( WP_REST_Request $request ) {
 	}
 	if ( null !== $logo_id ) {
 		if ( $logo_id ) {
-			set_theme_mod( 'custom_logo', $logo_id );
+			set_theme_mod( 'custom_logo', $logo_id ); // WordPress copies it to the site_logo option itself.
 		} else {
 			remove_theme_mod( 'custom_logo' );
+			// WordPress keeps the logo a second time, as the option site_logo, and that option wins wherever it
+			// exists. A logo chosen in the Site Editor or through the settings API is only that option, so removing
+			// the theme setting alone reported success and left the logo on the site (the live site had it so).
+			delete_option( 'site_logo' );
 		}
 	}
 
