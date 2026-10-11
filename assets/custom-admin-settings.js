@@ -85,9 +85,10 @@
 	/* ---------------- Field rendering ---------------- */
 
 	function renderField( key, field, value ) {
+		var maxlength = field.maxlength ? ' maxlength="' + parseInt( field.maxlength, 10 ) + '"' : '';
 		switch ( field.type ) {
 			case 'text':
-				return '<input type="text" class="nm-cms-input" data-key="' + esc( key ) + '" value="' + esc( value || '' ) + '" placeholder="' + esc( field.placeholder || '' ) + '">';
+				return '<input type="text" class="nm-cms-input" data-key="' + esc( key ) + '" value="' + esc( value || '' ) + '" placeholder="' + esc( field.placeholder || '' ) + '"' + maxlength + '>';
 			case 'password':
 				return '<input type="password" class="nm-cms-input" data-key="' + esc( key ) + '" value="' + esc( value || '' ) + '" autocomplete="new-password">';
 			case 'number':
@@ -100,7 +101,7 @@
 				}
 				return '<input type="number" class="nm-cms-input" data-key="' + esc( key ) + '" value="' + esc( value === undefined || value === null ? '' : value ) + '"' + attrs + '>';
 			case 'textarea':
-				return '<textarea class="nm-cms-input" data-key="' + esc( key ) + '" rows="' + ( field.rows || 3 ) + '">' + esc( value || '' ) + '</textarea>';
+				return '<textarea class="nm-cms-input" data-key="' + esc( key ) + '" rows="' + ( field.rows || 3 ) + '" placeholder="' + esc( field.placeholder || '' ) + '"' + maxlength + '>' + esc( value || '' ) + '</textarea>';
 			case 'checkbox':
 				return '<label class="nm-settings-checkbox' + ( value ? ' is-on' : '' ) + '"><input type="checkbox" data-key="' + esc( key ) + '"' + ( value ? ' checked' : '' ) + '> <span>' + esc( field.label ) + '</span></label>';
 			case 'select':
@@ -302,6 +303,10 @@
 			if ( field.type === 'repeater' ) {
 				return;
 			}
+			// A field can start a named group (the Homepage screen: Welcome, Photos, Banner at the bottom).
+			if ( field.section ) {
+				html += '<h4 class="nm-settings-section">' + esc( field.section ) + '</h4>';
+			}
 			html += '<div class="nm-settings-field" data-key="' + esc( key ) + '" data-type="' + esc( field.type ) + '">';
 			if ( field.type !== 'checkbox' ) {
 				html += '<label>' + esc( field.label ) + '</label>';
@@ -319,6 +324,13 @@
 	SettingsApp.prototype.render = function () {
 		var self = this;
 		var schema = this.schema;
+
+		// Colors & Fonts draws itself (assets/custom-admin-look.js): it needs two columns and a live preview.
+		if ( 'site_look' === this.key && window.NMSiteLook ) {
+			window.NMSiteLook.render( this );
+			return;
+		}
+
 		var html = '<div class="nm-settings">';
 
 		if ( this.key === 'appearance' && schema.extra && schema.extra.palettes ) {
@@ -369,8 +381,8 @@
 
 		if ( hasRepeater ) {
 			html += '</div></div><div class="nm-settings-card"><div class="nm-settings-card__body">';
-			html += '<h3 class="nm-settings-card__title">Options</h3>';
-			html += '<p class="nm-settings-card__sub">How the banner behaves. These apply to every slide.</p>';
+			html += '<h3 class="nm-settings-card__title">' + esc( schema.options_title || 'Options' ) + '</h3>';
+			html += '<p class="nm-settings-card__sub">' + esc( schema.options_sub || 'How the banner behaves. These apply to every slide.' ) + '</p>';
 		}
 		html += this.renderFields();
 
@@ -420,8 +432,8 @@
 		var html = '<div class="nm-settings-repeater" data-key="' + esc( key ) + '">';
 		html += '<div class="nm-settings-repeater__head"><h3>' + esc( field.label ) + '<span class="nm-settings-repeater__count"></span></h3>' +
 			'<button type="button" class="nm-btn nm-btn--soft nm-btn--sm nm-settings-repeater-add">' + icon( 'plus' ) + '<span>Add ' + esc( field.item_label || 'Item' ) + '</span></button></div>';
-		html += '<p class="nm-settings-card__sub">They show in this order. Drag a ' + esc( noun ) + ' by its number to move it.</p>';
-		html += '<div class="nm-settings-repeater-list">';
+		html += '<p class="nm-settings-card__sub">' + esc( this.schema.repeater_sub || 'They show in this order. Drag a ' + noun + ' by its number to move it.' ) + '</p>';
+		html += '<div class="nm-settings-repeater-list" data-empty="' + esc( 'No ' + noun + 's yet. Press “Add ' + ( field.item_label || 'Item' ) + '” to make the first one.' ) + '">';
 		$.each( items, function ( i, item ) {
 			html += self.renderRepeaterItem( field, item, i );
 		} );
@@ -630,6 +642,9 @@
 	};
 
 	SettingsApp.prototype.collect = function () {
+		if ( 'site_look' === this.key && window.NMSiteLook ) {
+			return window.NMSiteLook.collect( this );
+		}
 		var schema = this.schema;
 		var $root = this.$root;
 		var data = {};
@@ -679,6 +694,9 @@
 				self.saving = false;
 				self.dirty = false;
 				$btn.prop( 'disabled', false ).find( 'span' ).text( 'Save' );
+				if ( self.onSaved ) {
+					self.onSaved();
+				}
 				toast( 'Saved. Your changes are live on the site.', 'success' );
 				if ( 'admin_login' === self.key || 'security' === self.key ) {
 					self.init( 'Saved.' ); // Re-fetch so the status line reflects the new state.

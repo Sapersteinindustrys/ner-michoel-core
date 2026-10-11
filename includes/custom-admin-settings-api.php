@@ -38,6 +38,86 @@ function ner_michoel_settings_registry() {
 				return array( 'palettes' => ner_michoel_appearance_palettes() );
 			},
 		),
+		// Colors & Fonts: drawn by assets/custom-admin-look.js (includes/site-look.php has the lists and the save route).
+		'site_look'     => array(
+			'capability' => 'manage_options',
+			'label'      => __( 'Colors & Fonts', 'ner-michoel-core' ),
+			'rest_path'  => 'site-look-settings',
+			'fields'     => array(
+				'heading' => array( 'type' => 'font', 'label' => __( 'Headings font', 'ner-michoel-core' ) ),
+				'body'    => array( 'type' => 'font', 'label' => __( 'Text font', 'ner-michoel-core' ) ),
+				'colors'  => array( 'type' => 'colors', 'label' => __( 'Colors', 'ner-michoel-core' ) ),
+			),
+			'get_values' => function () {
+				return ner_michoel_site_look_panel_values();
+			},
+			'get_extra'  => function () {
+				return ner_michoel_site_look_panel_extra();
+			},
+		),
+		// Homepage: what the new homepage shows (includes/homepage-settings.php).
+		'homepage'      => array(
+			'capability'    => 'edit_posts',
+			'label'         => __( 'Homepage', 'ner-michoel-core' ),
+			'rest_path'     => 'homepage-settings',
+			'options_title' => __( 'Words and timing', 'ner-michoel-core' ),
+			'options_sub'   => __( 'The words on the homepage and how long each photo stays up. Leave a box empty to keep the site’s own words.', 'ner-michoel-core' ),
+			'repeater_sub'  => __( 'The pictures that rotate beside the welcome words. They show in this order. Drag a photo by its number to move it. Wide (landscape) pictures look best.', 'ner-michoel-core' ),
+			'fields'        => array(
+				'slides'    => array(
+					'type'        => 'repeater',
+					'label'       => __( 'Photos', 'ner-michoel-core' ),
+					'item_label'  => __( 'Photo', 'ner-michoel-core' ),
+					'item_fields' => array(
+						'image_id' => array( 'type' => 'image', 'label' => __( 'Photo', 'ner-michoel-core' ) ),
+					),
+				),
+				'eyebrow'   => array(
+					'type'        => 'text',
+					'label'       => __( 'Small line above the welcome', 'ner-michoel-core' ),
+					'section'     => __( 'Welcome', 'ner-michoel-core' ),
+					'maxlength'   => 80,
+					'placeholder' => ner_michoel_homepage_text_defaults()['eyebrow'],
+				),
+				'title'     => array(
+					'type'        => 'text',
+					'label'       => __( 'Welcome title', 'ner-michoel-core' ),
+					'maxlength'   => 80,
+					'placeholder' => ner_michoel_homepage_text_defaults()['title'],
+				),
+				'lede'      => array(
+					'type'        => 'textarea',
+					'rows'        => 3,
+					'label'       => __( 'Welcome paragraph', 'ner-michoel-core' ),
+					'maxlength'   => 300,
+					'placeholder' => ner_michoel_homepage_text_defaults()['lede'],
+				),
+				'interval'  => array(
+					'type'    => 'number',
+					'label'   => __( 'Seconds per photo', 'ner-michoel-core' ),
+					'section' => __( 'Photos', 'ner-michoel-core' ),
+					'min'     => 2,
+					'max'     => 60,
+				),
+				'cta_title' => array(
+					'type'        => 'text',
+					'label'       => __( 'Title', 'ner-michoel-core' ),
+					'section'     => __( 'Banner at the bottom', 'ner-michoel-core' ),
+					'maxlength'   => 60,
+					'placeholder' => ner_michoel_homepage_text_defaults()['cta_title'],
+				),
+				'cta_text'  => array(
+					'type'        => 'textarea',
+					'rows'        => 3,
+					'label'       => __( 'Text', 'ner-michoel-core' ),
+					'maxlength'   => 300,
+					'placeholder' => ner_michoel_homepage_text_defaults()['cta_text'],
+				),
+			),
+			'get_values'    => function () {
+				return ner_michoel_homepage_settings_values();
+			},
+		),
 		'storage'       => array(
 			'capability' => 'manage_options',
 			'label'      => __( 'Storage (Bunny)', 'ner-michoel-core' ),
@@ -253,5 +333,11 @@ function ner_michoel_settings_route_get( WP_REST_Request $request ) {
 		'values'    => call_user_func( $config['get_values'] ),
 		'extra'     => isset( $config['get_extra'] ) ? call_user_func( $config['get_extra'] ) : new stdClass(),
 	);
+	// Words a screen can put on its own cards (the Homepage screen's).
+	foreach ( array( 'options_title', 'options_sub', 'repeater_sub' ) as $key ) {
+		if ( isset( $config[ $key ] ) ) {
+			$out[ $key ] = $config[ $key ];
+		}
+	}
 	return new WP_REST_Response( $out, 200 );
 }

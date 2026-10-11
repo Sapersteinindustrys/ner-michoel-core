@@ -567,7 +567,7 @@
 		{
 			target: '[data-tour="quick"]',
 			title: 'Shortcuts for the common jobs',
-			text: 'Adding a shiur, posting a Mazal Tov, changing the homepage banner — they’re all one click away from Home.',
+			text: 'Adding a shiur, posting a Mazal Tov, editing the homepage — they’re all one click away from Home.',
 			homeOnly: true
 		},
 		{

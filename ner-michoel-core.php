@@ -3,7 +3,7 @@
  * Plugin Name:       Ner Michoel Core
  * Plugin URI:
  * Description:       Site functionality (custom post types, forms, integrations) for the Ner Michoel rebuild. Kept independent of the theme so content/data survive a future redesign.
- * Version:           0.9.25
+ * Version:           0.9.26
  * Requires at least: 6.0
  * Requires PHP:       7.4
  * Author:             Tomo
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NER_MICHOEL_CORE_VERSION', '0.9.25' );
+define( 'NER_MICHOEL_CORE_VERSION', '0.9.26' );
 define( 'NER_MICHOEL_CORE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'NER_MICHOEL_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -41,6 +41,7 @@ require_once NER_MICHOEL_CORE_PATH . 'includes/image-processing.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/mazal-tov.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/admin-dashboard.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/homepage-slider.php';
+require_once NER_MICHOEL_CORE_PATH . 'includes/homepage-settings.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/layout-toggle-settings.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/downloads.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/submissions.php';
@@ -54,6 +55,7 @@ require_once NER_MICHOEL_CORE_PATH . 'includes/content-editor-role.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/shiur-stats.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/site-stats.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/appearance-settings.php';
+require_once NER_MICHOEL_CORE_PATH . 'includes/site-look.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/library-import.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/pdf-first-line.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/written-summary-batch.php';

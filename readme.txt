@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.25
+Stable tag: 0.9.26
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,24 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.26 =
+* New Colors & Fonts screen in the Control Panel (Homepage & Look). Pick a font
+  for the headings and one for the text from 41 (each name shown in its own face,
+  14 with Hebrew letters), change five colors with color pickers or click one of
+  30 ready-made color sets (13 vibrant), and watch the real homepage change beside
+  you before pressing Save. The choice reaches every page of the site. It replaces
+  the old four-color "Colors & Font" screen: the colors saved there still apply,
+  and nothing changes on the site until a look is saved. The homepage and the
+  Shiurim pages take the new colors with theme 0.2.65 or later; fonts and the
+  colors of links and buttons already work without it.
+* The Homepage screen replaces "Homepage Banner": the photos, seconds per photo,
+  the welcome words and the words of the banner at the bottom (the theme falls
+  back to its own when a box is empty). The slide headings, text and buttons the
+  old screen had did nothing on the new homepage; what older slides carried is
+  kept in the data, not shown.
+* Saving a look asks the site's page caches (Bluehost, WP Super Cache, W3 Total
+  Cache, WP Rocket, LiteSpeed) to refresh their pages.
 
 = 0.9.25 =
 * Search finds close spellings. A search with a letter or two off, or two

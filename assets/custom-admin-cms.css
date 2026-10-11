@@ -577,6 +577,8 @@ body.nm-no-scroll { overflow: hidden; }
 	color: var(--nm-text-3);
 	text-align: center;
 }
+/* The screen says what its items are called (Photos on the Homepage screen, Slides before). */
+.nm-settings-repeater-list[data-empty]:empty::before { content: attr(data-empty); }
 .nm-settings-repeater-item {
 	display: flex;
 	gap: 6px;

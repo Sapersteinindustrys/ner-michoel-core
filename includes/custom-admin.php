@@ -373,18 +373,18 @@ function ner_michoel_custom_admin_structure() {
 			'icon'  => 'palette',
 			'tabs'  => array(
 				'hero'   => array(
-					'label'         => __( 'Homepage Banner', 'ner-michoel-core' ),
+					'label'         => __( 'Homepage', 'ner-michoel-core' ),
 					'icon'          => 'banner',
-					'settings_type' => 'hero_slider',
-					'desc'          => __( 'The big rotating pictures at the top of the homepage.', 'ner-michoel-core' ),
-					'keywords'      => 'hero slider slides banner homepage pictures carousel',
+					'settings_type' => 'homepage',
+					'desc'          => __( 'The words and pictures at the top of the homepage, and the banner at the bottom.', 'ner-michoel-core' ),
+					'keywords'      => 'homepage welcome title text words pictures photos slides banner hero stay connected',
 					'help'          => array(
 						'steps' => array(
-							__( 'Click “Add Slide”, choose a picture, and add a heading and a short line of text.', 'ner-michoel-core' ),
-							__( 'Want a button on the slide? Fill in the button text and link. You can search for a page by name.', 'ner-michoel-core' ),
-							__( 'Drag a slide by its handle to change the order, then press Save.', 'ner-michoel-core' ),
+							__( 'Click “Add Photo” and choose a picture. The photos rotate beside the welcome words. Drag one by its number to change the order.', 'ner-michoel-core' ),
+							__( 'Change the welcome words if you like: the small line, the title and the paragraph under it. Leave a box empty to keep the site’s own words.', 'ner-michoel-core' ),
+							__( 'Set how many seconds each photo stays up, and the title and text of the banner at the bottom, then press Save.', 'ner-michoel-core' ),
 						),
-						'tip'   => __( 'Wide (landscape) pictures look best.', 'ner-michoel-core' ),
+						'tip'   => __( 'The newest shiurim, the Mazal Tov box and the galleries on the homepage fill themselves in from what you post. The Zoom banner has its own page.', 'ner-michoel-core' ),
 					),
 				),
 				'live'   => array(
@@ -402,19 +402,19 @@ function ner_michoel_custom_admin_structure() {
 					),
 				),
 				'colors' => array(
-					'label'         => __( 'Colors & Font', 'ner-michoel-core' ),
+					'label'         => __( 'Colors & Fonts', 'ner-michoel-core' ),
 					'icon'          => 'palette',
-					'settings_type' => 'appearance',
+					'settings_type' => 'site_look',
 					'capability'    => 'manage_options',
-					'desc'          => __( 'The colors and font of the Shiurim pages and the audio player.', 'ner-michoel-core' ),
-					'keywords'      => 'colour color theme font appearance design',
+					'desc'          => __( 'The fonts and colors of the whole site, with a live preview of the homepage.', 'ner-michoel-core' ),
+					'keywords'      => 'colour color theme font fonts typeface palette appearance design look style',
 					'help'          => array(
 						'steps' => array(
-							__( 'Click one of the ready-made color sets to try it. The preview updates straight away.', 'ner-michoel-core' ),
-							__( 'Or pick each color yourself.', 'ner-michoel-core' ),
-							__( 'Press Save to put it on the site.', 'ner-michoel-core' ),
+							__( 'Pick a font for the headings and one for the text. The homepage on the right changes as you choose.', 'ner-michoel-core' ),
+							__( 'Click a color set to try it, or change any of the five colors yourself. Fonts and colors both apply to every page of the site.', 'ner-michoel-core' ),
+							__( 'Press Save to put the new look on the site. “Discard changes” throws away what you changed since the last save, and “Back to the original look” puts the site’s own fonts and colors back.', 'ner-michoel-core' ),
 						),
-						'tip'   => __( 'Nothing changes on the site until you press Save.', 'ner-michoel-core' ),
+						'tip'   => __( 'Nothing changes on the site until you press Save. The first of the calmer color sets, “Ner Michoel (original)”, is the site’s own colors.', 'ner-michoel-core' ),
 					),
 				),
 				'menu'   => array(
@@ -434,7 +434,7 @@ function ner_michoel_custom_admin_structure() {
 					'label'         => __( 'Layout Switch', 'ner-michoel-core' ),
 					'icon'          => 'toggle',
 					'settings_type' => 'layout_toggle',
-					'desc'          => __( 'The small button visitors use to switch between page layouts (Modern, Classic, and so on).', 'ner-michoel-core' ),
+					'desc'          => __( 'The small buttons on the Shiurim pages that switch between the page styles (Studio, Modern, 24Six and Classic).', 'ner-michoel-core' ),
 					'keywords'      => 'layout toggle modern classic 24six studio switch',
 					'help'          => array(
 						'steps' => array(
@@ -750,8 +750,12 @@ function ner_michoel_enqueue_custom_admin_assets() {
 		)
 	);
 
+	// The Colors & Fonts screen (includes/site-look.php), drawn by its own script: the settings script hands it the screen.
+	wp_enqueue_style( 'ner-michoel-admin-look', NER_MICHOEL_CORE_URL . 'assets/custom-admin-look.css', array( 'ner-michoel-admin-shell' ), NER_MICHOEL_CORE_VERSION );
+	wp_enqueue_script( 'ner-michoel-admin-look', NER_MICHOEL_CORE_URL . 'assets/custom-admin-look.js', array( 'jquery', 'ner-michoel-admin-shell' ), NER_MICHOEL_CORE_VERSION, true );
+
 	// Our own Settings screens — see includes/custom-admin-settings-api.php.
-	wp_enqueue_script( 'ner-michoel-admin-settings', NER_MICHOEL_CORE_URL . 'assets/custom-admin-settings.js', array( 'jquery', 'jquery-ui-sortable', 'ner-michoel-admin-shell' ), NER_MICHOEL_CORE_VERSION, true );
+	wp_enqueue_script( 'ner-michoel-admin-settings', NER_MICHOEL_CORE_URL . 'assets/custom-admin-settings.js', array( 'jquery', 'jquery-ui-sortable', 'ner-michoel-admin-shell', 'ner-michoel-admin-look' ), NER_MICHOEL_CORE_VERSION, true );
 	wp_localize_script(
 		'ner-michoel-admin-settings',
 		'nmSettingsConfig',
@@ -879,7 +883,7 @@ function ner_michoel_render_custom_admin_overview() {
 		array( 'tab' => 'written', 'args' => array( 'new' => 1 ), 'icon' => 'file-text', 'title' => __( 'Add a written shiur', 'ner-michoel-core' ), 'desc' => __( 'Publish a PDF', 'ner-michoel-core' ), 'tone' => 'violet' ),
 		array( 'tab' => 'mazaltovadd', 'args' => array(), 'icon' => 'sparkles', 'title' => __( 'Post a Mazal Tov', 'ner-michoel-core' ), 'desc' => __( 'Share a simcha in four boxes', 'ner-michoel-core' ), 'tone' => 'amber' ),
 		array( 'tab' => 'newslist', 'args' => array( 'new' => 1 ), 'icon' => 'newspaper', 'title' => __( 'Post news', 'ner-michoel-core' ), 'desc' => __( 'For the News & Events page', 'ner-michoel-core' ), 'tone' => 'rose' ),
-		array( 'tab' => 'hero', 'args' => array(), 'icon' => 'banner', 'title' => __( 'Change the homepage banner', 'ner-michoel-core' ), 'desc' => __( 'The big pictures on top', 'ner-michoel-core' ), 'tone' => 'teal' ),
+		array( 'tab' => 'hero', 'args' => array(), 'icon' => 'banner', 'title' => __( 'Edit the homepage', 'ner-michoel-core' ), 'desc' => __( 'Welcome words and pictures', 'ner-michoel-core' ), 'tone' => 'teal' ),
 		array( 'tab' => 'live', 'args' => array(), 'icon' => 'video', 'title' => __( 'Update the Zoom link', 'ner-michoel-core' ), 'desc' => __( 'Live shiur link and times', 'ner-michoel-core' ), 'tone' => 'blue' ),
 		array( 'tab' => 'inquiries', 'args' => array(), 'icon' => 'inbox', 'title' => __( 'Read messages', 'ner-michoel-core' ), 'desc' => __( 'From the contact forms', 'ner-michoel-core' ), 'tone' => 'slate' ),
 	);
@@ -899,7 +903,7 @@ function ner_michoel_render_custom_admin_overview() {
 		array( 'key' => 'tour', 'title' => __( 'Take the 1-minute tour', 'ner-michoel-core' ), 'desc' => __( 'A quick look at where everything is.', 'ner-michoel-core' ), 'done' => null, 'tour' => true ),
 		array( 'key' => 'speaker', 'tab' => 'speakers', 'args' => array( 'new' => 1 ), 'title' => __( 'Add a speaker', 'ner-michoel-core' ), 'desc' => __( 'Shiurim are listed under their speaker.', 'ner-michoel-core' ), 'done' => $speakers > 0 ),
 		array( 'key' => 'shiur', 'tab' => 'shiurim', 'args' => array( 'new' => 1 ), 'title' => __( 'Add your first shiur', 'ner-michoel-core' ), 'desc' => __( 'Title, speaker, series, and the audio file.', 'ner-michoel-core' ), 'done' => ( $shiurim + $drafts ) > 0 ),
-		array( 'key' => 'banner', 'tab' => 'hero', 'args' => array(), 'title' => __( 'Put a picture on the homepage banner', 'ner-michoel-core' ), 'desc' => __( 'The first thing visitors see.', 'ner-michoel-core' ), 'done' => $slides > 0 ),
+		array( 'key' => 'banner', 'tab' => 'hero', 'args' => array(), 'title' => __( 'Put a picture on the homepage', 'ner-michoel-core' ), 'desc' => __( 'It rotates beside the welcome words.', 'ner-michoel-core' ), 'done' => $slides > 0 ),
 		array( 'key' => 'live', 'tab' => 'live', 'args' => array(), 'title' => __( 'Add the Live Shiur / Zoom link', 'ner-michoel-core' ), 'desc' => __( 'So people can join live.', 'ner-michoel-core' ), 'done' => $live_set ),
 		array( 'key' => 'search', 'title' => __( 'Try the quick search', 'ner-michoel-core' ), 'desc' => __( 'Press Ctrl + K and type what you’re looking for.', 'ner-michoel-core' ), 'done' => null, 'search' => true ),
 	);
@@ -941,7 +945,7 @@ function ner_michoel_render_custom_admin_overview() {
 		__( 'Press Ctrl + K (⌘ + K on a Mac) to jump to any page by typing its name.', 'ner-michoel-core' ),
 		__( 'Drafts are hidden from visitors, which is perfect for getting things ready ahead of time.', 'ner-michoel-core' ),
 		__( 'Every page has a Help button at the top right that explains it step by step.', 'ner-michoel-core' ),
-		__( 'Gallery photos and banner slides can be dragged into a new order.', 'ner-michoel-core' ),
+		__( 'Gallery photos and homepage photos can be dragged into a new order.', 'ner-michoel-core' ),
 		__( 'Uploading lots of shiurim? “Upload Many at Once” saves a lot of clicks.', 'ner-michoel-core' ),
 		__( 'Click “View site” at the top to see your changes the way visitors do.', 'ner-michoel-core' ),
 	);
@@ -1283,6 +1287,7 @@ function ner_michoel_render_custom_admin_ui() {
 	add_action( 'wp_enqueue_scripts', 'ner_michoel_custom_admin_isolate_assets', 9999 );
 	remove_action( 'wp_footer', 'ner_michoel_render_player_bar' );
 	remove_action( 'wp_head', 'ner_michoel_render_appearance_overrides', 20 );
+	remove_action( 'wp_head', 'ner_michoel_print_site_look', 99 ); // The site's fonts and colors are for the site, not for this panel.
 
 	nocache_headers();
 	?>
