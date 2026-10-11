@@ -89,9 +89,22 @@ function ner_michoel_first_shiur_ids_by_term( $taxonomy, $term_ids, $newest_firs
 /**
  * The first track of each term's queue, for a card's play button: term ID =>
  * array with one track (or an empty array when that shiur has no audio, in which
- * case the button falls back to fetching the full queue).
+ * case the button falls back to fetching the full queue). Kept until the library
+ * changes (ner_michoel_library_cache(), site-speed.php), like the counts below:
+ * the Shiurim and speaker pages ask for the same ones on every visit.
  */
 function ner_michoel_first_track_by_term( $taxonomy, $term_ids, $newest_first ) {
+	$ids = array_values( array_unique( array_filter( array_map( 'absint', (array) $term_ids ) ) ) );
+	sort( $ids );
+	$run = function () use ( $taxonomy, $ids, $newest_first ) {
+		return ner_michoel_first_track_by_term_query( $taxonomy, $ids, $newest_first );
+	};
+	return function_exists( 'ner_michoel_library_cache' )
+		? ner_michoel_library_cache( 'first-tracks:' . $taxonomy . ':' . ( $newest_first ? 1 : 0 ) . ':' . md5( implode( ',', $ids ) ), $run )
+		: $run();
+}
+
+function ner_michoel_first_track_by_term_query( $taxonomy, $term_ids, $newest_first ) {
 	$first = ner_michoel_first_shiur_ids_by_term( $taxonomy, $term_ids, $newest_first );
 	if ( ! $first ) {
 		return array();
@@ -125,8 +138,16 @@ function ner_michoel_first_track_by_term( $taxonomy, $term_ids, $newest_first ) 
 /**
  * Published shiurim per term: term ID => count. One query for every term of the
  * taxonomy, so the archive's "N shiurim" lines don't load the shiurim themselves.
+ * Kept until the library changes.
  */
 function ner_michoel_term_shiur_counts( $taxonomy ) {
+	$run = function () use ( $taxonomy ) {
+		return ner_michoel_term_shiur_counts_query( $taxonomy );
+	};
+	return function_exists( 'ner_michoel_library_cache' ) ? ner_michoel_library_cache( 'term-counts:' . $taxonomy, $run ) : $run();
+}
+
+function ner_michoel_term_shiur_counts_query( $taxonomy ) {
 	global $wpdb;
 
 	$rows = $wpdb->get_results( $wpdb->prepare(
@@ -151,8 +172,16 @@ function ner_michoel_term_shiur_counts( $taxonomy ) {
  * nothing to play, so its card gets no Play button. Counts the audio attachment
  * the queue uses, in one query for the whole taxonomy. A video file under the
  * same meta key isn't counted: ner_michoel_get_shiur_audio_url() skips it too.
+ * Kept until the library changes.
  */
 function ner_michoel_term_playable_counts( $taxonomy ) {
+	$run = function () use ( $taxonomy ) {
+		return ner_michoel_term_playable_counts_query( $taxonomy );
+	};
+	return function_exists( 'ner_michoel_library_cache' ) ? ner_michoel_library_cache( 'term-playable:' . $taxonomy, $run ) : $run();
+}
+
+function ner_michoel_term_playable_counts_query( $taxonomy ) {
 	global $wpdb;
 
 	$rows = $wpdb->get_results( $wpdb->prepare(

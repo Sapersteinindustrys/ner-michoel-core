@@ -78,6 +78,13 @@ function ner_michoel_next_up_is_playable( $shiur_id ) {
  * The next shiurim after $current_id, most related first. Returns IDs, so the
  * caller decides how many to use. $exclude holds IDs to leave out (anything
  * already played or queued). $limit is capped at 10.
+ *
+ * Without a visitor's own History or Saved list the ranking depends only on the
+ * library, so the whole ranked list for a shiur is worked out once and kept until
+ * the library changes (ner_michoel_library_cache()): everyone listening to the
+ * same shiur shares it, and only the leaving-out of $exclude is done per request.
+ * Leaving IDs out after ranking gives the same list as leaving them out before,
+ * because one shiur's score never depends on another's.
  */
 function ner_michoel_next_up_ids( $current_id, $exclude = array(), $limit = 5 ) {
 	$current = get_post( (int) $current_id );
@@ -98,6 +105,35 @@ function ner_michoel_next_up_ids( $current_id, $exclude = array(), $limit = 5 ) 
 		? ner_michoel_user_affinity_weights( get_current_user_id() )
 		: array( 'speaker' => array(), 'series' => array(), 'heard_ids' => array() );
 
+	if ( ! $affinity['speaker'] && ! $affinity['series'] && ! $affinity['heard_ids'] && function_exists( 'ner_michoel_library_cache' ) ) {
+		$ranked = ner_michoel_library_cache(
+			'next-up:' . $current->ID,
+			function () use ( $current, $affinity ) {
+				return ner_michoel_next_up_rank( $current, array(), $affinity );
+			}
+		);
+		$skip   = array_flip( array_map( 'intval', (array) $exclude ) );
+		$out    = array();
+		foreach ( (array) $ranked as $id ) {
+			if ( ! isset( $skip[ $id ] ) ) {
+				$out[] = (int) $id;
+				if ( count( $out ) >= $limit ) {
+					break;
+				}
+			}
+		}
+		return $out;
+	}
+
+	return array_slice( ner_michoel_next_up_rank( $current, $exclude, $affinity ), 0, $limit );
+}
+
+/**
+ * Every shiur related to $current, most related first (the ranking described at the
+ * top of this file), leaving out $current, $exclude and what the visitor has heard.
+ * Returns IDs.
+ */
+function ner_michoel_next_up_rank( $current, $exclude, $affinity ) {
 	$skip = array_flip( array_map( 'intval', array_merge( array( $current->ID ), (array) $exclude, $affinity['heard_ids'] ) ) );
 
 	$series_terms  = get_the_terms( $current->ID, 'series' );
@@ -256,7 +292,7 @@ function ner_michoel_next_up_ids( $current_id, $exclude = array(), $limit = 5 ) 
 		}
 	);
 
-	return array_slice( array_column( $scored, 'id' ), 0, $limit );
+	return array_column( $scored, 'id' );
 }
 
 /**

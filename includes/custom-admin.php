@@ -466,6 +466,23 @@ function ner_michoel_custom_admin_structure() {
 						'tip'   => __( 'Counted privately on this site. No outside tracking service is used.', 'ner-michoel-core' ),
 					),
 				),
+				'speed'    => array(
+					'label'      => __( 'Speed & Capacity', 'ner-michoel-core' ),
+					'icon'       => 'zap',
+					'callback'   => 'ner_michoel_render_speed_page',
+					'bare'       => true,
+					'capability' => 'manage_options',
+					'desc'       => __( 'Who is on the site right now, how many people it can take at once, and what slows it down.', 'ner-michoel-core' ),
+					'keywords'   => 'speed slow fast performance capacity load live online now listening busy server monitor health',
+					'help'       => array(
+						'steps' => array(
+							__( '“Right now” shows who is on the site and listening, and updates every 10 seconds while the page is open.', 'ner-michoel-core' ),
+							__( '“How many people at once” is worked out from how much work real visitors caused over the last 7 days.', 'ner-michoel-core' ),
+							__( '“What slows the site down” lists each known cause and whether it is fixed. Click one for details; “Check now” runs the background checks straight away.', 'ner-michoel-core' ),
+						),
+						'tip'   => __( 'Signed-in editors and administrators aren’t counted as visitors, so testing the site doesn’t change the numbers.', 'ner-michoel-core' ),
+					),
+				),
 				'listened' => array(
 					'label'    => __( 'Most Listened', 'ner-michoel-core' ),
 					'icon'     => 'trending',
@@ -753,6 +770,11 @@ function ner_michoel_enqueue_custom_admin_assets() {
 	// The Colors & Fonts screen (includes/site-look.php), drawn by its own script: the settings script hands it the screen.
 	wp_enqueue_style( 'ner-michoel-admin-look', NER_MICHOEL_CORE_URL . 'assets/custom-admin-look.css', array( 'ner-michoel-admin-shell' ), NER_MICHOEL_CORE_VERSION );
 	wp_enqueue_script( 'ner-michoel-admin-look', NER_MICHOEL_CORE_URL . 'assets/custom-admin-look.js', array( 'jquery', 'ner-michoel-admin-shell' ), NER_MICHOEL_CORE_VERSION, true );
+
+	// Reports > Speed & Capacity (includes/site-speed-screen.php): its charts and live numbers.
+	wp_enqueue_style( 'ner-michoel-admin-speed', NER_MICHOEL_CORE_URL . 'assets/site-speed.css', array( 'ner-michoel-admin-shell' ), NER_MICHOEL_CORE_VERSION );
+	wp_enqueue_script( 'ner-michoel-admin-speed', NER_MICHOEL_CORE_URL . 'assets/site-speed.js', array(), NER_MICHOEL_CORE_VERSION, true );
+	wp_localize_script( 'ner-michoel-admin-speed', 'nmSpeedConfig', ner_michoel_speed_script_config() );
 
 	// Our own Settings screens — see includes/custom-admin-settings-api.php.
 	wp_enqueue_script( 'ner-michoel-admin-settings', NER_MICHOEL_CORE_URL . 'assets/custom-admin-settings.js', array( 'jquery', 'jquery-ui-sortable', 'ner-michoel-admin-shell', 'ner-michoel-admin-look' ), NER_MICHOEL_CORE_VERSION, true );
@@ -1461,7 +1483,7 @@ function ner_michoel_render_custom_admin_ui() {
 						<?php elseif ( isset( $active['settings_type'] ) ) : ?>
 							<div class="nm-settings-root" data-settings-type="<?php echo esc_attr( $active['settings_type'] ); ?>"></div>
 						<?php elseif ( isset( $active['callback'] ) && function_exists( $active['callback'] ) ) : ?>
-							<?php if ( $is_home ) : ?>
+							<?php if ( $is_home || ! empty( $active['bare'] ) ) : ?>
 								<?php call_user_func( $active['callback'] ); ?>
 							<?php else : ?>
 								<div class="nm-card nm-legacy">

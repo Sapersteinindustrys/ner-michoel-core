@@ -3,7 +3,7 @@
  * Plugin Name:       Ner Michoel Core
  * Plugin URI:
  * Description:       Site functionality (custom post types, forms, integrations) for the Ner Michoel rebuild. Kept independent of the theme so content/data survive a future redesign.
- * Version:           0.9.26
+ * Version:           0.9.27
  * Requires at least: 6.0
  * Requires PHP:       7.4
  * Author:             Tomo
@@ -14,10 +14,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NER_MICHOEL_CORE_VERSION', '0.9.26' );
+define( 'NER_MICHOEL_CORE_VERSION', '0.9.27' );
 define( 'NER_MICHOEL_CORE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'NER_MICHOEL_CORE_URL', plugin_dir_url( __FILE__ ) );
 
+// First: plain helpers the light visitor counter (beacon.php) shares, which site-speed.php uses as it loads.
+require_once NER_MICHOEL_CORE_PATH . 'includes/visitor-common.php';
+require_once NER_MICHOEL_CORE_PATH . 'includes/site-speed.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/post-types.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/shiur-meta.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/shiur-duration.php';
@@ -54,6 +57,7 @@ require_once NER_MICHOEL_CORE_PATH . 'includes/missing-audio-report.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/content-editor-role.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/shiur-stats.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/site-stats.php';
+require_once NER_MICHOEL_CORE_PATH . 'includes/site-speed-screen.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/appearance-settings.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/site-look.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/library-import.php';
@@ -102,6 +106,7 @@ function ner_michoel_core_activate() {
 	ner_michoel_create_default_news_category();
 	ner_michoel_register_content_editor_role();
 	ner_michoel_create_pageviews_table();
+	ner_michoel_speed_create_tables();
 	ner_michoel_schedule_pageviews_pruning();
 	ner_michoel_create_import_queue_table();
 	ner_michoel_create_user_library_tables();
@@ -111,6 +116,7 @@ register_activation_hook( __FILE__, 'ner_michoel_core_activate' );
 
 function ner_michoel_core_deactivate() {
 	wp_clear_scheduled_hook( 'nm_prune_pageviews' );
+	wp_clear_scheduled_hook( 'nm_speed_monitor' );
 	wp_clear_scheduled_hook( 'nm_purge_unverified_accounts' );
 	wp_clear_scheduled_hook( 'nm_import_discover_page' );
 	wp_clear_scheduled_hook( 'nm_import_process_batch' );

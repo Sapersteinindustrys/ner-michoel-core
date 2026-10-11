@@ -120,6 +120,8 @@ function ner_michoel_enqueue_site_stats_script() {
 		'ner-michoel-site-stats',
 		'nmSiteStats',
 		array(
+			// The light counter (beacon.php) first; the REST route if it can't be reached.
+			'light'    => esc_url_raw( NER_MICHOEL_CORE_URL . 'beacon.php' ),
 			'endpoint' => esc_url_raw( rest_url( 'ner-michoel/v1/pageview' ) ),
 		)
 	);
@@ -134,66 +136,15 @@ function ner_michoel_register_pageview_route() {
 			'methods'             => 'POST',
 			'callback'            => 'ner_michoel_handle_pageview',
 			'permission_callback' => '__return_true',
-			'args'                => array(
-				'url'       => array( 'required' => true ),
-				'referrer'  => array( 'required' => false ),
-				'load_time' => array( 'required' => false ),
-			),
+			// No declared args: a "leave" ping has no address, and one sent with
+			// sendBeacon arrives as text/plain, so the handler reads the body itself.
 		)
 	);
 }
 add_action( 'rest_api_init', 'ner_michoel_register_pageview_route' );
 
-/**
- * User-agent substrings for common crawlers, uptime monitors, and
- * link-preview fetchers — not exhaustive (no bot list ever is), just
- * enough to keep the obvious ones out of "visitor" counts.
- */
-function ner_michoel_is_bot_user_agent( $user_agent ) {
-	if ( '' === $user_agent ) {
-		return true; // A real browser always sends one.
-	}
-	$needles = array(
-		'bot', 'spider', 'crawl', 'slurp', 'facebookexternalhit', 'whatsapp',
-		'telegrambot', 'pingdom', 'uptimerobot', 'bingpreview', 'ahrefs',
-		'semrush', 'mj12bot', 'petalbot', 'yandex', 'headlesschrome',
-		'phantomjs', 'python-requests', 'curl/', 'wget/',
-	);
-	$user_agent = strtolower( $user_agent );
-	foreach ( $needles as $needle ) {
-		if ( false !== strpos( $user_agent, $needle ) ) {
-			return true;
-		}
-	}
-	return false;
-}
-
-/**
- * The address a page view is stored under, minus anything that looks like a
- * secret. The page-view script sends the whole query string, and the list of top
- * pages in the Control Panel shows what is stored, so a password, a code, a name or an
- * email address that ever reached a web address (a form sent the wrong way, a
- * reset link) must not be kept. Whole parameters are dropped by name.
- */
-function ner_michoel_pageview_clean_url( $url ) {
-	$parts = explode( '?', $url, 2 );
-	if ( 2 !== count( $parts ) ) {
-		return $url;
-	}
-
-	$kept = array();
-	foreach ( explode( '&', $parts[1] ) as $pair ) {
-		if ( '' === $pair ) {
-			continue;
-		}
-		$name = urldecode( current( explode( '=', $pair, 2 ) ) );
-		if ( ! preg_match( '/pass|pwd|secret|token|code|otp|key|nonce|e-?mail|login|phone|^(first_|last_|user_|display_)?name$/i', $name ) ) {
-			$kept[] = $pair;
-		}
-	}
-
-	return $parts[0] . ( $kept ? '?' . implode( '&', $kept ) : '' );
-}
+// ner_michoel_is_bot_user_agent() and ner_michoel_pageview_clean_url() are in
+// visitor-common.php, which the light counter (beacon.php) shares.
 
 /**
  * One-time clean-up of addresses stored before ner_michoel_pageview_clean_url()
@@ -273,53 +224,46 @@ function ner_michoel_pageview_scrub_report() {
 	return false;
 }
 
+/**
+ * The fallback for the light counter (beacon.php): the same pings, through the
+ * REST API. Also takes the older page-view body ({url, referrer, load_time}),
+ * which pages cached before this version still send.
+ */
 function ner_michoel_handle_pageview( WP_REST_Request $request ) {
 	if ( current_user_can( 'edit_posts' ) ) {
-		return new WP_REST_Response( array( 'recorded' => false ), 200 );
+		return new WP_REST_Response( array( 'recorded' => false, 'next' => 0 ), 200 );
 	}
 
-	$user_agent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
-	if ( ner_michoel_is_bot_user_agent( $user_agent ) ) {
-		return new WP_REST_Response( array( 'recorded' => false ), 200 );
+	$data = $request->get_json_params();
+	if ( ! is_array( $data ) || ! $data ) {
+		$data = json_decode( (string) $request->get_body(), true ); // sendBeacon sends text/plain.
+	}
+	if ( ! is_array( $data ) ) {
+		$data = array();
+	}
+	if ( ! isset( $data['t'] ) ) {
+		$data = array(
+			't'    => 'view',
+			'url'  => isset( $data['url'] ) ? $data['url'] : '',
+			'ref'  => isset( $data['referrer'] ) ? $data['referrer'] : '',
+			'load' => isset( $data['load_time'] ) ? $data['load_time'] : null,
+		);
 	}
 
-	$url = (string) $request->get_param( 'url' );
-	$url = wp_strip_all_tags( $url );
-	$url = substr( ner_michoel_pageview_clean_url( $url ), 0, 255 );
-	if ( '' === $url ) {
-		return new WP_REST_Response( array( 'recorded' => false ), 200 );
-	}
+	ner_michoel_speed_maybe_create_tables();
 
-	$referrer_domain = null;
-	$referrer        = (string) $request->get_param( 'referrer' );
-	if ( '' !== $referrer ) {
-		$referrer_host = wp_parse_url( $referrer, PHP_URL_HOST );
-		$site_host     = wp_parse_url( home_url(), PHP_URL_HOST );
-		if ( $referrer_host && $referrer_host !== $site_host ) {
-			$referrer_domain = substr( preg_replace( '/^www\./', '', strtolower( $referrer_host ) ), 0, 255 );
-		}
-	}
+	$user_agent = ner_michoel_clean_user_agent( isset( $_SERVER['HTTP_USER_AGENT'] ) ? wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- cleaned by ner_michoel_clean_user_agent().
+	$ip         = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+	$result     = ner_michoel_handle_visitor_ping( $data, $ip, $user_agent, (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
 
-	$load_time = $request->get_param( 'load_time' );
-	$load_time = ( is_numeric( $load_time ) && $load_time >= 0 && $load_time < 300000 ) ? (int) $load_time : null;
-
-	$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
-	$visitor_hash = md5( $ip . '|' . $user_agent . '|' . gmdate( 'Y-m-d' ) . '|' . wp_salt() );
-
-	global $wpdb;
-	$wpdb->insert(
-		ner_michoel_pageviews_table_name(),
+	return new WP_REST_Response(
 		array(
-			'created_at'      => current_time( 'mysql', true ),
-			'url'             => $url,
-			'referrer_domain' => $referrer_domain,
-			'visitor_hash'    => $visitor_hash,
-			'load_time_ms'    => $load_time,
+			'recorded' => $result['ok'],
+			'ok'       => $result['ok'],
+			'next'     => $result['next'],
 		),
-		array( '%s', '%s', '%s', '%s', '%d' )
+		$result['ok'] ? 200 : 503
 	);
-
-	return new WP_REST_Response( array( 'recorded' => true ), 200 );
 }
 
 /**
@@ -359,6 +303,21 @@ function ner_michoel_render_site_stats_page() {
 		<p class="description">
 			<?php esc_html_e( 'Self-hosted, kept entirely in this site\'s own database. "Visitors" is an approximate daily count (the same person visiting on two different days counts twice, by design — see the note in dev-notes.md).', 'ner-michoel-core' ); ?>
 		</p>
+
+		<?php if ( function_exists( 'ner_michoel_speed_people_now' ) ) : ?>
+			<?php $people_now = ner_michoel_speed_people_now(); ?>
+			<p>
+				<strong>
+					<?php
+					/* translators: 1: people on the site, 2: people listening */
+					echo esc_html( sprintf( __( 'Right now: %1$s on the site, %2$s listening.', 'ner-michoel-core' ), number_format_i18n( $people_now['online'] ), number_format_i18n( $people_now['listening'] ) ) );
+					?>
+				</strong>
+				<?php if ( function_exists( 'ner_michoel_custom_admin_url' ) && current_user_can( 'manage_options' ) ) : ?>
+					<a href="<?php echo esc_url( ner_michoel_custom_admin_url( 'speed' ) ); ?>"><?php esc_html_e( 'Live numbers, capacity and speed', 'ner-michoel-core' ); ?></a>
+				<?php endif; ?>
+			</p>
+		<?php endif; ?>
 
 		<style>
 			.nm-stat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 20px 0 32px; max-width: 900px; }

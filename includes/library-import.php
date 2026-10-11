@@ -249,6 +249,9 @@ function ner_michoel_run_discovery_tick() {
 	if ( ! ner_michoel_import_is_running() ) {
 		return;
 	}
+	if ( function_exists( 'ner_michoel_speed_defer_if_busy' ) && ner_michoel_speed_defer_if_busy( 'nm_import_discover_page', __( 'Library import: reading the archive', 'ner-michoel-core' ) ) ) {
+		return; // The site is busy: back in 5 minutes (site-speed.php).
+	}
 
 	$page = (int) get_option( 'nm_import_discovery_page', 1 );
 
@@ -589,6 +592,9 @@ function ner_michoel_run_processing_tick() {
 	if ( ! ner_michoel_import_is_running() ) {
 		return;
 	}
+	if ( function_exists( 'ner_michoel_speed_defer_if_busy' ) && ner_michoel_speed_defer_if_busy( 'nm_import_process_batch', __( 'Library import: adding shiurim', 'ner-michoel-core' ) ) ) {
+		return; // The site is busy: back in 5 minutes (site-speed.php).
+	}
 
 	global $wpdb;
 	$table      = ner_michoel_import_queue_table_name();
@@ -732,6 +738,9 @@ function ner_michoel_run_summary_batch_tick() {
 	}
 	if ( ner_michoel_import_discovered_remaining() > 0 ) {
 		return;
+	}
+	if ( function_exists( 'ner_michoel_speed_defer_if_busy' ) && ner_michoel_speed_defer_if_busy( 'nm_import_summary_batch', __( 'Written summaries from PDFs', 'ner-michoel-core' ) ) ) {
+		return; // The site is busy: back in 5 minutes (site-speed.php).
 	}
 
 	$pending = ner_michoel_summary_batch_run( time() + ner_michoel_import_tick_seconds() );

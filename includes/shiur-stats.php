@@ -10,8 +10,9 @@
  * collide with whoever's actively in that repo, same split already
  * used for Live Shiur / Zoom.
  *
- * Counts are plain post meta integers. A short per-IP/post/event
- * transient guards against a single client's double-fire (a JS bug
+ * Counts are plain post meta integers, added to in one database step. A
+ * short per-IP/post/event guard (ner_michoel_shiur_event_is_new())
+ * stops a single client's double-fire (a JS bug
  * re-triggering 'ended', a flaky retry) inflating the count — not
  * abuse-proof, but this is a shul-sized site's stats page, not
  * ad-fraud detection.
@@ -56,13 +57,10 @@ function ner_michoel_handle_shiur_event( WP_REST_Request $request ) {
 
 	$meta_key = 'play' === $event ? '_shiur_play_count' : '_shiur_complete_count';
 
-	$ip       = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
-	$rate_key = 'nm_evt_' . md5( $ip . '|' . $post_id . '|' . $event );
+	$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
 
-	if ( false === get_transient( $rate_key ) ) {
-		set_transient( $rate_key, 1, 20 );
-		$count = (int) get_post_meta( $post_id, $meta_key, true );
-		update_post_meta( $post_id, $meta_key, $count + 1 );
+	if ( ner_michoel_shiur_event_is_new( md5( $ip . '|' . $post_id . '|' . $event ) ) ) {
+		ner_michoel_add_to_shiur_count( $post_id, $meta_key );
 	}
 
 	// Piggybacks the per-user History list (user-library.php) on this
@@ -76,6 +74,42 @@ function ner_michoel_handle_shiur_event( WP_REST_Request $request ) {
 	}
 
 	return new WP_REST_Response( array( 'recorded' => true ), 200 );
+}
+
+/**
+ * The double-fire guard: true the first time a visitor sends this event for this
+ * shiur in 20 seconds. Kept in a small table of its own (nm_play_seen, cleared by
+ * the speed monitor), not as a transient, so a busy evening doesn't write two rows
+ * into the options table for every play. Falls back to the transient when the
+ * table isn't there yet.
+ */
+function ner_michoel_shiur_event_is_new( $key ) {
+	if ( ! function_exists( 'ner_michoel_speed_tables_ready' ) || ! ner_michoel_speed_tables_ready() ) {
+		if ( false !== get_transient( 'nm_evt_' . $key ) ) {
+			return false;
+		}
+		set_transient( 'nm_evt_' . $key, 1, 20 );
+		return true;
+	}
+
+	global $wpdb;
+	$table = ner_michoel_play_seen_table();
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$table} WHERE k = %s AND seen < %d", $key, time() - 20 ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	return 1 === (int) $wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO {$table} (k, seen) VALUES (%s, %d)", $key, time() ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+}
+
+/**
+ * Adds one to a shiur's count in a single database step, so plays at the same
+ * moment all count (reading the number and writing it back lost the ones in between).
+ */
+function ner_michoel_add_to_shiur_count( $post_id, $meta_key ) {
+	global $wpdb;
+	$updated = $wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->postmeta} SET meta_value = meta_value + 1 WHERE post_id = %d AND meta_key = %s", $post_id, $meta_key ) );
+	if ( ! $updated && ! add_post_meta( $post_id, $meta_key, 1, true ) ) {
+		// Another play added the row a moment ago: add to it.
+		$wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->postmeta} SET meta_value = meta_value + 1 WHERE post_id = %d AND meta_key = %s", $post_id, $meta_key ) );
+	}
+	wp_cache_delete( $post_id, 'post_meta' );
 }
 
 /**

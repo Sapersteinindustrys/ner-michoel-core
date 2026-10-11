@@ -104,18 +104,32 @@ function ner_michoel_get_speaker_series( $speaker_term_id ) {
 }
 
 /**
- * Shiurim by a speaker that aren't in any series — standalone tracks.
+ * Shiurim by a speaker that aren't in any series — standalone tracks, newest
+ * first. The database finds them: loading all of a speaker's shiurim to check
+ * each one (over 1,000 for some speakers, on every visit to their page) found
+ * none almost every time.
  *
  * @return WP_Post[]
  */
 function ner_michoel_get_speaker_standalone_shiurim( $speaker_term_id ) {
-	$shiurim = ner_michoel_get_speaker_shiurim( $speaker_term_id );
-	return array_values(
-		array_filter(
-			$shiurim,
-			function( $shiur ) {
-				return ! has_term( '', 'series', $shiur );
-			}
+	return get_posts(
+		array(
+			'post_type'      => 'shiur',
+			'posts_per_page' => -1,
+			'orderby'        => 'date',
+			'order'          => 'DESC',
+			'tax_query'      => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
+				'relation' => 'AND',
+				array(
+					'taxonomy' => 'speaker',
+					'field'    => 'term_id',
+					'terms'    => $speaker_term_id,
+				),
+				array(
+					'taxonomy' => 'series',
+					'operator' => 'NOT EXISTS',
+				),
+			),
 		)
 	);
 }

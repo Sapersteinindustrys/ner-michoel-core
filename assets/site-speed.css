@@ -1,0 +1,256 @@
+/*
+ * Reports > Speed & Capacity (includes/site-speed-screen.php, assets/site-speed.js).
+ * Built on the panel's tokens (custom-admin-shell.css). Chart series colors are a
+ * colorblind-checked set (blue, orange, aqua; each series also has a legend and a
+ * table view), and status colors always come with an icon and a word.
+ */
+
+.nms {
+	--nms-s1: #2a78d6;
+	--nms-s2: #eb6834;
+	--nms-s3: #1baf7a;
+	--nms-grid: #e8ecea;
+	--nms-axis: #cdd5d1;
+	--nms-ink: var(--nm-text, #17211d);
+	--nms-ink-2: var(--nm-text-2, #4b5852);
+	--nms-ink-3: var(--nm-text-3, #75827c);
+	--nms-surface: var(--nm-surface, #fff);
+	--nms-good: #0ca30c;
+	--nms-good-ink: #0b6b0b;
+	--nms-warn: #fab219;
+	--nms-warn-ink: #8a5a00;
+	--nms-serious: #ec835a;
+	--nms-serious-ink: #a4441c;
+	--nms-critical: #d03b3b;
+	--nms-critical-ink: #a52a2a;
+	display: grid;
+	gap: 18px;
+	min-width: 0;
+}
+
+.nms .nm-card { min-width: 0; }
+.nms-muted { color: var(--nms-ink-3); font-size: 13px; margin: 0; }
+.nms-h3 { margin: 18px 0 8px; font-size: 14px; font-weight: 650; color: var(--nms-ink); }
+.nms-plain { margin: 0; padding-left: 18px; color: var(--nms-ink-2); font-size: 13.5px; }
+.nms-plain li { margin: 4px 0; }
+
+/* Right now ----------------------------------------------------------- */
+
+.nms-now__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; margin-bottom: 14px; }
+.nms-pulse {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--nms-good);
+	box-shadow: 0 0 0 0 rgba(12, 163, 12, 0.45);
+	animation: nms-pulse 2s infinite;
+	flex: none;
+}
+.nms.is-stale .nms-pulse { background: var(--nms-ink-3); animation: none; }
+@keyframes nms-pulse {
+	70% { box-shadow: 0 0 0 8px rgba(12, 163, 12, 0); }
+	100% { box-shadow: 0 0 0 0 rgba(12, 163, 12, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+	.nms-pulse { animation: none; }
+}
+
+.nms-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 18px; }
+@media (max-width: 640px) {
+	.nms-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+	.nms-tile { padding: 12px 12px; }
+}
+.nms-tile {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 14px 16px;
+	border: 1px solid var(--nm-border, #e3e8e5);
+	border-radius: var(--nm-radius, 12px);
+	background: var(--nm-surface-2, #f8faf9);
+	min-width: 0;
+}
+.nms-tile__label { font-size: 12.5px; color: var(--nms-ink-2); }
+.nms-tile__value { font-size: 30px; font-weight: 650; line-height: 1.1; color: var(--nms-ink); }
+.nms-tile__sub { font-size: 12.5px; color: var(--nms-ink-3); }
+
+.nms-meter {
+	display: block;
+	height: 8px;
+	border-radius: 999px;
+	background: #cde2fb;
+	overflow: hidden;
+	margin: 4px 0 2px;
+}
+.nms-meter__fill { display: block; height: 100%; width: 0; border-radius: 999px; background: var(--nms-s1); transition: width 0.4s ease; }
+.nms-meter.is-warn { background: #fdf0cf; }
+.nms-meter.is-warn .nms-meter__fill { background: var(--nms-warn); }
+.nms-meter.is-serious { background: #fbe3d8; }
+.nms-meter.is-serious .nms-meter__fill { background: var(--nms-serious); }
+.nms-meter.is-critical { background: #f6d6d6; }
+.nms-meter.is-critical .nms-meter__fill { background: var(--nms-critical); }
+.nms-meter--wide { height: 10px; margin-top: 10px; }
+
+.nms-pages { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.nms-pages li {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 12px;
+	align-items: center;
+	font-size: 13.5px;
+	padding: 6px 10px;
+	border-radius: var(--nm-radius-sm, 8px);
+	background: var(--nm-surface-2, #f8faf9);
+}
+.nms-pages__path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--nms-ink); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+.nms-pages__count { color: var(--nms-ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.nms-pages__empty { color: var(--nms-ink-3); background: none !important; padding-left: 0 !important; }
+
+/* Capacity ------------------------------------------------------------ */
+
+.nms-cap { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px 32px; align-items: start; margin-top: 14px; }
+.nms-cap__hero { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.nms-cap__value { font-size: 52px; font-weight: 650; line-height: 1; color: var(--nms-ink); letter-spacing: -0.01em; }
+.nms-cap__label { font-size: 15px; color: var(--nms-ink-2); }
+.nms-cap__facts { margin: 0; display: grid; gap: 10px; }
+.nms-cap__facts div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--nm-border, #e3e8e5); padding-bottom: 8px; }
+.nms-cap__facts dt { color: var(--nms-ink-2); font-size: 13.5px; }
+.nms-cap__facts dd { margin: 0; font-weight: 650; color: var(--nms-ink); font-size: 15px; text-align: right; }
+.nms-basis { margin: 16px 0 0; font-size: 13.5px; color: var(--nms-ink-2); max-width: 760px; }
+
+.nms-details { margin-top: 14px; }
+.nms-details summary { cursor: pointer; color: var(--nm-primary, #1e7d55); font-weight: 600; font-size: 13.5px; }
+.nms-details p { font-size: 13.5px; color: var(--nms-ink-2); max-width: 760px; }
+.nms-settings { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-top: 6px; }
+.nms-settings label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--nms-ink-2); }
+.nms-settings input { width: 120px; min-height: 36px; font-size: 15px; }
+
+/* Causes -------------------------------------------------------------- */
+
+.nms-tally { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; padding: 0; list-style: none; }
+.nms-status {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 10px 3px 8px;
+	border-radius: 999px;
+	font-size: 12.5px;
+	font-weight: 600;
+	white-space: nowrap;
+	line-height: 1.5;
+}
+.nms-status .nm-ico { width: 15px; height: 15px; flex: none; }
+.nms-status strong { font-weight: 700; }
+.nms-status--handled { background: #e5f5e5; color: var(--nms-good-ink); }
+.nms-status--partly { background: #fdf0cf; color: var(--nms-warn-ink); }
+.nms-status--watch { background: #eef1f4; color: #4d5b68; }
+.nms-status--host { background: #eaf1fd; color: #2b5fb8; }
+.nms-status--todo { background: #fbe1e1; color: var(--nms-critical-ink); }
+
+.nms-causes__list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--nm-border, #e3e8e5); }
+.nms-cause { border-bottom: 1px solid var(--nm-border, #e3e8e5); }
+.nms-cause summary {
+	display: grid;
+	grid-template-columns: 150px minmax(0, 1fr) auto;
+	grid-template-areas: "status title impact" ". now now";
+	gap: 4px 14px;
+	align-items: center;
+	padding: 12px 4px;
+	cursor: pointer;
+	list-style: none;
+}
+.nms-cause summary::-webkit-details-marker { display: none; }
+.nms-cause summary:hover { background: var(--nm-hover, #eff3f1); }
+.nms-cause summary:focus-visible { outline: 2px solid var(--nm-primary, #1e7d55); outline-offset: -2px; }
+.nms-cause summary .nms-status { grid-area: status; justify-self: start; }
+.nms-cause__title { grid-area: title; font-weight: 650; color: var(--nms-ink); font-size: 14.5px; }
+.nms-cause__now { grid-area: now; color: var(--nms-ink-2); font-size: 13.5px; }
+.nms-impact { grid-area: impact; font-size: 12px; color: var(--nms-ink-3); white-space: nowrap; }
+.nms-impact--high { color: var(--nms-ink); font-weight: 600; }
+.nms-cause__more { margin: 0 4px 14px 168px; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; font-size: 13.5px; }
+.nms-cause__more dt { color: var(--nms-ink-3); }
+.nms-cause__more dd { margin: 0; color: var(--nms-ink-2); max-width: 720px; }
+
+/* Range filter and history -------------------------------------------- */
+
+.nms-range { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.nms-range__label { font-size: 13px; color: var(--nms-ink-2); margin-right: 4px; }
+.nms-range__btn {
+	border: 1px solid var(--nm-border-strong, #cdd5d1);
+	background: var(--nms-surface);
+	color: var(--nms-ink);
+	border-radius: 999px;
+	padding: 7px 14px;
+	font-size: 13.5px;
+	cursor: pointer;
+	min-height: 36px;
+}
+.nms-range__btn:hover { background: var(--nm-hover, #eff3f1); }
+.nms-range__btn.is-active { background: var(--nm-primary-soft, #e7f4ee); border-color: var(--nm-primary, #1e7d55); color: var(--nm-primary-hover, #176645); font-weight: 650; }
+.nms-range__btn:focus-visible { outline: 2px solid var(--nm-primary, #1e7d55); outline-offset: 2px; }
+
+.nms-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.nms-panel--wide { grid-column: 1 / -1; }
+.nms-grid.is-loading .nms-chart,
+.nms-grid.is-loading .nms-table { opacity: 0.5; transition: opacity 0.2s; }
+
+/* Charts --------------------------------------------------------------- */
+
+.nms-chart { position: relative; min-height: 236px; margin-top: 10px; }
+.nms-chart svg { display: block; width: 100%; overflow: visible; }
+.nms-chart text { font-family: inherit; }
+.nms-chart .nms-tick { fill: var(--nms-ink-3); font-size: 11px; font-variant-numeric: tabular-nums; }
+.nms-chart .nms-endlabel { fill: var(--nms-ink-2); font-size: 12px; }
+.nms-chart .nms-endlabel tspan { font-weight: 650; fill: var(--nms-ink); }
+.nms-chart .nms-ref { fill: var(--nms-ink-2); font-size: 11px; }
+.nms-chart .nms-hit { fill: transparent; cursor: crosshair; }
+.nms-chart .nms-hit:focus { outline: none; }
+.nms-chart .nms-col-hit { fill: transparent; }
+.nms-chart .nms-col.is-hover { opacity: 0.8; }
+.nms-empty { display: flex; align-items: center; justify-content: center; min-height: 200px; color: var(--nms-ink-3); font-size: 13.5px; text-align: center; padding: 0 20px; }
+
+.nms-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--nms-ink-2); }
+.nms-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.nms-legend i { display: inline-block; width: 14px; height: 2px; border-radius: 2px; }
+.nms-legend i.is-box { width: 10px; height: 10px; border-radius: 2px; }
+
+.nms-tip {
+	position: absolute;
+	z-index: 5;
+	pointer-events: none;
+	min-width: 150px;
+	max-width: 240px;
+	padding: 8px 10px;
+	border-radius: 8px;
+	background: var(--nms-surface);
+	box-shadow: 0 6px 18px -6px rgba(16, 32, 24, 0.25), 0 0 0 1px rgba(16, 32, 24, 0.08);
+	font-size: 12.5px;
+	color: var(--nms-ink-2);
+}
+.nms-tip[hidden] { display: none !important; }
+.nms-tip__time { color: var(--nms-ink-3); margin-bottom: 4px; }
+.nms-tip__row { display: flex; align-items: center; gap: 8px; margin: 2px 0; }
+.nms-tip__row i { display: inline-block; width: 12px; height: 2px; border-radius: 2px; flex: none; }
+.nms-tip__row strong { color: var(--nms-ink); font-weight: 650; min-width: 38px; font-variant-numeric: tabular-nums; }
+
+.nms-tablev { margin-top: 10px; }
+.nms-tablev summary { cursor: pointer; font-size: 12.5px; color: var(--nm-primary, #1e7d55); font-weight: 600; }
+.nms-table-wrap { overflow-x: auto; max-height: 340px; overflow-y: auto; margin-top: 8px; }
+.nms-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.nms-table th,
+.nms-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--nm-border, #e3e8e5); vertical-align: top; }
+.nms-table thead th { color: var(--nms-ink-3); font-weight: 600; font-size: 12px; position: sticky; top: 0; background: var(--nms-surface); }
+.nms-table tbody th { font-weight: 500; color: var(--nms-ink); white-space: nowrap; }
+.nms-table .nms-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nms-table td .nms-muted { display: block; margin-top: 3px; font-size: 12px; }
+
+@media (max-width: 960px) {
+	.nms-grid { grid-template-columns: minmax(0, 1fr); }
+	.nms-cap { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+	.nms-cause summary { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "status impact" "title title" "now now"; }
+	.nms-cause__more { margin-left: 4px; grid-template-columns: minmax(0, 1fr); }
+	.nms-cap__value { font-size: 44px; }
+	.nms-tile__value { font-size: 26px; }
+}

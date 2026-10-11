@@ -208,7 +208,18 @@ function ner_michoel_shiur_index_rebuild() {
 
 	return $json;
 }
-add_action( 'nm_shiur_index_rebuild', 'ner_michoel_shiur_index_rebuild' );
+
+/**
+ * The scheduled rebuild. Waits while the site is busy (site-speed.php): until then
+ * the previous index is served, which is fine for a search.
+ */
+function ner_michoel_shiur_index_rebuild_job() {
+	if ( function_exists( 'ner_michoel_speed_defer_if_busy' ) && ner_michoel_speed_defer_if_busy( 'nm_shiur_index_rebuild', __( 'Search index rebuild', 'ner-michoel-core' ) ) ) {
+		return;
+	}
+	ner_michoel_shiur_index_rebuild();
+}
+add_action( 'nm_shiur_index_rebuild', 'ner_michoel_shiur_index_rebuild_job' );
 
 /**
  * The saved index: array( gzip bytes or '', JSON or '' ). Exactly one is filled,

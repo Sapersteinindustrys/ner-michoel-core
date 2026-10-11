@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.26
+Stable tag: 0.9.27
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,39 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.27 =
+* New Speed & Capacity screen in the Control Panel (Reports). "Right now" shows
+  how many people are on the site and how many are listening, updated every 10
+  seconds while the page is open, with a chart of the last hour and the pages
+  open now. "How many people at once" works out, from how much work real visitors
+  caused over the last 7 days, how many people can browse or listen at once
+  without the site slowing down, against the host's limits (25 processes and 1
+  CPU core to start with; both can be changed on the screen). Charts of people,
+  response times and how busy the server was over the last day or week, the
+  busiest times, and the list of what slows the site down with whether each is
+  fixed, watched or up to the host.
+* Background monitor every 5 minutes: the site times its own homepage (is the
+  host's cache answering?), a random shiur page built from scratch, a next-up list
+  and the visitor counter, and re-checks the list of causes every 30 minutes. It
+  skips the test requests while the site is busy.
+* Every request is timed (time, CPU, database queries) and added up per minute and
+  kind: pages built for visitors, the site's data requests, the visitor counter,
+  bots, signed-in staff and background jobs. Kept 15 days.
+* Page views and "still here" pings now go to a light counter (beacon.php) that
+  starts only WordPress's database layer, instead of the REST API, which started
+  everything for each page view. The REST route stays as the fallback. Page views
+  after a click handled by the theme's page router are now counted too.
+* The Shiurim pages' per-series and per-speaker counts and first tracks, and each
+  shiur's next-up ranking, are kept until the library changes instead of being
+  worked out again on every visit.
+* A speaker's page no longer loads all of the speaker's shiurim to find the ones
+  without a series: one query asks for exactly those.
+* Play and completion counts are added to in one database step, so plays at the
+  same moment all count. The double-press guard uses a small table of its own
+  instead of the options table.
+* The library import, the written-summary batch and the search-index rebuild wait
+  (5 minutes at a time, at most an hour) while the site is busy.
 
 = 0.9.26 =
 * New Colors & Fonts screen in the Control Panel (Homepage & Look). Pick a font
