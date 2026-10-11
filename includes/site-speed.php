@@ -689,10 +689,14 @@ function ner_michoel_speed_capacity( $fresh = false ) {
 	$listen_kinds = array( 'play', 'next-up' );
 
 	// How often a visitor's page came from the host's cache: page views counted by
-	// browsers, against the pages PHP had to build for visitors.
-	$views = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['pageviews']} WHERE created_at >= %s", gmdate( 'Y-m-d H:i:s', $since * 60 ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-	$built = $sum( array( 'page' ), 'hits' );
-	if ( $views >= 50 ) {
+	// browsers, against the pages PHP had to build for visitors, over the same stretch
+	// of time. Page views go back further than request timing (which began with this
+	// version), so they are counted only from the first timed minute; and only once
+	// there are enough of both to mean something.
+	$timed_from = (int) $wpdb->get_var( $wpdb->prepare( "SELECT MIN(bucket) FROM {$t['perf']} WHERE bucket > %d", $since ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	$views      = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['pageviews']} WHERE created_at >= %s", gmdate( 'Y-m-d H:i:s', max( $since, $timed_from ) * 60 ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	$built      = $sum( array( 'page' ), 'hits' );
+	if ( $views >= 200 && $built >= 20 ) {
 		$out['cache_share'] = max( 0, min( 1, 1 - $built / $views ) );
 	}
 

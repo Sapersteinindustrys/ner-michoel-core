@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.27
+Stable tag: 0.9.28
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,13 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.28 =
+* Speed & Capacity: the share of pages served from the host's cache is worked out
+  only over the time since request timing began (0.9.27), and only once there are
+  enough page views. Right after the update it compared a week of page views with a
+  few minutes of timed pages, read as "96% from the cache" and made the early
+  estimate of how many people fit at once far too high.
 
 = 0.9.27 =
 * New Speed & Capacity screen in the Control Panel (Reports). "Right now" shows
