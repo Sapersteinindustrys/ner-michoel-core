@@ -17,7 +17,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 function ner_michoel_render_mazal_tov_quick_add_page() {
-	$types = get_terms( array( 'taxonomy' => 'mazal_tov_type', 'hide_empty' => false ) );
+	$types   = get_terms( array( 'taxonomy' => 'mazal_tov_type', 'hide_empty' => false ) );
+	$presets = function_exists( 'ner_michoel_get_mazal_tov_presets' ) ? ner_michoel_get_mazal_tov_presets() : array();
 	?>
 	<div class="wrap nm-dashboard">
 		<h1><?php esc_html_e( 'Post a Mazal Tov', 'ner-michoel-core' ); ?></h1>
@@ -26,6 +27,8 @@ function ner_michoel_render_mazal_tov_quick_add_page() {
 			<div class="notice notice-success"><p><?php esc_html_e( 'Posted.', 'ner-michoel-core' ); ?></p></div>
 		<?php elseif ( isset( $_GET['nm_mazal_tov'] ) && 'error' === $_GET['nm_mazal_tov'] ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
 			<div class="notice notice-error"><p><?php esc_html_e( 'Please enter who this is for.', 'ner-michoel-core' ); ?></p></div>
+		<?php elseif ( isset( $_GET['nm_mazal_tov'] ) && 'blank' === $_GET['nm_mazal_tov'] ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
+			<div class="notice notice-error"><p><?php esc_html_e( 'Nothing was posted: the sentence still has a blank (___). Fill in every blank and post again.', 'ner-michoel-core' ); ?></p></div>
 		<?php endif; ?>
 
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="max-width:600px;">
@@ -33,6 +36,21 @@ function ner_michoel_render_mazal_tov_quick_add_page() {
 			<input type="hidden" name="action" value="nm_mazal_tov_quick_add" />
 			<?php ner_michoel_panel_form_field(); ?>
 			<table class="form-table">
+				<tr>
+					<th scope="row"><label for="nm_mt_preset"><?php esc_html_e( 'Preset', 'ner-michoel-core' ); ?></label></th>
+					<td>
+						<?php // Drawn by assets/mazal-tov-presets.js: the menu of presets, and the sentence with a box in each blank. It writes the Honoree box and picks the Type. ?>
+						<div
+							data-nm-mt-fill
+							data-presets="<?php echo esc_attr( wp_json_encode( $presets ) ); ?>"
+							data-headline="#nm_mt_honoree"
+							data-type="#nm_mt_type"
+							data-select-id="nm_mt_preset"
+							data-manage-url="<?php echo esc_url( function_exists( 'ner_michoel_mazal_tov_presets_url' ) ? ner_michoel_mazal_tov_presets_url() : '' ); ?>"
+						></div>
+						<p class="description"><?php esc_html_e( 'Optional: pick a ready-made sentence and fill in its blanks, instead of typing the Honoree yourself.', 'ner-michoel-core' ); ?></p>
+					</td>
+				</tr>
 				<tr>
 					<th scope="row"><label for="nm_mt_honoree"><?php esc_html_e( 'Honoree', 'ner-michoel-core' ); ?></label></th>
 					<td><input type="text" id="nm_mt_honoree" name="nm_mt_honoree" class="regular-text" required /></td>
@@ -99,6 +117,12 @@ function ner_michoel_handle_mazal_tov_quick_add() {
 
 	if ( '' === $honoree ) {
 		wp_safe_redirect( esc_url_raw( add_query_arg( 'nm_mazal_tov', 'error', $redirect ) ) );
+		exit;
+	}
+
+	// A sentence written from a preset must have every blank filled in (includes/mazal-tov-presets.php).
+	if ( function_exists( 'ner_michoel_mazal_tov_has_blank' ) && ner_michoel_mazal_tov_has_blank( $honoree ) ) {
+		wp_safe_redirect( esc_url_raw( add_query_arg( 'nm_mazal_tov', 'blank', $redirect ) ) );
 		exit;
 	}
 

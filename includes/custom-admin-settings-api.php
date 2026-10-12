@@ -198,6 +198,97 @@ function ner_michoel_settings_registry() {
 				);
 			},
 		),
+		// Footer: what the site footer says and links to (includes/footer-settings.php; the theme prints it).
+		'footer'        => array(
+			'capability'    => 'manage_options',
+			'label'         => __( 'Footer', 'ner-michoel-core' ),
+			'rest_path'     => 'footer-settings',
+			'options_first' => true,
+			'options_title' => __( 'What the footer says', 'ner-michoel-core' ),
+			'options_sub'   => __( 'The title, the Contribute button and the Amazon Smile link, and where the footer shows. Leave a box empty to keep the site’s own words.', 'ner-michoel-core' ),
+			'repeater_sub'  => __( 'The links in the middle of the footer, in this order. Drag a link by its number to move it. Under a link’s address you can search for one of the site’s pages by name.', 'ner-michoel-core' ),
+			'fields'        => array(
+				'links'            => array(
+					'type'        => 'repeater',
+					'label'       => __( 'Links to pages', 'ner-michoel-core' ),
+					'item_label'  => __( 'Link', 'ner-michoel-core' ),
+					'item_fields' => array(
+						'label'    => array(
+							'type'        => 'text',
+							'label'       => __( 'Name', 'ner-michoel-core' ),
+							'maxlength'   => 60,
+							'placeholder' => __( 'For example: About', 'ner-michoel-core' ),
+						),
+						'link_url' => array(
+							'type'        => 'text',
+							'label'       => __( 'Where it goes', 'ner-michoel-core' ),
+							'placeholder' => 'https://…',
+						),
+					),
+				),
+				'on'               => array(
+					'type'    => 'checkbox',
+					'label'   => __( 'Show the footer on the site', 'ner-michoel-core' ),
+					'section' => __( 'The footer', 'ner-michoel-core' ),
+				),
+				'scope'            => array(
+					'type'    => 'select',
+					'label'   => __( 'Show it on', 'ner-michoel-core' ),
+					'options' => ner_michoel_footer_scopes(),
+					'desc'    => __( 'The Shiurim pages have the player bar at the bottom, so they never show the footer.', 'ner-michoel-core' ),
+				),
+				'title'            => array(
+					'type'        => 'text',
+					'label'       => __( 'Title', 'ner-michoel-core' ),
+					'maxlength'   => 80,
+					'placeholder' => ner_michoel_footer_default_words()['title'],
+				),
+				'note'             => array(
+					'type'        => 'text',
+					'label'       => __( 'Small line at the very bottom', 'ner-michoel-core' ),
+					'maxlength'   => 200,
+					'placeholder' => '© {year} {title}',
+					'desc'        => __( '{year} becomes this year and {title} becomes the title above.', 'ner-michoel-core' ),
+				),
+				'contribute_on'    => array(
+					'type'    => 'checkbox',
+					'label'   => __( 'Show a Contribute button', 'ner-michoel-core' ),
+					'section' => __( 'Contribute', 'ner-michoel-core' ),
+				),
+				'contribute_label' => array(
+					'type'        => 'text',
+					'label'       => __( 'Words on the button', 'ner-michoel-core' ),
+					'maxlength'   => 40,
+					'placeholder' => ner_michoel_footer_default_words()['contribute_label'],
+				),
+				'contribute_url'   => array(
+					'type'        => 'text',
+					'label'       => __( 'Where it goes', 'ner-michoel-core' ),
+					'placeholder' => ner_michoel_footer_resolve_url( ner_michoel_footer_default_words()['contribute_url'] ),
+					'desc'        => __( 'Leave empty to go to the site’s Contribute page.', 'ner-michoel-core' ),
+				),
+				'smile_on'         => array(
+					'type'    => 'checkbox',
+					'label'   => __( 'Show an Amazon Smile link', 'ner-michoel-core' ),
+					'section' => __( 'Amazon Smile', 'ner-michoel-core' ),
+				),
+				'smile_label'      => array(
+					'type'        => 'text',
+					'label'       => __( 'Words on the link', 'ner-michoel-core' ),
+					'maxlength'   => 40,
+					'placeholder' => ner_michoel_footer_default_words()['smile_label'],
+				),
+				'smile_url'        => array(
+					'type'        => 'text',
+					'label'       => __( 'Where it goes', 'ner-michoel-core' ),
+					'placeholder' => ner_michoel_footer_default_words()['smile_url'],
+					'desc'        => __( 'Paste the address of the Amazon Smile page you want people to land on.', 'ner-michoel-core' ),
+				),
+			),
+			'get_values'    => function () {
+				return ner_michoel_footer_settings_values();
+			},
+		),
 		'security'      => array(
 			'capability' => 'manage_options',
 			'label'      => __( 'Security', 'ner-michoel-core' ),
@@ -369,8 +460,9 @@ function ner_michoel_settings_route_get( WP_REST_Request $request ) {
 		'values'    => call_user_func( $config['get_values'] ),
 		'extra'     => isset( $config['get_extra'] ) ? call_user_func( $config['get_extra'] ) : new stdClass(),
 	);
-	// Words a screen can put on its own cards (the Homepage screen's).
-	foreach ( array( 'options_title', 'options_sub', 'repeater_sub' ) as $key ) {
+	// Words a screen can put on its own cards (the Homepage screen's), and whether its card of
+	// settings comes before its list (the Footer screen's).
+	foreach ( array( 'options_title', 'options_sub', 'repeater_sub', 'options_first' ) as $key ) {
 		if ( isset( $config[ $key ] ) ) {
 			$out[ $key ] = $config[ $key ];
 		}

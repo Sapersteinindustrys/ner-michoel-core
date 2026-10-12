@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.30
+Stable tag: 0.9.31
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,20 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.31 =
+* New Control Panel screen, Homepage & Look > Footer: the footer on the home page. Its
+  title, the small line at the very bottom, a list of links to pages (add, remove, drag
+  to reorder, or search for a page by name), a Contribute button and an Amazon Smile
+  link, each with its own words and address and each switchable, and whether the footer
+  shows on the home page only (the default) or on every page except the Shiurim pages.
+  Links to this site are kept as paths so they follow a new address. The theme (0.2.68)
+  prints it.
+* New Control Panel page, Announcements > Mazal Tov Presets: ready-made sentences with
+  blanks ("Mazel Tov to the ___ family on the birth of a baby ___"), kept under a name
+  ("Baby") with an optional Type. Quick Mazal Tov and Add New Mazal Tov get a Preset
+  menu: pick one and fill in the blanks. The announcement keeps just the finished
+  sentence as its headline, and a headline that still has a blank is refused.
 
 = 0.9.30 =
 * Site Name & Logo: removing the logo now works on every site. WordPress keeps a

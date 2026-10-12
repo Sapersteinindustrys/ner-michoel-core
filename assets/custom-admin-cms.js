@@ -155,9 +155,24 @@
 
 	function renderFieldControl( field, value, id ) {
 		var idAttr = id ? ' id="' + id + '"' : '';
+		var maxAttr = field.maxlength ? ' maxlength="' + esc( field.maxlength ) + '"' : '';
 		switch ( field.type ) {
 			case 'text':
-				return '<input type="text"' + idAttr + ' class="nm-cms-input" value="' + esc( value || '' ) + '">';
+				return '<input type="text"' + idAttr + maxAttr + ' class="nm-cms-input" value="' + esc( value || '' ) + '">';
+			case 'wording':
+				// A sentence with blanks (a Mazal Tov preset): the box to type it in, a button that adds a
+				// blank, and a preview of how it will look when someone posts with it (mazal-tov-presets.js).
+				return '<div class="nm-mt-wording">' +
+					'<textarea' + idAttr + maxAttr + ' class="nm-cms-input" rows="3" placeholder="Mazel Tov to the ___ family on the birth of a baby ___">' + esc( value || '' ) + '</textarea>' +
+					'<div class="nm-mt-wording__tools">' +
+					'<button type="button" class="nm-btn nm-btn--sm nm-mt-add-blank">' + icon( 'plus' ) + '<span>Add a blank</span></button>' +
+					'<span class="nm-cms-hint">Or type three underscores (___) where a name goes. To say what goes in a blank, write it in curly brackets, like {Family name}.</span>' +
+					'</div>' +
+					'<div class="nm-mt-wording__preview"><p class="nm-mt-caption">How it will look when you post</p><div class="nm-mt-wording__preview-body"></div></div>' +
+					'</div>';
+			case 'preset_picker':
+				// The Mazal Tov preset menu (filled in by bindFieldWidgets, once the presets have loaded).
+				return '<div class="nm-mt-host" data-fills="' + esc( field.fills || 'title' ) + '" data-type-field="' + esc( field.type_field || '' ) + '" data-select-id="' + esc( id || '' ) + '"><span class="nm-cms-muted">Loading presets…</span></div>';
 			case 'email':
 				return '<input type="email"' + idAttr + ' class="nm-cms-input" value="' + esc( value || '' ) + '" placeholder="name@example.com">';
 			case 'number':
@@ -445,6 +460,7 @@
 				return '<span class="nm-cms-date">' + esc( formatDate( item.date ) ) + '</span>';
 			case 'meta':
 			case 'meta_trim':
+			case 'meta_option':
 			case 'term_meta':
 				return item[ col.key ] ? esc( item[ col.key ] ) : muted;
 			case 'term_count':
@@ -551,6 +567,8 @@
 			message = ( name ? '“' + name + '” will be removed. ' : '' ) + 'Any shiurim in it are kept — they just won’t be listed under it any more.';
 		} else if ( schema.readonly ) {
 			message = 'This message will be deleted for good.';
+		} else if ( schema.delete_note ) {
+			message = ( name ? '“' + name + '” will be deleted. ' : 'It will be deleted. ' ) + schema.delete_note;
 		} else {
 			message = ( name ? '“' + name + '” will be taken off the site.' : 'It will be taken off the site.' ) + ' Tip: set Status to Draft instead if you only want to hide it for now.';
 		}
@@ -772,6 +790,31 @@
 						return;
 					}
 
+					// Mazal Tov presets: every blank of the chosen sentence is filled in, and no
+					// headline goes out with a blank (___) still in it.
+					var picker = $body.data( 'nmMtPicker' );
+					if ( picker && picker.isActive() && ! picker.isComplete() ) {
+						picker.showError();
+						return;
+					}
+					var blankKey = '';
+					var missingKey = '';
+					$.each( schema.fields, function ( key, field ) {
+						if ( ! blankKey && field.no_blanks && /_{2,}/.test( payload[ key ] || '' ) ) {
+							blankKey = key;
+						}
+						// A required field other than the title (the title is checked above).
+						if ( ! missingKey && field.required && key !== titleKey && ! $.trim( payload[ key ] || '' ) ) {
+							missingKey = key;
+						}
+					} );
+					if ( blankKey || missingKey ) {
+						var $bad = $body.find( '.nm-cms-field[data-field="' + ( blankKey || missingKey ) + '"]' ).addClass( 'has-error' );
+						$bad.append( '<p class="nm-cms-field-error">' + ( blankKey ? 'There is still a blank (___) in this. Fill it in, or take the underscores out.' : 'Please fill this in.' ) + '</p>' );
+						$bad.find( '.nm-cms-input' ).first().trigger( 'focus' );
+						return;
+					}
+
 					saving = true;
 					$btn.prop( 'disabled', true ).find( 'span' ).text( 'Saving…' );
 					var path = isNew ? 'cms/' + self.type : 'cms/' + self.type + '/' + id;
@@ -811,6 +854,10 @@
 		var html = '<div class="nm-cms-form">';
 		var n = 0;
 		$.each( schema.fields, function ( key, field ) {
+			// A helper that only makes sense on a new item (the Mazal Tov preset menu).
+			if ( field.type === 'preset_picker' && item.id ) {
+				return;
+			}
 			var value = item[ key ];
 			var id = 'nm-f-' + key + '-' + ( n++ );
 			var isGroup = field.type === 'taxonomy_multi' || field.type === 'media_multi' || field.type === 'image' || field.type === 'media';
@@ -991,6 +1038,44 @@
 				markDirty();
 			} );
 		} );
+
+		// Mazal Tov presets (assets/mazal-tov-presets.js). The preset form's wording box shows a
+		// preview and adds blanks; a new announcement gets a menu of presets that writes its
+		// headline (and Type) from the blanks.
+		$body.find( '.nm-mt-wording' ).each( function () {
+			if ( window.NMMazalTov ) {
+				window.NMMazalTov.mountWordingEditor( this );
+			}
+		} );
+		$body.find( '.nm-mt-host' ).each( function () {
+			var host = this;
+			var $host = $( host );
+			var failed = function ( err ) {
+				if ( err && window.console && window.console.error ) {
+					window.console.error( 'Mazal Tov presets:', err );
+				}
+				$host.html( '<span class="nm-cms-muted">The presets could not be loaded here. You can still type the headline yourself.</span>' );
+			};
+			if ( ! window.NMMazalTov ) {
+				failed();
+				return;
+			}
+			var typeKey = String( $host.attr( 'data-type-field' ) || '' );
+			var typeField = typeKey && schema.fields[ typeKey ] ? schema.fields[ typeKey ] : null;
+			apiFetch( 'mazal-tov-presets' ).then( function ( presets ) {
+				$body.data( 'nmMtPicker', window.NMMazalTov.mountPicker( host, {
+					presets: presets,
+					headline: $body.find( '.nm-cms-field[data-field="' + $host.attr( 'data-fills' ) + '"] .nm-cms-input' )[ 0 ] || null,
+					type: function () {
+						return typeKey ? $body.find( '.nm-cms-field[data-field="' + typeKey + '"] select' )[ 0 ] || null : null;
+					},
+					typesReady: typeField ? getTerms( typeField.taxonomy, self.type ) : null,
+					manageUrl: cfg.presetsUrl || '',
+					selectId: $host.attr( 'data-select-id' ) || '',
+					selectClass: 'nm-cms-input'
+				} ) );
+			} ).catch( failed );
+		} );
 	};
 
 	CmsApp.prototype.collectFormData = function ( $body ) {
@@ -1031,6 +1116,8 @@
 					break;
 				case 'readonly':
 				case 'readonly_textarea':
+				case 'preset_picker':
+					// Nothing to save: the preset menu only writes the headline (and Type) fields.
 					break;
 				default:
 					data[ key ] = $field.find( '.nm-cms-input' ).val();

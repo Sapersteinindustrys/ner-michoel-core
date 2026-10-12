@@ -428,19 +428,26 @@
 		}
 
 		var hasRepeater = false;
+		var repeaters = '';
 		$.each( schema.fields, function ( key, field ) {
 			if ( field.type === 'repeater' ) {
 				hasRepeater = true;
-				html += self.renderRepeater( key, field, schema.values[ key ] || [] );
+				repeaters += self.renderRepeater( key, field, schema.values[ key ] || [] );
 			}
 		} );
 
-		if ( hasRepeater ) {
-			html += '</div></div><div class="nm-settings-card"><div class="nm-settings-card__body">';
-			html += '<h3 class="nm-settings-card__title">' + esc( schema.options_title || 'Options' ) + '</h3>';
-			html += '<p class="nm-settings-card__sub">' + esc( schema.options_sub || 'How the banner behaves. These apply to every slide.' ) + '</p>';
+		var cardBreak = '</div></div><div class="nm-settings-card"><div class="nm-settings-card__body">';
+		var optionsHead = '<h3 class="nm-settings-card__title">' + esc( schema.options_title || 'Options' ) + '</h3>' +
+			'<p class="nm-settings-card__sub">' + esc( schema.options_sub || 'How the banner behaves. These apply to every slide.' ) + '</p>';
+
+		if ( hasRepeater && schema.options_first ) {
+			// The Footer screen: its words and settings first, then its list of links.
+			html += optionsHead + this.renderFields() + cardBreak + repeaters;
+		} else if ( hasRepeater ) {
+			html += repeaters + cardBreak + optionsHead + this.renderFields();
+		} else {
+			html += this.renderFields();
 		}
-		html += this.renderFields();
 		if ( 'site_identity' === this.key ) {
 			html += renderIdentityPreview();
 		}

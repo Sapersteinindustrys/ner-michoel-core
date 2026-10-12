@@ -95,6 +95,7 @@ function ner_michoel_admin_icon_paths() {
 		'wrench'      => '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
 		'book'        => '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
 		'clock'       => '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+		'footer'      => '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 15h18"/>',
 	);
 }
 
@@ -277,8 +278,14 @@ function ner_michoel_custom_admin_structure() {
 					'help'     => array(
 						'steps' => array(
 							__( 'Click “Add New Mazal Tov” for an announcement with a photo.', 'ner-michoel-core' ),
+							__( 'To save typing, pick a preset at the top (like “Baby”) and fill in the blanks. The headline is written for you.', 'ner-michoel-core' ),
 							__( 'Or use “Quick Mazal Tov” for a fast, four-box version.', 'ner-michoel-core' ),
 							__( 'Click any announcement to edit it, or set it to Draft to take it down.', 'ner-michoel-core' ),
+						),
+						'tip'      => __( 'Presets are sentences with blanks, like “Mazel Tov to the ___ family on the birth of a baby ___”. You make them once and use them every time.', 'ner-michoel-core' ),
+						'tip_link' => array(
+							'tab'   => 'mazaltovpresets',
+							'label' => __( 'Make or change a preset', 'ner-michoel-core' ),
 						),
 					),
 				),
@@ -290,10 +297,32 @@ function ner_michoel_custom_admin_structure() {
 					'keywords' => 'simcha quick post mazal tov fast',
 					'help'     => array(
 						'steps' => array(
-							__( 'Type who it’s for in the Honoree box.', 'ner-michoel-core' ),
+							__( 'Pick a preset (like “Baby”) and fill in the blanks in the sentence, or leave it on “None” and type who it’s for in the Honoree box.', 'ner-michoel-core' ),
 							__( 'Add the relationship and years if you like, for example “Rabbi & Mrs.” and “’05, ’08”.', 'ner-michoel-core' ),
-							__( 'Pick the type of simcha and press “Post Mazal Tov”. It goes live straight away.', 'ner-michoel-core' ),
+							__( 'Pick the type of simcha (a preset picks it for you if it has one) and press “Post Mazal Tov”. It goes live straight away.', 'ner-michoel-core' ),
 						),
+						'tip'      => __( 'Presets are sentences with blanks, like “Mazel Tov to the ___ family on the birth of a baby ___”. You make them once and use them every time.', 'ner-michoel-core' ),
+						'tip_link' => array(
+							'tab'   => 'mazaltovpresets',
+							'label' => __( 'Make or change a preset', 'ner-michoel-core' ),
+						),
+					),
+				),
+				'mazaltovpresets' => array(
+					'label'    => __( 'Mazal Tov Presets', 'ner-michoel-core' ),
+					'icon'     => 'file-text',
+					'cms_type' => 'mazal_tov_preset',
+					'desc'     => __( 'Ready-made sentences with blanks, like “Mazel Tov to the ___ family on the birth of a baby ___”. Fill in the blanks when you post.', 'ner-michoel-core' ),
+					'keywords' => 'simcha preset template wording sentence blank fill in baby engagement wedding bar mitzvah',
+					'help'     => array(
+						'steps' => array(
+							__( 'Click “Add New Preset”.', 'ner-michoel-core' ),
+							__( 'Give it a short name, like “Baby”. This is the name you will pick when you post a Mazal Tov.', 'ner-michoel-core' ),
+							__( 'Type the sentence, and put three underscores (___) wherever you will want to type a name. For example: “Mazel Tov to the ___ family on the birth of a baby ___”. The box under it shows how it will look.', 'ner-michoel-core' ),
+							__( 'Optional: choose a Type (for “Baby”, Birth), and it is picked for you each time.', 'ner-michoel-core' ),
+							__( 'Press Save. Next time you add a Mazal Tov (“Quick Mazal Tov” or “Add New Mazal Tov”), pick the preset and fill in the blanks.', 'ner-michoel-core' ),
+						),
+						'tip'   => __( 'To say what goes in a blank, put the words in curly brackets instead of underscores, like “Mazel Tov to the {Family name} family”. Announcements you already posted never change when you edit or delete a preset.', 'ner-michoel-core' ),
 					),
 				),
 				'newslist'    => array(
@@ -445,6 +474,22 @@ function ner_michoel_custom_admin_structure() {
 						'steps' => array(
 							__( 'Tick or untick the option, then press Save.', 'ner-michoel-core' ),
 						),
+					),
+				),
+				'footer' => array(
+					'label'         => __( 'Footer', 'ner-michoel-core' ),
+					'icon'          => 'footer',
+					'settings_type' => 'footer',
+					'capability'    => 'manage_options',
+					'desc'          => __( 'The title and links at the bottom of the site: links to the pages, Contribute and Amazon Smile.', 'ner-michoel-core' ),
+					'keywords'      => 'footer bottom links pages contribute donate donation amazon smile copyright title official',
+					'help'          => array(
+						'steps' => array(
+							__( 'Change the title or the small line at the very bottom, or leave a box empty to keep the site’s own words.', 'ner-michoel-core' ),
+							__( 'Under “Links to pages”, change a name or an address, press “Add Link” for another one, or “Remove” to take one off. Drag a link by its number to change the order.', 'ner-michoel-core' ),
+							__( 'Turn the Contribute button and the Amazon Smile link on or off and say where each one goes, then press Save.', 'ner-michoel-core' ),
+						),
+						'tip'   => __( 'The footer shows on the home page only until you change “Show it on” to every page.', 'ner-michoel-core' ),
 					),
 				),
 				'layout' => array(
@@ -774,13 +819,16 @@ function ner_michoel_enqueue_custom_admin_assets() {
 	// (includes/custom-admin-api.php), not wp-admin's own screens.
 	wp_enqueue_script( 'ner-michoel-series-picker', NER_MICHOEL_CORE_URL . 'assets/series-picker.js', array(), NER_MICHOEL_CORE_VERSION, true );
 	wp_enqueue_script( 'ner-michoel-pdf-first-line', NER_MICHOEL_CORE_URL . 'assets/pdf-first-line.js', array(), NER_MICHOEL_CORE_VERSION, true );
-	wp_enqueue_script( 'ner-michoel-admin-cms', NER_MICHOEL_CORE_URL . 'assets/custom-admin-cms.js', array( 'jquery', 'jquery-ui-sortable', 'ner-michoel-series-picker', 'ner-michoel-admin-shell' ), NER_MICHOEL_CORE_VERSION, true );
+	// Mazal Tov presets (includes/mazal-tov-presets.php): the picker on Add New Mazal Tov and the preset form's wording box. After the shell's styles, so the two agree where they overlap.
+	ner_michoel_enqueue_mazal_tov_presets_assets();
+	wp_enqueue_script( 'ner-michoel-admin-cms', NER_MICHOEL_CORE_URL . 'assets/custom-admin-cms.js', array( 'jquery', 'jquery-ui-sortable', 'ner-michoel-series-picker', 'ner-michoel-mazal-tov-presets', 'ner-michoel-admin-shell' ), NER_MICHOEL_CORE_VERSION, true );
 	wp_localize_script(
 		'ner-michoel-admin-cms',
 		'nmCmsConfig',
 		array(
-			'restUrl' => esc_url_raw( rest_url( 'ner-michoel/v1' ) ),
-			'nonce'   => wp_create_nonce( 'wp_rest' ),
+			'restUrl'    => esc_url_raw( rest_url( 'ner-michoel/v1' ) ),
+			'nonce'      => wp_create_nonce( 'wp_rest' ),
+			'presetsUrl' => esc_url_raw( ner_michoel_mazal_tov_presets_url() ),
 		)
 	);
 
@@ -1282,6 +1330,7 @@ function ner_michoel_render_custom_admin_ui() {
 		array( 'tab' => 'galleries', 'label' => __( 'Add a new gallery', 'ner-michoel-core' ), 'icon' => 'plus', 'keywords' => 'photos create album' ),
 		array( 'tab' => 'newslist', 'label' => __( 'Write a news post', 'ner-michoel-core' ), 'icon' => 'plus', 'keywords' => 'create article event' ),
 		array( 'tab' => 'mazaltov', 'label' => __( 'Add a Mazal Tov with a photo', 'ner-michoel-core' ), 'icon' => 'plus', 'keywords' => 'simcha create' ),
+		array( 'tab' => 'mazaltovpresets', 'label' => __( 'Add a Mazal Tov preset', 'ner-michoel-core' ), 'icon' => 'plus', 'keywords' => 'simcha template wording blank baby fill in' ),
 	);
 	foreach ( $quick_actions as $qa ) {
 		list( $qa_group, $qa_tab ) = ner_michoel_custom_admin_resolve_tab( $structure, $qa['tab'] );

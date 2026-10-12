@@ -251,6 +251,8 @@ function ner_michoel_dashboard_admin_assets() {
 		);
 	} elseif ( 'nm-bulk-upload' === $page ) {
 		ner_michoel_enqueue_media_pickers_script();
+	} elseif ( 'nm-mazal-tov-quick-add' === $page && function_exists( 'ner_michoel_enqueue_mazal_tov_presets_assets' ) ) {
+		ner_michoel_enqueue_mazal_tov_presets_assets();
 	}
 }
 add_action( 'admin_enqueue_scripts', 'ner_michoel_dashboard_admin_assets' );

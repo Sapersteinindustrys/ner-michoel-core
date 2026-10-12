@@ -142,12 +142,38 @@ function ner_michoel_cms_registry() {
 				array( 'key' => 'date', 'label' => __( 'Date', 'ner-michoel-core' ), 'render' => 'date' ),
 			),
 			'fields'       => array(
-				'title'          => array( 'type' => 'text', 'label' => __( 'Headline', 'ner-michoel-core' ), 'required' => true, 'target' => 'post_title' ),
+				// Not saved: a helper (includes/mazal-tov-presets.php) that writes the headline, and the Type, from a preset. Shown on a new announcement only.
+				'preset'         => array( 'type' => 'preset_picker', 'label' => __( 'Start from a preset', 'ner-michoel-core' ), 'fills' => 'title', 'type_field' => 'mazal_tov_type', 'hint' => __( 'Optional. Pick a ready-made wording like “Baby”, fill in the blanks, and the headline is written for you.', 'ner-michoel-core' ) ),
+				'title'          => array( 'type' => 'text', 'label' => __( 'Headline', 'ner-michoel-core' ), 'required' => true, 'target' => 'post_title', 'no_blanks' => true ),
 				'mazal_tov_type' => array( 'type' => 'taxonomy', 'label' => __( 'Type', 'ner-michoel-core' ), 'taxonomy' => 'mazal_tov_type' ),
 				'relationship'   => array( 'type' => 'text', 'label' => __( 'Relationship (e.g. "Rabbi & Mrs. Cohen")', 'ner-michoel-core' ), 'meta' => '_mazal_tov_relationship' ),
 				'years'          => array( 'type' => 'text', 'label' => __( "Years (e.g. '05, '08)", 'ner-michoel-core' ), 'meta' => '_mazal_tov_years' ),
 				'thumbnail'      => array( 'type' => 'image', 'label' => __( 'Photo (optional)', 'ner-michoel-core' ), 'target' => 'thumbnail' ),
 				'status'         => array( 'type' => 'select', 'label' => __( 'Status', 'ner-michoel-core' ), 'target' => 'status', 'options' => $status_options ),
+			),
+		),
+		// Mazal Tov presets (includes/mazal-tov-presets.php): a name, a wording with blanks, and an optional Type.
+		// Not shown to visitors, so no "see it on the site" link, and deleted for good (nothing to restore).
+		'mazal_tov_preset' => array(
+			'kind'           => 'post',
+			'post_type'      => 'mazal_tov_preset',
+			'capability'     => 'edit_posts',
+			'label'          => __( 'Preset', 'ner-michoel-core' ),
+			'label_plural'   => __( 'Mazal Tov Presets', 'ner-michoel-core' ),
+			'default_status' => 'publish',
+			'no_link'        => true,
+			'force_delete'   => true,
+			'delete_note'    => __( 'Announcements you already posted with it stay exactly as they are.', 'ner-michoel-core' ),
+			'list_columns'   => array(
+				array( 'key' => 'title', 'label' => __( 'Name', 'ner-michoel-core' ), 'render' => 'title' ),
+				array( 'key' => 'wording', 'label' => __( 'Wording', 'ner-michoel-core' ), 'render' => 'meta', 'meta' => '_nm_preset_wording' ),
+				array( 'key' => 'default_type', 'label' => __( 'Type', 'ner-michoel-core' ), 'render' => 'meta_option', 'meta' => '_nm_preset_type' ),
+			),
+			'fields'         => array(
+				'title'   => array( 'type' => 'text', 'label' => __( 'Name', 'ner-michoel-core' ), 'required' => true, 'target' => 'post_title', 'maxlength' => 60, 'hint' => __( 'A short name you will pick from the list when you post, like “Baby”.', 'ner-michoel-core' ) ),
+				'wording' => array( 'type' => 'wording', 'label' => __( 'Wording', 'ner-michoel-core' ), 'required' => true, 'meta' => '_nm_preset_wording', 'maxlength' => 300, 'hint' => __( 'Type the sentence the way it should read. Wherever you will want to type a name when you post, put three underscores (___), for example: Mazel Tov to the ___ family on the birth of a baby ___', 'ner-michoel-core' ) ),
+				// Not called 'type': a field named like a route parameter (type, id) would replace it, since the JSON body wins.
+				'default_type' => array( 'type' => 'select', 'label' => __( 'Type', 'ner-michoel-core' ), 'meta' => '_nm_preset_type', 'options_callback' => 'ner_michoel_mazal_tov_type_options', 'hint' => __( 'Optional. When you pick this preset, the announcement is filed under this type for you (a “Baby” preset would be Birth).', 'ner-michoel-core' ) ),
 			),
 		),
 		'post_news'     => array(
@@ -280,6 +306,18 @@ function ner_michoel_cms_get_config( $type_key ) {
 	return isset( $registry[ $type_key ] ) ? $registry[ $type_key ] : null;
 }
 
+/**
+ * A select field's choices. A field can name a function ('options_callback')
+ * instead of listing them, so a list that has to be looked up (the Mazal Tov
+ * Types) is only looked up on the screens that show it.
+ */
+function ner_michoel_cms_field_options( $field ) {
+	if ( isset( $field['options_callback'] ) && is_callable( $field['options_callback'] ) ) {
+		return (array) call_user_func( $field['options_callback'] );
+	}
+	return isset( $field['options'] ) ? (array) $field['options'] : array();
+}
+
 function ner_michoel_cms_permission_check( WP_REST_Request $request ) {
 	$config = ner_michoel_cms_get_config( $request->get_param( 'type' ) );
 	if ( ! $config ) {
@@ -388,6 +426,16 @@ function ner_michoel_cms_route_terms( WP_REST_Request $request ) {
 
 function ner_michoel_cms_route_schema( WP_REST_Request $request ) {
 	$config = ner_michoel_cms_get_config( $request->get_param( 'type' ) );
+
+	// A field that looks its choices up (options_callback) is sent with them filled in.
+	$fields = $config['fields'];
+	foreach ( $fields as $key => $field ) {
+		if ( isset( $field['options_callback'] ) ) {
+			$fields[ $key ]['options'] = ner_michoel_cms_field_options( $field );
+			unset( $fields[ $key ]['options_callback'] );
+		}
+	}
+
 	return new WP_REST_Response(
 		array(
 			'label'        => $config['label'],
@@ -395,8 +443,9 @@ function ner_michoel_cms_route_schema( WP_REST_Request $request ) {
 			'kind'         => $config['kind'],
 			'readonly'     => ! empty( $config['readonly'] ),
 			'hierarchical' => ! empty( $config['hierarchical'] ),
+			'delete_note'  => isset( $config['delete_note'] ) ? $config['delete_note'] : '',
 			'list_columns' => $config['list_columns'],
-			'fields'       => $config['fields'],
+			'fields'       => $fields,
 			'taxonomies'   => isset( $config['taxonomies'] ) ? $config['taxonomies'] : array(),
 		),
 		200
@@ -553,10 +602,16 @@ function ner_michoel_cms_format_post_row( $post, $config ) {
 			case 'meta_trim':
 				$row[ $col['key'] ] = wp_trim_words( get_post_meta( $post->ID, $col['meta'], true ), 16 );
 				break;
+			case 'meta_option':
+				// The label of the stored choice (the Type's name, not its slug).
+				$stored             = (string) get_post_meta( $post->ID, $col['meta'], true );
+				$choices            = isset( $config['fields'][ $col['key'] ] ) ? ner_michoel_cms_field_options( $config['fields'][ $col['key'] ] ) : array();
+				$row[ $col['key'] ] = ( '' !== $stored && isset( $choices[ $stored ] ) ) ? $choices[ $stored ] : '';
+				break;
 		}
 	}
 
-	$row['edit_link'] = 'nm_submission' === $config['post_type'] ? '' : get_permalink( $post->ID );
+	$row['edit_link'] = ( 'nm_submission' === $config['post_type'] || ! empty( $config['no_link'] ) ) ? '' : get_permalink( $post->ID );
 	$row['thumbnail']  = has_post_thumbnail( $post->ID ) ? wp_get_attachment_image_url( get_post_thumbnail_id( $post->ID ), 'thumbnail' ) : '';
 
 	return $row;
@@ -695,7 +750,15 @@ function ner_michoel_cms_save_post( $id, $config, WP_REST_Request $request ) {
 		$value = $body[ $key ];
 		switch ( $field['target'] ) {
 			case 'post_title':
-				$postarr['post_title'] = sanitize_text_field( (string) $value );
+				$title = sanitize_text_field( (string) $value );
+				if ( ! empty( $field['maxlength'] ) ) {
+					$title = mb_substr( $title, 0, (int) $field['maxlength'] );
+				}
+				// A headline written from a preset must have every blank filled in (includes/mazal-tov-presets.php).
+				if ( ! empty( $field['no_blanks'] ) && ner_michoel_mazal_tov_has_blank( $title ) ) {
+					return new WP_Error( 'nm_cms_unfilled_blank', __( 'The headline still has a blank (___) to fill in.', 'ner-michoel-core' ), array( 'status' => 400 ) );
+				}
+				$postarr['post_title'] = $title;
 				break;
 			case 'post_content':
 				$postarr['post_content'] = wp_kses_post( (string) $value );
@@ -714,10 +777,26 @@ function ner_michoel_cms_save_post( $id, $config, WP_REST_Request $request ) {
 	}
 
 	if ( ! $id && empty( $postarr['post_status'] ) ) {
-		$postarr['post_status'] = 'draft';
+		$postarr['post_status'] = isset( $config['default_status'] ) ? $config['default_status'] : 'draft';
 	}
 	if ( ! $id && empty( $postarr['post_title'] ) ) {
 		return new WP_Error( 'nm_cms_missing_title', __( 'A title is required.', 'ner-michoel-core' ), array( 'status' => 400 ) );
+	}
+
+	// A required field that is kept as post meta (the title is checked just above).
+	foreach ( $config['fields'] as $key => $field ) {
+		if ( empty( $field['required'] ) || isset( $field['target'] ) || ! isset( $field['meta'] ) ) {
+			continue;
+		}
+		$given = array_key_exists( $key, $body ) ? sanitize_text_field( (string) $body[ $key ] ) : ( $id ? (string) get_post_meta( $id, $field['meta'], true ) : '' );
+		if ( '' === trim( $given ) ) {
+			return new WP_Error(
+				'nm_cms_missing_field',
+				/* translators: %s: the name of a field on a form */
+				sprintf( __( '“%s” is required.', 'ner-michoel-core' ), $field['label'] ),
+				array( 'status' => 400 )
+			);
+		}
 	}
 
 	$post_id = $id ? wp_update_post( $postarr, true ) : wp_insert_post( $postarr, true );
@@ -768,6 +847,13 @@ function ner_michoel_cms_save_post( $id, $config, WP_REST_Request $request ) {
 			}
 		} elseif ( isset( $field['meta'] ) && ! isset( $field['target'] ) ) {
 			$sanitized = 'textarea' === $field['type'] ? sanitize_textarea_field( (string) $value ) : sanitize_text_field( (string) $value );
+			if ( ! empty( $field['maxlength'] ) ) {
+				$sanitized = mb_substr( $sanitized, 0, (int) $field['maxlength'] );
+			}
+			// A menu keeps only one of its own choices.
+			if ( 'select' === $field['type'] && ! array_key_exists( $sanitized, ner_michoel_cms_field_options( $field ) ) ) {
+				$sanitized = '';
+			}
 			if ( '' !== $sanitized ) {
 				update_post_meta( $post_id, $field['meta'], $sanitized );
 			} else {
@@ -863,7 +949,7 @@ function ner_michoel_cms_route_delete( WP_REST_Request $request ) {
 	if ( ! $post || $post->post_type !== $config['post_type'] ) {
 		return new WP_Error( 'nm_cms_not_found', __( 'Not found.', 'ner-michoel-core' ), array( 'status' => 404 ) );
 	}
-	$force  = 'nm_submission' === $config['post_type'];
+	$force  = 'nm_submission' === $config['post_type'] || ! empty( $config['force_delete'] );
 	$result = wp_delete_post( $id, $force );
 	if ( ! $result ) {
 		return new WP_Error( 'nm_cms_delete_failed', __( 'Could not delete.', 'ner-michoel-core' ), array( 'status' => 400 ) );
