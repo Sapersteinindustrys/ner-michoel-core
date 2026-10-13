@@ -1,0 +1,141 @@
+/*
+ * Advanced > Backups (includes/backups-screen.php, assets/backups.js). Built on the panel's tokens
+ * (custom-admin-shell.css); every state colour comes with an icon and words.
+ */
+
+.nmb {
+	--nmb-ok: #0b6b0b;
+	--nmb-ok-soft: #e7f4e7;
+	--nmb-warn: #8a5a00;
+	--nmb-warn-soft: var(--nm-warn-soft, #fdf4e3);
+	--nmb-bad: #a52a2a;
+	--nmb-bad-soft: var(--nm-danger-soft, #fdeded);
+	--nmb-run: var(--nm-info, #2b6bd6);
+	--nmb-run-soft: var(--nm-info-soft, #eaf1fd);
+	display: grid;
+	gap: 18px;
+	min-width: 0;
+}
+.nmb .nm-card { min-width: 0; }
+.nmb p { margin: 0 0 8px; line-height: 1.5; }
+.nmb-muted { color: var(--nm-text-3, #75827c); font-size: 13.5px; }
+.nmb-small { font-size: 13px; color: var(--nm-text-2, #4b5852); }
+.nmb code { font-size: 12.5px; padding: 1px 5px; border-radius: 5px; background: var(--nm-surface-2, #f4f6f5); word-break: break-all; }
+
+/* How the backups stand ------------------------------------------------ */
+
+.nmb-status { border-left: 5px solid var(--nm-border-strong, #cdd5d1); }
+.nmb-status.is-ok { border-left-color: var(--nmb-ok); }
+.nmb-status.is-warn { border-left-color: #fab219; }
+.nmb-status.is-bad { border-left-color: var(--nmb-bad); }
+.nmb-status.is-run { border-left-color: var(--nmb-run); }
+
+.nmb-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.nmb-head__icon {
+	width: 38px;
+	height: 38px;
+	flex: none;
+	display: grid;
+	place-items: center;
+	border-radius: 11px;
+	background: var(--nm-surface-2, #f4f6f5);
+	color: var(--nm-text-2, #4b5852);
+}
+.nmb-head__icon .nm-ico { width: 20px; height: 20px; }
+.nmb-head--ok .nmb-head__icon { background: var(--nmb-ok-soft); color: var(--nmb-ok); }
+.nmb-head--warn .nmb-head__icon { background: var(--nmb-warn-soft); color: var(--nmb-warn); }
+.nmb-head--bad .nmb-head__icon { background: var(--nmb-bad-soft); color: var(--nmb-bad); }
+.nmb-head--run .nmb-head__icon { background: var(--nmb-run-soft); color: var(--nmb-run); }
+.nm-app .nmb-head__title { margin: 0; font-size: 18px; font-weight: 650; line-height: 1.3; }
+
+.nmb-error { color: var(--nmb-bad); font-weight: 600; }
+.nmb-note { margin: 8px 0 0; padding: 8px 12px; border-radius: 9px; font-size: 13px; }
+.nmb-note--warn { background: var(--nmb-warn-soft); color: var(--nmb-warn); }
+
+.nmb-progress {
+	height: 10px;
+	margin: 4px 0 12px;
+	border-radius: 99px;
+	background: var(--nmb-run-soft);
+	overflow: hidden;
+}
+.nmb-progress span {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--nmb-run);
+	transition: width 0.6s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+	.nmb-progress span { transition: none; }
+}
+.nmb-doing { font-size: 14.5px; }
+.nmb-sep { color: var(--nm-text-3, #75827c); }
+.nmb-pct { color: var(--nm-text-3, #75827c); font-variant-numeric: tabular-nums; }
+
+.nmb-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+
+/* The three copies ------------------------------------------------------ */
+
+.nmb-slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.nmb-slot { display: flex; flex-direction: column; padding: 18px 20px; }
+.nmb-slot.is-empty { background: var(--nm-surface-2, #f8faf9); }
+.nm-app .nmb-slot__title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 15px; font-weight: 650; }
+.nmb-slot__title .nm-ico { width: 18px; height: 18px; color: var(--nm-primary, #1e7d55); }
+.nm-app .nmb-slot__sub { margin: 2px 0 12px; color: var(--nm-text-3, #75827c); font-size: 13px; }
+.nm-app .nmb-slot__when { margin: 0 0 2px; font-size: 15px; font-weight: 600; }
+.nmb-slot__dl { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 10px; }
+
+/* Recent runs ------------------------------------------------------------ */
+
+.nmb-log .nm-card__title,
+.nmb-settings .nm-card__title,
+.nmb-about .nm-card__title { margin-bottom: 14px; }
+.nmb-table-wrap { overflow-x: auto; }
+.nmb-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.nmb-table th,
+.nmb-table td { padding: 9px 10px; border-bottom: 1px solid var(--nm-border, #e3e8e5); text-align: left; vertical-align: top; }
+.nmb-table th { color: var(--nm-text-3, #75827c); font-weight: 600; font-size: 12.5px; white-space: nowrap; }
+.nmb-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.nmb-table tr:last-child td { border-bottom: 0; }
+.nmb-tag { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+.nmb-tag .nm-ico { width: 15px; height: 15px; flex: none; }
+.nmb-tag--ok { color: var(--nmb-ok); }
+.nmb-tag--bad { color: var(--nmb-bad); }
+
+@media (max-width: 640px) {
+	.nmb-table thead { display: none; }
+	.nmb-table tr { display: block; padding: 10px 0; border-bottom: 1px solid var(--nm-border, #e3e8e5); }
+	.nmb-table tr:last-child { border-bottom: 0; }
+	.nmb-table td { display: inline; padding: 0 8px 0 0; border: 0; }
+	.nmb-table td:first-child { display: block; font-weight: 600; }
+	.nmb-table td:nth-child(3) { display: block; margin: 2px 0; }
+	.nmb-table .num { text-align: left; }
+}
+
+/* Settings ---------------------------------------------------------------- */
+
+.nmb-form .nm-settings-field { margin-bottom: 16px; }
+.nm-app-body .nmb-form select.nmb-hour { width: auto; min-width: 160px; max-width: 100%; }
+.nmb-label { display: block; margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--nm-text, #17211d); }
+.nmb-where__line { margin: 0; }
+
+.nmb-zone {
+	margin: 4px 0 18px;
+	padding: 12px 16px;
+	border: 1px solid var(--nm-border, #e3e8e5);
+	border-radius: var(--nm-radius, 12px);
+	background: var(--nm-surface-2, #f8faf9);
+}
+.nmb-zone summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.nmb-zone[open] summary { margin-bottom: 10px; }
+.nm-app .nmb-zone__intro { margin: 0 0 14px; }
+.nmb-zone__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 16px; }
+.nmb-zone__remove { margin-bottom: 4px; }
+
+.nmb-form__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+
+/* What a backup holds -------------------------------------------------- */
+
+.nm-app .nmb-plain { margin: 0; padding-left: 20px; list-style: disc; color: var(--nm-text-2, #4b5852); font-size: 14px; }
+.nmb-plain li { margin: 5px 0; line-height: 1.5; }

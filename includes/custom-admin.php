@@ -69,6 +69,7 @@ function ner_michoel_admin_icon_paths() {
 		'cloud'       => '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/>',
 		'download'    => '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
 		'database'    => '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/>',
+		'archive'     => '<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
 		'search'      => '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
 		'help'        => '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
 		'external'    => '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
@@ -627,6 +628,23 @@ function ner_michoel_custom_admin_structure() {
 						'tip'   => __( 'Only change this if you have the Bunny account details. If you’re not sure, ask whoever set up the site.', 'ner-michoel-core' ),
 					),
 				),
+				'backups'  => array(
+					'label'      => __( 'Backups', 'ner-michoel-core' ),
+					'icon'       => 'archive',
+					'callback'   => 'ner_michoel_render_backups_page',
+					'bare'       => true,
+					'capability' => 'manage_options',
+					'desc'       => __( 'A copy of the whole site on Bunny: a daily copy, a monthly one and one every two months, each replacing the one before.', 'ner-michoel-core' ),
+					'keywords'   => 'backup backups restore copy daily monthly bimonthly download zip bunny safe disaster',
+					'help'       => array(
+						'steps' => array(
+							__( 'The box at the top says how the backups stand. “Back up now” makes one straight away; it carries on by itself if you leave the page.', 'ner-michoel-core' ),
+							__( 'The three cards are the copies kept on Bunny. “Download” saves one to your computer.', 'ner-michoel-core' ),
+							__( 'Under Settings, choose the hour of the nightly backup and whether to be emailed if one doesn’t finish, then press Save.', 'ner-michoel-core' ),
+						),
+						'tip'   => __( 'Every backup zip has a README.txt with the steps to put the site back.', 'ner-michoel-core' ),
+					),
+				),
 				'sample'   => array(
 					'label'      => __( 'Sample Content', 'ner-michoel-core' ),
 					'icon'       => 'download',
@@ -840,6 +858,11 @@ function ner_michoel_enqueue_custom_admin_assets() {
 	wp_enqueue_style( 'ner-michoel-admin-speed', NER_MICHOEL_CORE_URL . 'assets/site-speed.css', array( 'ner-michoel-admin-shell' ), NER_MICHOEL_CORE_VERSION );
 	wp_enqueue_script( 'ner-michoel-admin-speed', NER_MICHOEL_CORE_URL . 'assets/site-speed.js', array(), NER_MICHOEL_CORE_VERSION, true );
 	wp_localize_script( 'ner-michoel-admin-speed', 'nmSpeedConfig', ner_michoel_speed_script_config() );
+
+	// Advanced > Backups (includes/backups-screen.php): the copies on Bunny, a running backup, the settings.
+	wp_enqueue_style( 'ner-michoel-admin-backups', NER_MICHOEL_CORE_URL . 'assets/backups.css', array( 'ner-michoel-admin-shell' ), NER_MICHOEL_CORE_VERSION );
+	wp_enqueue_script( 'ner-michoel-admin-backups', NER_MICHOEL_CORE_URL . 'assets/backups.js', array( 'ner-michoel-admin-shell' ), NER_MICHOEL_CORE_VERSION, true );
+	wp_localize_script( 'ner-michoel-admin-backups', 'nmBackupsConfig', ner_michoel_backup_screen_config() );
 
 	// Site Name & Logo and the Homepage screen's icon picker (includes/site-identity.php, includes/mazal-icon.php).
 	wp_enqueue_style( 'ner-michoel-admin-identity', NER_MICHOEL_CORE_URL . 'assets/custom-admin-identity.css', array( 'ner-michoel-admin-shell' ), NER_MICHOEL_CORE_VERSION );

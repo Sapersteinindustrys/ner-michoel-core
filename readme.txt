@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.31
+Stable tag: 0.9.32
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,22 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.32 =
+* New Control Panel screen, Advanced > Backups: the whole site, the database and wp-content
+  (themes, plugins, uploads), is packed into a zip every night (3 a.m. site time unless
+  changed) and kept on Bunny Storage as three copies, each replacing the one before: a daily
+  copy, a monthly copy (the first backup of each month, normally the 1st) and one every two
+  months. A new copy replaces an old one only once it is on Bunny in full and checked (SHA-256
+  sent with the upload, size checked after); the old copy is deleted after, never before.
+  Made in short steps that carry on after the host stops a request (each step starts the
+  next, WP-Cron is the fallback, a 5-minute check restarts a stalled one), so a site of any
+  size fits a shared host; pieces of about 1 GB when bigger. A backup that fails three times
+  in a row stops, leaves the old copies, and emails the admin address. Back up now, Stop,
+  Download (passed on from Bunny), the hour, email on/off, and an optional Storage Zone of the
+  backups' own. Kept in the media zone in a folder with a long random name otherwise. Every
+  zip has a README.txt on putting the site back. The audio, video and PDF files already on
+  Bunny are not copied again.
 
 = 0.9.31 =
 * New Control Panel screen, Homepage & Look > Footer: the footer on the home page. Its
