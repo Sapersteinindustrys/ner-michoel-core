@@ -164,7 +164,7 @@ function ner_michoel_custom_admin_structure() {
 					'keywords' => 'audio video lecture mp3 recording add edit',
 					'help'     => array(
 						'steps' => array(
-							__( 'Click “Add New Shiur”. Give it a title, pick the speaker and series, then choose the audio or video file.', 'ner-michoel-core' ),
+							__( 'Click “Add New Shiur”. Choose the audio or video file (the title is filled in from its name, and you can change it), then pick the speaker and series.', 'ner-michoel-core' ),
 							__( 'To change a shiur, click its row. Make your changes and press Save.', 'ner-michoel-core' ),
 							__( 'Use the search box, or the Speaker and Series filters, to find a shiur quickly.', 'ner-michoel-core' ),
 							__( 'Set Status to Draft to hide a shiur from visitors without deleting it.', 'ner-michoel-core' ),
@@ -181,8 +181,8 @@ function ner_michoel_custom_admin_structure() {
 					'keywords' => 'pdf written article document',
 					'help'     => array(
 						'steps' => array(
-							__( 'Click “Add New Written Shiur” and type a title.', 'ner-michoel-core' ),
-							__( 'Choose the PDF file. Its first line is filled into the Summary for you, and you can change it.', 'ner-michoel-core' ),
+							__( 'Click “Add New Written Shiur” and choose the PDF file. The title is filled in from the file’s name, and you can change it.', 'ner-michoel-core' ),
+							__( 'The PDF’s first line is filled into the Summary for you, and you can change it.', 'ner-michoel-core' ),
 							__( 'Pick the speaker and series, set Status to Published, and press Save.', 'ner-michoel-core' ),
 						),
 						'tip'   => __( 'The Summary is the short line shown on the homepage card.', 'ner-michoel-core' ),
@@ -196,8 +196,8 @@ function ner_michoel_custom_admin_structure() {
 					'keywords' => 'bulk batch multiple files upload many',
 					'help'     => array(
 						'steps' => array(
-							__( 'Click “Choose Files” and pick (or drag in) all the files.', 'ner-michoel-core' ),
-							__( 'Check the titles. They’re made from the file names, and you can change them.', 'ner-michoel-core' ),
+							__( 'Click “Choose Files” and pick (or drag in) all the files. A file whose name is already in the library isn’t uploaded again: give it its own name and add it again.', 'ner-michoel-core' ),
+							__( 'Check the titles. They’re made from the file names with the dashes, underscores and dots taken out, and you can change them.', 'ner-michoel-core' ),
 							__( 'Click “Create Shiurim”. On the next screen choose the speaker and series for the whole batch, then press “Assign & Publish”.', 'ner-michoel-core' ),
 						),
 						'tip'   => __( 'The new shiurim stay hidden (as drafts) until that last step, so there’s no rush.', 'ner-michoel-core' ),

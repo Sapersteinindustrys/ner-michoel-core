@@ -891,6 +891,24 @@
 		} );
 	}
 
+	// A new shiur or written shiur: choosing its file fills the Title from the file's name ("bava-kama.mp3" becomes
+	// "Bava Kama", assets/file-names.js), but only while the Title is empty or still holds what this put there.
+	// Once you type your own title, picking another file leaves it alone.
+	function fillTitleFromFile( $body, att ) {
+		var $title = $body.find( '.nm-cms-field[data-field="title"] input[type="text"]' ).first();
+		if ( ! $title.length || ! window.NMFileNames ) {
+			return;
+		}
+		var current = $.trim( $title.val() );
+		if ( current !== '' && current !== $title.data( 'nmFilledTitle' ) ) {
+			return;
+		}
+		var guess = window.NMFileNames.titleFromAttachment( att );
+		if ( guess ) {
+			$title.val( guess ).data( 'nmFilledTitle', guess ).trigger( 'input' );
+		}
+	}
+
 	CmsApp.prototype.bindFieldWidgets = function ( $body, item, markDirty ) {
 		var self = this;
 		var schema = this.schema;
@@ -1000,6 +1018,9 @@
 					markDirty();
 					if ( kind === 'pdf' ) {
 						fillSummaryFromPdf( $body, att.url );
+					}
+					if ( kind !== 'image' ) {
+						fillTitleFromFile( $body, att );
 					}
 				} );
 				frame.open();

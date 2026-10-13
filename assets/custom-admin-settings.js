@@ -426,6 +426,10 @@
 				return '<div>' + esc( line ) + '</div>';
 			} ).join( '' ) + '</div>';
 		}
+		// A screen that can look at itself again (Storage: is the media address working yet?).
+		if ( schema.extra && schema.extra.check_route ) {
+			html += '<p class="nm-settings-check"><button type="button" class="nm-btn nm-btn--sm nm-settings-check-btn">' + icon( 'check-circle' ) + '<span>Check again</span></button></p>';
+		}
 
 		var hasRepeater = false;
 		var repeaters = '';
@@ -748,6 +752,23 @@
 			}
 		} );
 
+		$root.find( '.nm-settings-check-btn' ).on( 'click', function () {
+			var $btn = $( this );
+			if ( self.dirty ) {
+				toast( 'Press Save first: the check looks at what is saved.', 'info' );
+				return;
+			}
+			$btn.prop( 'disabled', true ).find( 'span' ).text( 'Checking…' );
+			apiFetch( self.schema.extra.check_route, { method: 'POST' } )
+				.then( function () {
+					self.init(); // Draw the screen again with the new status lines.
+				} )
+				.catch( function ( err ) {
+					$btn.prop( 'disabled', false ).find( 'span' ).text( 'Check again' );
+					toast( err.message, 'error' );
+				} );
+		} );
+
 		$root.find( '.nm-settings-save' ).on( 'click', function () {
 			self.save( $( this ) );
 		} );
@@ -815,7 +836,7 @@
 					$( '.nm-brand__text strong' ).text( payload.name );
 					$( '.nm-brand__mark:not(.nm-brand__mark--img)' ).text( payload.name.charAt( 0 ).toUpperCase() );
 				}
-				if ( 'admin_login' === self.key || 'security' === self.key ) {
+				if ( 'admin_login' === self.key || 'security' === self.key || 'storage' === self.key ) {
 					self.init( 'Saved.' ); // Re-fetch so the status line reflects the new state.
 				} else {
 					self.setState( 'saved' );

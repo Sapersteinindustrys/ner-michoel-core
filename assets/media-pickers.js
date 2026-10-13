@@ -197,9 +197,14 @@
 
 	/* ---- Bulk Upload Shiurim: Choose Files (multi) ---- */
 
-	function guessTitle( filename ) {
-		var name = filename.replace( /\.[^/.]+$/, '' );
-		name = name.replace( /[_-]+/g, ' ' ).replace( /\s+/g, ' ' ).trim();
+	// The suggested title: the file's name made clean (assets/file-names.js, the same as the server's
+	// ner_michoel_title_from_filename()). The shortcut below is only for a page where that script didn't load.
+	function guessTitle( data ) {
+		if ( window.NMFileNames ) {
+			return window.NMFileNames.titleFromAttachment( data );
+		}
+		var name = String( data.filename || '' ).replace( /\.[^/.]+$/, '' );
+		name = name.replace( /[_.+-]+/g, ' ' ).replace( /\s+/g, ' ' ).trim();
 		return name.replace( /\w\S*/g, function ( word ) {
 			return word.charAt( 0 ).toUpperCase() + word.substr( 1 );
 		} );
@@ -237,7 +242,7 @@
 			$( '#nm_bulk_upload_table tbody' ).empty();
 			selection.each( function ( attachment ) {
 				var data = attachment.toJSON();
-				addBulkUploadRow( data.id, data.filename, guessTitle( data.filename ) );
+				addBulkUploadRow( data.id, data.filename, guessTitle( data ) );
 			} );
 			$( '#nm_bulk_upload_table' ).show();
 			$( '#nm_bulk_upload_submit' ).show();

@@ -164,9 +164,30 @@ function ner_michoel_settings_registry() {
 				'region'             => array( 'type' => 'text', 'label' => __( 'Region', 'ner-michoel-core' ), 'placeholder' => 'ny', 'desc' => __( 'The subdomain prefix in your storage endpoint, e.g. "ny" from ny.storage.bunnycdn.com.', 'ner-michoel-core' ) ),
 				'api_key'            => array( 'type' => 'password', 'label' => __( 'API Key (write access)', 'ner-michoel-core' ), 'desc' => __( 'The Storage Zone\'s password/API key from bunny.net — needs write access, not the read-only key.', 'ner-michoel-core' ) ),
 				'pull_zone_hostname' => array( 'type' => 'text', 'label' => __( 'Pull Zone hostname', 'ner-michoel-core' ), 'placeholder' => 'e.g. tomo-shiurim.b-cdn.net', 'desc' => __( 'The public CDN hostname connected to this Storage Zone.', 'ner-michoel-core' ) ),
+				'media_name'         => array(
+					'type'        => 'text',
+					'label'       => __( 'Media address on your own domain', 'ner-michoel-core' ),
+					'section'     => __( 'Where visitors get the files', 'ner-michoel-core' ),
+					'placeholder' => ner_michoel_media_name_for_host( ner_michoel_media_site_host() ) ? ner_michoel_media_name_for_host( ner_michoel_media_site_host() ) : 'media.yourdomain.org',
+					'desc'        => __( 'Leave empty and the site uses media. plus its own address, and follows by itself when the address changes. Type a name only to choose a different one. It is used only once it really works; until then files come from the Pull Zone hostname above.', 'ner-michoel-core' ),
+				),
+				'relay'              => array( 'type' => 'checkbox', 'label' => __( 'If a visitor’s filter blocks the file address, send their files through this site instead', 'ner-michoel-core' ) ),
+				'relay_max'          => array(
+					'type'  => 'number',
+					'label' => __( 'Most files sent through this site at once', 'ner-michoel-core' ),
+					'min'   => 1,
+					'max'   => 20,
+					'desc'  => __( 'Each file sent this way holds one of the host’s limited server processes while it travels, so this is kept small. When all places are busy the visitor’s player tries again in a moment. Visitors on one filtered network share these places.', 'ner-michoel-core' ),
+				),
 			),
 			'get_values' => function () {
-				return ner_michoel_bunny_storage_settings();
+				return array_merge( ner_michoel_bunny_storage_settings(), ner_michoel_media_values() );
+			},
+			'get_extra'  => function () {
+				return array(
+					'status_lines' => ner_michoel_media_status_lines(),
+					'check_route'  => 'media-check',
+				);
 			},
 		),
 		'live_shiur'    => array(

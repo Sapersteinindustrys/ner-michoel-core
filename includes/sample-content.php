@@ -195,7 +195,8 @@ function ner_michoel_sample_content_sideload_audio( $url, $post_id, $title_for_f
 		'tmp_name' => $tmp_file,
 	);
 
-	$attachment_id = media_handle_sideload( $file_array, $post_id );
+	// The Media Library entry takes the shiur's own title (the file name above is only a slug of it: "bava-kama").
+	$attachment_id = media_handle_sideload( $file_array, $post_id, '' !== $title_for_filename ? $title_for_filename : null );
 
 	if ( is_wp_error( $attachment_id ) ) {
 		if ( file_exists( $tmp_file ) ) {

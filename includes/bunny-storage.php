@@ -53,17 +53,32 @@ function ner_michoel_bunny_storage_is_configured() {
 
 function ner_michoel_bunny_storage_endpoint( $remote_path ) {
 	$s = ner_michoel_bunny_storage_settings();
-	return sprintf(
-		'https://%s.storage.bunnycdn.com/%s/%s',
-		rawurlencode( $s['region'] ),
-		rawurlencode( $s['zone_name'] ),
-		ltrim( $remote_path, '/' )
+	return apply_filters(
+		'ner_michoel_bunny_storage_endpoint',
+		sprintf(
+			'https://%s.storage.bunnycdn.com/%s/%s',
+			rawurlencode( $s['region'] ),
+			rawurlencode( $s['zone_name'] ),
+			ltrim( $remote_path, '/' )
+		),
+		$remote_path
 	);
 }
 
+/**
+ * https, always, except on a development copy of the site that says so in
+ * wp-config.php (the tests talk to a fake Bunny on a plain port).
+ */
+function ner_michoel_bunny_scheme() {
+	return ner_michoel_relay_scheme();
+}
+
+/**
+ * The address a visitor's browser gets for an offloaded file: on the media
+ * address when one is working (media-delivery.php), else on Bunny's own.
+ */
 function ner_michoel_bunny_public_url( $remote_path ) {
-	$s = ner_michoel_bunny_storage_settings();
-	return 'https://' . trim( $s['pull_zone_hostname'], '/' ) . '/' . ltrim( $remote_path, '/' );
+	return ner_michoel_bunny_scheme() . '://' . ner_michoel_media_host() . '/' . ltrim( $remote_path, '/' );
 }
 
 /**
@@ -409,6 +424,13 @@ function ner_michoel_register_storage_settings_route() {
 add_action( 'rest_api_init', 'ner_michoel_register_storage_settings_route' );
 
 function ner_michoel_handle_storage_settings_rest( WP_REST_Request $request ) {
+	// The media address and backup route settings (media-delivery.php): checked first,
+	// so a mistake in them stores nothing at all.
+	$media = ner_michoel_media_validate_request( $request );
+	if ( is_wp_error( $media ) ) {
+		return $media;
+	}
+
 	$current = ner_michoel_bunny_storage_settings();
 
 	$enabled   = $request->get_param( 'enabled' );
@@ -428,10 +450,14 @@ function ner_michoel_handle_storage_settings_rest( WP_REST_Request $request ) {
 		)
 	);
 
+	ner_michoel_media_save( $media );
+	$state = ner_michoel_media_check(); // Looks at the media address now, so the screen can say how it went.
+
 	return new WP_REST_Response(
 		array(
 			'saved'       => true,
 			'configured'  => ner_michoel_bunny_storage_is_configured(),
+			'media_ok'    => (bool) $state['ok'],
 		),
 		200
 	);

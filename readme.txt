@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.32
+Stable tag: 0.9.33
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,22 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.33 =
+* Clean titles from file names: a new audio, video or PDF upload is titled "Bava Kama" in
+  the Library instead of "bava-kama" (no file ending, dashes, underscores or periods; the
+  file keeps its name). A dash between two page numbers stays ("45b-46a"). Upload Many,
+  Add New Shiur and Add New Written Shiur suggest the same title.
+* A file whose name is already in the library (same kind, ignoring case, punctuation and
+  the old upload stamp) is refused with a plain message instead of being numbered. Files
+  kept on Bunny are also checked by stored name, so a second file can no longer replace the
+  first one on the CDN.
+* Library Import has a File titles card that gives the files already there the same clean
+  titles (rounds of about 20 seconds, with Undo; a title somebody wrote is never touched).
+* Media address: files on Bunny are offered at media.<your site address> once that name
+  works (found by itself, or typed under Advanced > Storage), and a visitor whose filter
+  blocks Bunny gets them through this site instead (capped, audio / video / pictures / PDF
+  only). The first check puts a 70-byte test picture, nm-probe.png, on the Bunny zone.
 
 = 0.9.32 =
 * New Control Panel screen, Advanced > Backups: the whole site, the database and wp-content

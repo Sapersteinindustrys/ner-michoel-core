@@ -504,12 +504,14 @@ function ner_michoel_import_sideload_pdf( $url, $post_id, $title ) {
 		$slug = 'written-shiur-' . $post_id;
 	}
 
+	// The Media Library entry takes the shiur's own title (the file name is only a slug of it).
 	$attachment_id = media_handle_sideload(
 		array(
 			'name'     => $slug . '.pdf',
 			'tmp_name' => $tmp_file,
 		),
-		$post_id
+		$post_id,
+		'' !== trim( (string) $title ) ? $title : null
 	);
 
 	if ( is_wp_error( $attachment_id ) ) {
@@ -932,6 +934,13 @@ function ner_michoel_render_library_import_page() {
 		</p>
 
 		<p class="description"><?php esc_html_e( 'Relies on WP-Cron, which fires on site visits — a real system cron hitting wp-cron.php periodically keeps this moving even with low admin traffic.', 'ner-michoel-core' ); ?></p>
+
+		<?php
+		// Clean titles for the files already in the library (includes/tidy-titles.php).
+		if ( function_exists( 'ner_michoel_render_tidy_titles_card' ) ) {
+			ner_michoel_render_tidy_titles_card();
+		}
+		?>
 	</div>
 	<?php
 }

@@ -74,7 +74,8 @@ function ner_michoel_handle_bulk_create_shiurim() {
 			continue;
 		}
 
-		$title = ( isset( $titles[ $i ] ) && '' !== $titles[ $i ] ) ? $titles[ $i ] : __( 'Untitled Shiur', 'ner-michoel-core' );
+		// A title left empty is made from the file's name (includes/file-names.php), the same as the box would have suggested.
+		$title = ( isset( $titles[ $i ] ) && '' !== $titles[ $i ] ) ? $titles[ $i ] : ner_michoel_title_for_attachment( $attachment_id, __( 'Untitled Shiur', 'ner-michoel-core' ) );
 
 		$post_id = wp_insert_post(
 			array(

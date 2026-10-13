@@ -51,6 +51,16 @@ function ner_michoel_stream_shiur_download( $post_id ) {
 		// Offloaded to Bunny (bunny-storage.php removes the local copy after
 		// upload), so there's nothing to stream here. Send the browser to the
 		// CDN copy instead — it can't be renamed, but it still downloads.
+		// A visitor whose filter blocks the CDN's address asks for the file through this
+		// site instead (nm_via=site, added by assets/media-fallback.js): this server
+		// fetches it from Bunny and sends it with the friendly file name.
+		if ( isset( $_GET['nm_via'] ) && 'site' === $_GET['nm_via'] && get_post_meta( $attachment_id, '_nm_bunny_offloaded', true ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$remote_path = ner_michoel_bunny_remote_path_for_attachment( $attachment_id );
+			if ( $remote_path ) {
+				ner_michoel_relay_serve( $remote_path, array( 'filename' => ner_michoel_build_shiur_download_filename( $post_id, pathinfo( $remote_path, PATHINFO_EXTENSION ) ) ) );
+				exit;
+			}
+		}
 		$remote = wp_get_attachment_url( $attachment_id );
 		if ( $remote ) {
 			wp_redirect( $remote ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
