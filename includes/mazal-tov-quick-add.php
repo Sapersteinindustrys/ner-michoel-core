@@ -77,6 +77,23 @@ function ner_michoel_render_mazal_tov_quick_add_page() {
 					<th scope="row"><label for="nm_mt_years"><?php esc_html_e( 'Years', 'ner-michoel-core' ); ?></label></th>
 					<td>
 						<input type="text" id="nm_mt_years" name="nm_mt_years" class="regular-text" placeholder="<?php esc_attr_e( "e.g. \"'05, '08\"", 'ner-michoel-core' ); ?>" />
+						<?php // Drawn by assets/years-list.js: if the name above is in the Years List, the years fill in from it. ?>
+						<?php $years_cfg = ner_michoel_years_script_config(); ?>
+						<div
+							data-nm-years-lookup
+							data-source="#nm_mt_honoree"
+							data-target="#nm_mt_years"
+							data-url="<?php echo esc_url( $years_cfg['url'] ); ?>"
+							data-nonce="<?php echo esc_attr( $years_cfg['nonce'] ); ?>"
+							data-manage-url="<?php echo esc_url( $years_cfg['manageUrl'] ); ?>"
+							data-can-manage="<?php echo $years_cfg['canManage'] ? '1' : '0'; ?>"
+						></div>
+						<p class="description">
+							<?php esc_html_e( 'Filled in from the Years List when the name above is in it. You can change it.', 'ner-michoel-core' ); ?>
+							<?php if ( $years_cfg['canManage'] ) : ?>
+								<a href="<?php echo esc_url( $years_cfg['manageUrl'] ); ?>"><?php esc_html_e( 'Upload or update the list', 'ner-michoel-core' ); ?></a>
+							<?php endif; ?>
+						</p>
 					</td>
 				</tr>
 			</table>

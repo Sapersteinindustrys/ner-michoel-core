@@ -1097,6 +1097,30 @@
 				} ) );
 			} ).catch( failed );
 		} );
+
+		// The Years List (assets/years-list.js): a Years box that says "years_from" in its field fills in
+		// from the name typed in that field, when the name is in the list.
+		$.each( schema.fields, function ( key, field ) {
+			if ( ! field.years_from || ! window.NMYearsList || ! cfg.years ) {
+				return;
+			}
+			var source = $body.find( '.nm-cms-field[data-field="' + field.years_from + '"] .nm-cms-input' )[ 0 ];
+			var target = $body.find( '.nm-cms-field[data-field="' + key + '"] .nm-cms-input' )[ 0 ];
+			if ( ! source || ! target ) {
+				return;
+			}
+			var note = document.createElement( 'div' );
+			target.parentNode.insertBefore( note, target.nextSibling );
+			window.NMYearsList.attach( {
+				source: source,
+				target: target,
+				note: note,
+				url: cfg.years.url,
+				nonce: cfg.years.nonce,
+				manageUrl: cfg.years.manageUrl,
+				canManage: cfg.years.canManage
+			} );
+		} );
 	};
 
 	CmsApp.prototype.collectFormData = function ( $body ) {

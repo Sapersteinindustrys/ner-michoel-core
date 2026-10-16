@@ -147,7 +147,8 @@ function ner_michoel_cms_registry() {
 				'title'          => array( 'type' => 'text', 'label' => __( 'Headline', 'ner-michoel-core' ), 'required' => true, 'target' => 'post_title', 'no_blanks' => true ),
 				'mazal_tov_type' => array( 'type' => 'taxonomy', 'label' => __( 'Type', 'ner-michoel-core' ), 'taxonomy' => 'mazal_tov_type' ),
 				'relationship'   => array( 'type' => 'text', 'label' => __( 'Relationship (e.g. "Rabbi & Mrs. Cohen")', 'ner-michoel-core' ), 'meta' => '_mazal_tov_relationship' ),
-				'years'          => array( 'type' => 'text', 'label' => __( "Years (e.g. '05, '08)", 'ner-michoel-core' ), 'meta' => '_mazal_tov_years' ),
+				// years_from: the field whose name is looked up in the Years List (includes/years-list.php); an empty Years box is filled in from it.
+				'years'          => array( 'type' => 'text', 'label' => __( "Years (e.g. '05, '08)", 'ner-michoel-core' ), 'meta' => '_mazal_tov_years', 'years_from' => 'title', 'hint' => __( 'Optional. If the boy is in the Years List, his years are filled in when you type his name in the headline. You can change them.', 'ner-michoel-core' ) ),
 				'thumbnail'      => array( 'type' => 'image', 'label' => __( 'Photo (optional)', 'ner-michoel-core' ), 'target' => 'thumbnail' ),
 				'status'         => array( 'type' => 'select', 'label' => __( 'Status', 'ner-michoel-core' ), 'target' => 'status', 'options' => $status_options ),
 			),

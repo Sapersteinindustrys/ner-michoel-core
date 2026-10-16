@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.33
+Stable tag: 0.9.34
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,16 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.34 =
+* New Control Panel screen, Announcements > Years List: upload an Excel (.xlsx) or CSV spreadsheet of the boys and
+  the years they were in yeshiva (a heading row such as Name and Years, or First name, Last name and Years). The file
+  is checked first (which columns were read, a preview, what was left out); the list only changes when you press
+  Use this list, either replacing the list or adding to it. The list can be downloaded again as a spreadsheet, updated
+  by uploading a new file, or removed.
+* Quick Mazal Tov and Add New Mazal Tov: when the name (or a preset's finished sentence) has a boy from the list in
+  it, the Years box is filled in from the list, with a line saying where it came from. Two boys with the same name,
+  or a name that is a little different, shows buttons to choose from. Years you typed yourself are never overwritten.
 
 = 0.9.33 =
 * Clean titles from file names: a new audio, video or PDF upload is titled "Bava Kama" in

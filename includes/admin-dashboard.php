@@ -62,6 +62,7 @@ function ner_michoel_register_dashboard_menu() {
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Post News', 'ner-michoel-core' ), __( 'Post News', 'ner-michoel-core' ), 'edit_posts', 'nm-post-news', 'ner_michoel_render_post_news_page' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Mazal Tov Announcements', 'ner-michoel-core' ), __( 'Mazal Tov', 'ner-michoel-core' ), 'edit_posts', 'edit.php?post_type=mazal_tov' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Post a Mazal Tov', 'ner-michoel-core' ), __( 'Post a Mazal Tov', 'ner-michoel-core' ), 'edit_posts', 'nm-mazal-tov-quick-add', 'ner_michoel_render_mazal_tov_quick_add_page' );
+	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Years List', 'ner-michoel-core' ), __( 'Years List', 'ner-michoel-core' ), 'edit_others_posts', 'nm-mazal-tov-years', 'ner_michoel_render_years_list_page' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Upload Pictures', 'ner-michoel-core' ), __( 'Upload Pictures', 'ner-michoel-core' ), 'upload_files', 'upload.php' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Recent Submissions', 'ner-michoel-core' ), __( 'Submissions', 'ner-michoel-core' ), 'edit_posts', 'edit.php?post_type=nm_submission' );
 	add_submenu_page( NER_MICHOEL_DASHBOARD_SLUG, __( 'Bulk Upload Shiurim', 'ner-michoel-core' ), __( 'Bulk Upload', 'ner-michoel-core' ), 'edit_posts', 'nm-bulk-upload', 'ner_michoel_render_bulk_upload_page' );
@@ -253,6 +254,9 @@ function ner_michoel_dashboard_admin_assets() {
 		ner_michoel_enqueue_media_pickers_script();
 	} elseif ( 'nm-mazal-tov-quick-add' === $page && function_exists( 'ner_michoel_enqueue_mazal_tov_presets_assets' ) ) {
 		ner_michoel_enqueue_mazal_tov_presets_assets();
+		ner_michoel_enqueue_years_list_assets();
+	} elseif ( 'nm-mazal-tov-years' === $page ) {
+		ner_michoel_enqueue_years_list_assets();
 	}
 }
 add_action( 'admin_enqueue_scripts', 'ner_michoel_dashboard_admin_assets' );

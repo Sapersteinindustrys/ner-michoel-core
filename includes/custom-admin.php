@@ -281,6 +281,7 @@ function ner_michoel_custom_admin_structure() {
 							__( 'Click “Add New Mazal Tov” for an announcement with a photo.', 'ner-michoel-core' ),
 							__( 'To save typing, pick a preset at the top (like “Baby”) and fill in the blanks. The headline is written for you.', 'ner-michoel-core' ),
 							__( 'Or use “Quick Mazal Tov” for a fast, four-box version.', 'ner-michoel-core' ),
+							__( 'If the boy is in the Years List, his years fill in by themselves when you type his name.', 'ner-michoel-core' ),
 							__( 'Click any announcement to edit it, or set it to Draft to take it down.', 'ner-michoel-core' ),
 						),
 						'tip'      => __( 'Presets are sentences with blanks, like “Mazel Tov to the ___ family on the birth of a baby ___”. You make them once and use them every time.', 'ner-michoel-core' ),
@@ -299,7 +300,7 @@ function ner_michoel_custom_admin_structure() {
 					'help'     => array(
 						'steps' => array(
 							__( 'Pick a preset (like “Baby”) and fill in the blanks in the sentence, or leave it on “None” and type who it’s for in the Honoree box.', 'ner-michoel-core' ),
-							__( 'Add the relationship and years if you like, for example “Rabbi & Mrs.” and “’05, ’08”.', 'ner-michoel-core' ),
+							__( 'Add the relationship and years if you like, for example “Rabbi & Mrs.” and “’05, ’08”. If the name is in the Years List, the years fill in by themselves.', 'ner-michoel-core' ),
 							__( 'Pick the type of simcha (a preset picks it for you if it has one) and press “Post Mazal Tov”. It goes live straight away.', 'ner-michoel-core' ),
 						),
 						'tip'      => __( 'Presets are sentences with blanks, like “Mazel Tov to the ___ family on the birth of a baby ___”. You make them once and use them every time.', 'ner-michoel-core' ),
@@ -324,6 +325,23 @@ function ner_michoel_custom_admin_structure() {
 							__( 'Press Save. Next time you add a Mazal Tov (“Quick Mazal Tov” or “Add New Mazal Tov”), pick the preset and fill in the blanks.', 'ner-michoel-core' ),
 						),
 						'tip'   => __( 'To say what goes in a blank, put the words in curly brackets instead of underscores, like “Mazel Tov to the {Family name} family”. Announcements you already posted never change when you edit or delete a preset.', 'ner-michoel-core' ),
+					),
+				),
+				'mazaltovyears' => array(
+					'label'      => __( 'Years List', 'ner-michoel-core' ),
+					'icon'       => 'list',
+					'callback'   => 'ner_michoel_render_years_list_page',
+					'capability' => 'edit_others_posts',
+					'desc'       => __( 'The spreadsheet of the boys and the years they were in yeshiva. Type a name on a Mazal Tov and its years fill in.', 'ner-michoel-core' ),
+					'keywords'   => 'years spreadsheet excel xlsx csv upload update boys yeshiva alumni names list fill in simcha',
+					'help'       => array(
+						'steps' => array(
+							__( 'Press “Choose file” and pick your Excel spreadsheet (or a CSV), then “Upload and check”. Nothing changes yet.', 'ner-michoel-core' ),
+							__( 'Look at how the file was read: the Name and Years columns and a few rows. Change a column if it guessed wrong and press “Update the preview”.', 'ner-michoel-core' ),
+							__( 'Choose “Replace the whole list” or “Add to the list”, then press “Use this list”.', 'ner-michoel-core' ),
+							__( 'From then on, when you type a boy’s name on a Mazal Tov, his years fill in. To update the list later, upload the new spreadsheet the same way.', 'ner-michoel-core' ),
+						),
+						'tip'   => __( 'One row per boy, with a heading row such as Name and Years (or First name, Last name and Years). “Download the list as a spreadsheet” gives you the current list to change in Excel and upload again.', 'ner-michoel-core' ),
 					),
 				),
 				'newslist'    => array(
@@ -839,7 +857,9 @@ function ner_michoel_enqueue_custom_admin_assets() {
 	wp_enqueue_script( 'ner-michoel-pdf-first-line', NER_MICHOEL_CORE_URL . 'assets/pdf-first-line.js', array(), NER_MICHOEL_CORE_VERSION, true );
 	// Mazal Tov presets (includes/mazal-tov-presets.php): the picker on Add New Mazal Tov and the preset form's wording box. After the shell's styles, so the two agree where they overlap.
 	ner_michoel_enqueue_mazal_tov_presets_assets();
-	wp_enqueue_script( 'ner-michoel-admin-cms', NER_MICHOEL_CORE_URL . 'assets/custom-admin-cms.js', array( 'jquery', 'jquery-ui-sortable', 'ner-michoel-series-picker', 'ner-michoel-mazal-tov-presets', 'ner-michoel-admin-shell' ), NER_MICHOEL_CORE_VERSION, true );
+	// The Years List (includes/years-list.php): the Years box on the Mazal Tov forms fills in from it, and its own screen.
+	ner_michoel_enqueue_years_list_assets();
+	wp_enqueue_script( 'ner-michoel-admin-cms', NER_MICHOEL_CORE_URL . 'assets/custom-admin-cms.js', array( 'jquery', 'jquery-ui-sortable', 'ner-michoel-series-picker', 'ner-michoel-mazal-tov-presets', 'ner-michoel-years-list', 'ner-michoel-admin-shell' ), NER_MICHOEL_CORE_VERSION, true );
 	wp_localize_script(
 		'ner-michoel-admin-cms',
 		'nmCmsConfig',
@@ -847,6 +867,7 @@ function ner_michoel_enqueue_custom_admin_assets() {
 			'restUrl'    => esc_url_raw( rest_url( 'ner-michoel/v1' ) ),
 			'nonce'      => wp_create_nonce( 'wp_rest' ),
 			'presetsUrl' => esc_url_raw( ner_michoel_mazal_tov_presets_url() ),
+			'years'      => ner_michoel_years_script_config(),
 		)
 	);
 
