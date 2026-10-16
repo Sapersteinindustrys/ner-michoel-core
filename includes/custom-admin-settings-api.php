@@ -334,6 +334,18 @@ function ner_michoel_settings_registry() {
 					'type'  => 'checkbox',
 					'label' => __( 'Turn off XML-RPC, an old remote login that bots use to guess passwords in bulk (recommended)', 'ner-michoel-core' ),
 				),
+				'login_code'           => array(
+					'type'    => 'checkbox',
+					'label'   => __( 'Ask for a 6-digit code from the email when someone signs in on a computer we don’t know (recommended)', 'ner-michoel-core' ),
+					'section' => __( 'Signing in', 'ner-michoel-core' ),
+				),
+				'login_code_days'      => array(
+					'type'  => 'number',
+					'label' => __( 'Days a computer stays remembered', 'ner-michoel-core' ),
+					'min'   => 1,
+					'max'   => 365,
+					'desc'  => __( 'After typing the code, a person can tick “Remember this computer”: that computer then signs in with the password alone for this many days after its last sign-in. Changing a password forgets every remembered computer.', 'ner-michoel-core' ),
+				),
 			),
 			'get_values' => function () {
 				$settings = ner_michoel_form_guard_settings();
@@ -342,6 +354,8 @@ function ner_michoel_settings_registry() {
 					'turnstile_secret_key' => '',
 					'hide_users'           => (bool) $settings['hide_users'],
 					'disable_xmlrpc'       => (bool) $settings['disable_xmlrpc'],
+					'login_code'           => (bool) $settings['login_code'],
+					'login_code_days'      => (int) $settings['login_code_days'],
 				);
 			},
 			'get_extra'  => function () {

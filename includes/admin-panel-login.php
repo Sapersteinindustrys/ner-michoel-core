@@ -56,10 +56,30 @@ function ner_michoel_admin_panel_rate_limit_key() {
  * either via a successful-login redirect, or by finishing the HTML
  * output for the form/error state.
  */
+/**
+ * Signs in as the shortcut's account and goes to the Control Panel. Never returns.
+ * A remembered computer's dates move on here (login-codes.php).
+ */
+function ner_michoel_admin_panel_finish_login( $user_id, $dashboard_url ) {
+	$user = get_userdata( $user_id );
+	wp_set_current_user( $user_id );
+	wp_set_auth_cookie( $user_id );
+	if ( function_exists( 'ner_michoel_trusted_is_trusted' ) && ner_michoel_trusted_is_trusted( $user_id ) ) {
+		ner_michoel_trusted_add( $user_id );
+	}
+	do_action( 'wp_login', $user->user_login, $user );
+	wp_safe_redirect( $dashboard_url );
+	exit;
+}
+
 function ner_michoel_render_admin_panel_login( $dashboard_url ) {
 	$error = '';
+	$info  = '';
+	$step  = 'password'; // Or 'code': the password was right and a code was emailed (login-codes.php).
+	$token = '';
+	$post  = isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'];
 
-	if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'] && isset( $_POST['nm_admin_panel_password'] ) ) {
+	if ( $post && isset( $_POST['nm_admin_panel_password'] ) ) {
 		$rate_key = ner_michoel_admin_panel_rate_limit_key();
 		$attempts = (int) get_transient( $rate_key );
 
@@ -74,18 +94,70 @@ function ner_michoel_render_admin_panel_login( $dashboard_url ) {
 			if ( $password_hash && wp_check_password( $submitted, $password_hash ) ) {
 				delete_transient( $rate_key );
 				$user_id = ner_michoel_admin_panel_login_user_id();
-				if ( $user_id ) {
-					wp_set_current_user( $user_id );
-					wp_set_auth_cookie( $user_id );
-					do_action( 'wp_login', get_userdata( $user_id )->user_login, get_userdata( $user_id ) );
-					wp_safe_redirect( $dashboard_url );
-					exit;
+				if ( $user_id && function_exists( 'ner_michoel_login_code_needed_for' ) && ner_michoel_login_code_needed_for( $user_id ) ) {
+					// The shared password alone is not enough: a code goes to the email of the account it signs in as (login-codes.php).
+					$begin = ner_michoel_login_code_begin( $user_id );
+					$step  = 'code';
+					$token = $begin['token'];
+					$text  = ner_michoel_login_code_message( $begin['status'], get_userdata( $user_id )->user_email );
+					if ( in_array( $begin['status'], array( 'capped', 'failed' ), true ) ) {
+						$error = $text;
+					} else {
+						$info = $text;
+					}
+				} elseif ( $user_id ) {
+					ner_michoel_admin_panel_finish_login( $user_id, $dashboard_url );
+				} else {
+					$error = __( 'No admin account is set up to log in as yet. Please use the regular login instead.', 'ner-michoel-core' );
 				}
-				$error = __( 'No admin account is set up to log in as yet. Please use the regular login instead.', 'ner-michoel-core' );
 			} else {
 				set_transient( $rate_key, $attempts + 1, 15 * MINUTE_IN_SECONDS );
 				$error = __( 'Incorrect password.', 'ner-michoel-core' );
 			}
+		}
+	} elseif ( $post && isset( $_POST['nm_admin_panel_token'] ) && function_exists( 'ner_michoel_login_code_find_session' ) ) {
+		// The second step: the emailed code (or a new one asked for), for the account the shortcut signs in as.
+		$rate_key = ner_michoel_admin_panel_rate_limit_key();
+		$attempts = (int) get_transient( $rate_key );
+		$user_id  = ner_michoel_admin_panel_login_user_id();
+		$user     = $user_id ? get_userdata( $user_id ) : false;
+		$token    = (string) wp_unslash( $_POST['nm_admin_panel_token'] );
+		$step     = 'code';
+
+		if ( $attempts >= 5 ) {
+			$error = __( 'Too many attempts. Please wait 15 minutes and try again.', 'ner-michoel-core' );
+		} elseif ( ! isset( $_POST['nm_admin_panel_nonce'] ) || ! wp_verify_nonce( $_POST['nm_admin_panel_nonce'], 'nm_admin_panel_login' ) ) {
+			$error = __( 'Please try again.', 'ner-michoel-core' );
+		} elseif ( ! $user || ! ner_michoel_login_code_ip_allowed() ) {
+			$error = __( 'Too many tries from your network. Please wait a while and try again.', 'ner-michoel-core' );
+		} elseif ( ! ner_michoel_login_code_find_session( strtolower( $user->user_email ), $token ) ) {
+			$step  = 'password';
+			$token = '';
+			$error = __( 'That sign-in has ended. Enter the password again and we’ll email a new code.', 'ner-michoel-core' );
+		} elseif ( isset( $_POST['nm_admin_panel_resend'] ) ) {
+			$sent = ner_michoel_login_code_send( $user_id );
+			if ( 'sent' === $sent['status'] ) {
+				/* translators: %s: an email address with its name hidden (j***@gmail.com) */
+				$info = sprintf( __( 'A new code is on its way to %s.', 'ner-michoel-core' ), ner_michoel_login_code_mask_email( $user->user_email ) );
+			} elseif ( 'cooldown' === $sent['status'] ) {
+				/* translators: %d: seconds */
+				$error = sprintf( _n( 'Please wait %d second before asking for another code.', 'Please wait %d seconds before asking for another code.', $sent['wait'], 'ner-michoel-core' ), $sent['wait'] );
+			} else {
+				$error = ner_michoel_login_code_message( $sent['status'], $user->user_email );
+			}
+		} else {
+			$result = ner_michoel_login_code_verify( $user_id, isset( $_POST['nm_admin_panel_code'] ) ? (string) wp_unslash( $_POST['nm_admin_panel_code'] ) : '' );
+			if ( 'ok' === $result['status'] ) {
+				delete_transient( $rate_key );
+				if ( ! empty( $_POST['nm_admin_panel_remember'] ) ) {
+					ner_michoel_trusted_add( $user_id );
+				}
+				ner_michoel_admin_panel_finish_login( $user_id, $dashboard_url );
+			}
+			if ( 'wrong' === $result['status'] ) {
+				set_transient( $rate_key, $attempts + 1, 15 * MINUTE_IN_SECONDS );
+			}
+			$error = ner_michoel_login_code_verify_message( $result );
 		}
 	}
 
@@ -106,11 +178,18 @@ function ner_michoel_render_admin_panel_login( $dashboard_url ) {
 			.nm-login-box h1 { font-size: 1.35rem; margin: 0 0 6px; letter-spacing: -.01em; }
 			.nm-login-box p.nm-login-sub { margin: 0 0 24px; color: #4b5852; font-size: .95rem; line-height: 1.5; }
 			.nm-login-box label { display: block; text-align: left; font-size: .9rem; font-weight: 600; margin-bottom: 7px; }
-			.nm-login-box input[type="password"] { width: 100%; box-sizing: border-box; padding: 12px 14px; font-size: 1rem; border: 1px solid #cdd5d1; border-radius: 12px; margin-bottom: 16px; font-family: inherit; transition: border-color .15s, box-shadow .15s; }
-			.nm-login-box input[type="password"]:focus { outline: none; border-color: #1e7d55; box-shadow: 0 0 0 4px rgba(30,125,85,.22); }
+			.nm-login-box input[type="password"], .nm-login-box input[type="text"] { width: 100%; box-sizing: border-box; padding: 12px 14px; font-size: 1rem; border: 1px solid #cdd5d1; border-radius: 12px; margin-bottom: 16px; font-family: inherit; transition: border-color .15s, box-shadow .15s; }
+			.nm-login-box input[type="password"]:focus, .nm-login-box input[type="text"]:focus { outline: none; border-color: #1e7d55; box-shadow: 0 0 0 4px rgba(30,125,85,.22); }
 			.nm-login-box button { width: 100%; padding: 13px; font-size: 1rem; font-weight: 600; font-family: inherit; background: #1e7d55; color: #fff; border: none; border-radius: 12px; cursor: pointer; transition: background .15s, box-shadow .15s; }
 			.nm-login-box button:hover { background: #176645; box-shadow: 0 8px 18px -8px rgba(30,125,85,.7); }
 			.nm-login-error { display: flex; gap: 8px; align-items: center; text-align: left; color: #8f2626; background: #fdeded; border: 1px solid #f6c9c9; border-radius: 12px; padding: 10px 12px; font-size: .9rem; margin: 0 0 18px; }
+			.nm-login-info { text-align: left; color: #1d5c38; background: #eaf6ee; border: 1px solid #cfe8d8; border-radius: 12px; padding: 10px 12px; font-size: .9rem; margin: 0 0 18px; }
+			.nm-login-box input.nm-login-code { text-align: center; font-size: 1.5rem; letter-spacing: .3em; font-family: Consolas, Menlo, monospace; }
+			.nm-login-box label.nm-login-remember { display: flex; gap: 8px; align-items: center; font-weight: 400; margin: -4px 0 16px; }
+			.nm-login-box label.nm-login-remember input { width: auto; margin: 0; }
+			.nm-login-box form.nm-login-resend { margin: 12px 0 0; }
+			.nm-login-box form.nm-login-resend button { background: none; color: #1e7d55; padding: 6px; font-size: .9rem; box-shadow: none; }
+			.nm-login-box form.nm-login-resend button:hover { background: none; text-decoration: underline; box-shadow: none; }
 			.nm-login-foot { margin: 20px 0 0; font-size: .85rem; color: #75827c; }
 			.nm-login-foot a { color: #1e7d55; font-weight: 600; text-decoration: none; }
 			.nm-login-foot a:hover { text-decoration: underline; }
@@ -120,16 +199,52 @@ function ner_michoel_render_admin_panel_login( $dashboard_url ) {
 		<div class="nm-login-box">
 			<div class="nm-login-mark" aria-hidden="true"><?php echo esc_html( strtoupper( mb_substr( get_bloginfo( 'name' ) ? get_bloginfo( 'name' ) : 'N', 0, 1 ) ) ); ?></div>
 			<h1><?php echo esc_html( get_bloginfo( 'name' ) ); ?></h1>
-			<p class="nm-login-sub"><?php esc_html_e( 'Welcome! Enter the control panel password to continue.', 'ner-michoel-core' ); ?></p>
+			<p class="nm-login-sub">
+				<?php
+				if ( 'code' === $step ) {
+					esc_html_e( 'Check your email. Enter the 6-digit code we sent you to continue.', 'ner-michoel-core' );
+				} else {
+					esc_html_e( 'Welcome! Enter the control panel password to continue.', 'ner-michoel-core' );
+				}
+				?>
+			</p>
 			<?php if ( $error ) : ?>
 				<p class="nm-login-error" role="alert"><?php echo esc_html( $error ); ?></p>
 			<?php endif; ?>
-			<form method="post">
-				<?php wp_nonce_field( 'nm_admin_panel_login', 'nm_admin_panel_nonce' ); ?>
-				<label for="nm_admin_panel_password"><?php esc_html_e( 'Password', 'ner-michoel-core' ); ?></label>
-				<input type="password" id="nm_admin_panel_password" name="nm_admin_panel_password" autocomplete="current-password" autofocus required />
-				<button type="submit"><?php esc_html_e( 'Open the Control Panel', 'ner-michoel-core' ); ?></button>
-			</form>
+			<?php if ( $info ) : ?>
+				<p class="nm-login-info" role="status"><?php echo esc_html( $info ); ?></p>
+			<?php endif; ?>
+			<?php if ( 'code' === $step ) : ?>
+				<form method="post" id="nm-admin-code-form">
+					<?php wp_nonce_field( 'nm_admin_panel_login', 'nm_admin_panel_nonce' ); ?>
+					<input type="hidden" name="nm_admin_panel_token" value="<?php echo esc_attr( $token ); ?>" />
+					<label for="nm_admin_panel_code"><?php esc_html_e( '6-digit code', 'ner-michoel-core' ); ?></label>
+					<input type="text" id="nm_admin_panel_code" class="nm-login-code" name="nm_admin_panel_code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="12" placeholder="123456" autofocus required />
+					<label class="nm-login-remember">
+						<input type="checkbox" name="nm_admin_panel_remember" value="1" checked="checked" />
+						<span>
+							<?php
+							$remember_days = ner_michoel_trusted_days();
+							echo esc_html( sprintf( /* translators: %d: days */ _n( 'Remember this computer for %d day', 'Remember this computer for %d days', $remember_days, 'ner-michoel-core' ), $remember_days ) );
+							?>
+						</span>
+					</label>
+					<button type="submit"><?php esc_html_e( 'Open the Control Panel', 'ner-michoel-core' ); ?></button>
+				</form>
+				<form method="post" class="nm-login-resend">
+					<?php wp_nonce_field( 'nm_admin_panel_login', 'nm_admin_panel_nonce' ); ?>
+					<input type="hidden" name="nm_admin_panel_token" value="<?php echo esc_attr( $token ); ?>" />
+					<input type="hidden" name="nm_admin_panel_resend" value="1" />
+					<button type="submit"><?php esc_html_e( 'Send a new code', 'ner-michoel-core' ); ?></button>
+				</form>
+			<?php else : ?>
+				<form method="post">
+					<?php wp_nonce_field( 'nm_admin_panel_login', 'nm_admin_panel_nonce' ); ?>
+					<label for="nm_admin_panel_password"><?php esc_html_e( 'Password', 'ner-michoel-core' ); ?></label>
+					<input type="password" id="nm_admin_panel_password" name="nm_admin_panel_password" autocomplete="current-password" autofocus required />
+					<button type="submit"><?php esc_html_e( 'Open the Control Panel', 'ner-michoel-core' ); ?></button>
+				</form>
+			<?php endif; ?>
 			<p class="nm-login-foot"><?php esc_html_e( 'Have your own account?', 'ner-michoel-core' ); ?> <a href="<?php echo esc_url( wp_login_url( $dashboard_url ) ); ?>"><?php esc_html_e( 'Log in with it instead', 'ner-michoel-core' ); ?></a></p>
 		</div>
 	</body>

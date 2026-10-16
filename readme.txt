@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.34
+Stable tag: 0.9.35
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,21 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.35 =
+* Signing in now needs more than a password. After the right password, a 6-digit code is
+  emailed to the account and has to be typed in: on the Account page, on wp-login.php (the
+  password is typed again beside the code) and at the /admin password shortcut. The person can
+  tick "Remember this computer": that computer then signs in with the password alone for 90
+  days after its last sign-in (the Security screen changes the number). Remembered computers
+  are forgotten when the password is changed or reset, with "Forget Remembered Computers" on
+  the Account page, or on the user's profile in wp-admin; an account keeps at most 10. A code
+  works for 10 minutes, allows 5 tries, is used once, and at most 6 are emailed an hour to
+  one address. The email says which browser and internet address the password was used from.
+  Control Panel > Advanced > Security has a switch (on by default); if the site's email stops
+  working untick it, or add define( 'NER_MICHOEL_LOGIN_CODE_OFF', true ); to wp-config.php.
+  Application Passwords (the deploy calls) and anyone already signed in are not affected. The
+  Account page needs theme 0.2.69 for its code box; until then it points people to wp-login.php.
 
 = 0.9.34 =
 * New Control Panel screen, Announcements > Years List: upload an Excel (.xlsx) or CSV spreadsheet of the boys and

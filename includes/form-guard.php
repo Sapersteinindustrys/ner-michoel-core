@@ -26,7 +26,8 @@
  * also locked for a while after repeated wrong passwords from one address.
  * And two switches, both on by default: hide who the site's users are (the
  * public REST users list, ?author=N, the users sitemap, oEmbed's author),
- * and turn off XML-RPC, which bots use to guess passwords in bulk.
+ * and turn off XML-RPC, which bots use to guess passwords in bulk. A third,
+ * also on by default, asks for an emailed code at sign-in (login-codes.php).
  *
  * Layers 2 and 3 are only required once the theme renders their fields
  * (it declares add_theme_support( 'nm-form-guard' )), so the plugin and the
@@ -81,6 +82,8 @@ function ner_michoel_form_guard_settings() {
 			'turnstile_secret_key' => '',
 			'hide_users'           => true,
 			'disable_xmlrpc'       => true,
+			'login_code'           => true,
+			'login_code_days'      => 90,
 		)
 	);
 }
@@ -550,10 +553,14 @@ function ner_michoel_form_guard_login_lockout( $user ) {
 }
 add_filter( 'authenticate', 'ner_michoel_form_guard_login_lockout', 99 );
 
-function ner_michoel_form_guard_count_failed_login() {
+function ner_michoel_form_guard_count_failed_login( $username = '', $error = null ) {
+	// "A code was emailed" (login-codes.php) is the next step after a right password, not a failure.
+	if ( $error instanceof WP_Error && 'nm_login_code_needed' === $error->get_error_code() ) {
+		return;
+	}
 	ner_michoel_rate_bump( 'login_fail', ner_michoel_client_ip(), 15 * MINUTE_IN_SECONDS );
 }
-add_action( 'wp_login_failed', 'ner_michoel_form_guard_count_failed_login' );
+add_action( 'wp_login_failed', 'ner_michoel_form_guard_count_failed_login', 10, 2 );
 
 function ner_michoel_form_guard_clear_failed_logins() {
 	ner_michoel_rate_clear( 'login_fail', ner_michoel_client_ip() );
@@ -673,6 +680,16 @@ function ner_michoel_handle_form_guard_settings_rest( WP_REST_Request $request )
 	$settings['hide_users']     = rest_sanitize_boolean( $request->get_param( 'hide_users' ) );
 	$settings['disable_xmlrpc'] = rest_sanitize_boolean( $request->get_param( 'disable_xmlrpc' ) );
 
+	// The sign-in code settings keep what they were when a caller doesn't send them (an older script), unlike the two above.
+	$login_code = $request->get_param( 'login_code' );
+	if ( null !== $login_code ) {
+		$settings['login_code'] = rest_sanitize_boolean( $login_code );
+	}
+	$days = $request->get_param( 'login_code_days' );
+	if ( null !== $days && '' !== $days ) {
+		$settings['login_code_days'] = max( 1, min( 365, (int) $days ) );
+	}
+
 	update_option( 'nm_form_guard', $settings, false );
 	delete_option( 'nm_form_guard_turnstile_problem' );
 
@@ -689,6 +706,10 @@ function ner_michoel_form_guard_status_lines() {
 	$lines[] = ner_michoel_form_guard_theme_ready()
 		? __( 'Browser check: on, for Contact, Email a Magid Shiur, Sign Up, Log In and Forgot Password.', 'ner-michoel-core' )
 		: __( 'Browser check: waiting for the theme update that adds it to the forms. Rate limits, the login lockout and the message checks are on.', 'ner-michoel-core' );
+
+	foreach ( ner_michoel_login_code_status_lines() as $line ) {
+		$lines[] = $line;
+	}
 
 	$lines[] = ner_michoel_turnstile_enabled()
 		? __( 'Cloudflare Turnstile: on. After changing keys, send a test message from the Contact page.', 'ner-michoel-core' )

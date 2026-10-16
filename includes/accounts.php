@@ -16,6 +16,10 @@
  * creates the account switched off and emails a 6-digit code, and
  * account-verify turns it on and signs the person in.
  *
+ * Every login is two-step (login-codes.php): after the right password a 6-digit
+ * code is emailed, unless the computer is remembered. account-login answers
+ * "code needed" and account-login-code finishes the sign-in.
+ *
  * Nonces: register/login/forgot-password have no prior session to
  * protect, so they're public (permission_callback => '__return_true').
  * They're guarded instead by the bot check (form-guard.php): the browser
@@ -326,6 +330,9 @@ function ner_michoel_handle_account_login( WP_REST_Request $request ) {
 		return ner_michoel_account_error( 'missing_fields', __( 'Please enter your email and password.', 'ner-michoel-core' ) );
 	}
 
+	// This is a browser session being asked for: login-codes.php's gate treats it so (an Application Password typed here is no way in).
+	$GLOBALS['nm_lc_session_login'] = true;
+
 	$user = wp_signon(
 		array(
 			'user_login'    => $email,
@@ -334,12 +341,19 @@ function ner_michoel_handle_account_login( WP_REST_Request $request ) {
 		),
 		is_ssl()
 	);
+	unset( $GLOBALS['nm_lc_session_login'] );
 
 	if ( is_wp_error( $user ) && 'nm_too_many_attempts' === $user->get_error_code() ) {
 		return ner_michoel_account_error( 'too_many_attempts', $user->get_error_message(), 429 );
 	}
 	if ( is_wp_error( $user ) && 'nm_email_unverified' === $user->get_error_code() ) {
 		return ner_michoel_account_verification_required( $email );
+	}
+	if ( is_wp_error( $user ) && 'nm_login_code_needed' === $user->get_error_code() ) {
+		return ner_michoel_login_code_rest_response( $user ); // The right password; the code step comes next.
+	}
+	if ( is_wp_error( $user ) && 'nm_login_code_unsupported' === $user->get_error_code() ) {
+		return ner_michoel_account_error( 'login_code_unsupported', $user->get_error_message() );
 	}
 	if ( is_wp_error( $user ) ) {
 		// Same message either way — confirming "that email isn't
@@ -418,9 +432,15 @@ function ner_michoel_handle_account_update_profile( WP_REST_Request $request ) {
 		$updates['user_pass'] = $new_password;
 	}
 
+	// A new password forgets every remembered computer (login-codes.php), except the one it was just typed on.
+	$was_remembered = '' !== $new_password && function_exists( 'ner_michoel_trusted_is_trusted' ) && ner_michoel_trusted_is_trusted( $user_id );
+
 	$result = wp_update_user( $updates );
 	if ( is_wp_error( $result ) ) {
 		return ner_michoel_account_error( 'update_failed', $result->get_error_message() );
+	}
+	if ( $was_remembered ) {
+		ner_michoel_trusted_add( $user_id );
 	}
 
 	// A password change invalidates every session (including this
