@@ -5,6 +5,23 @@
 	margin: 0;
 }
 
+.nm-series-picker__current {
+	margin: 0 0 8px;
+	padding: 7px 10px;
+	border: 1px dashed #c3c4c7;
+	border-radius: 4px;
+	color: #50575e;
+	font-size: 13px;
+}
+
+.nm-series-picker__current.has-value {
+	border-style: solid;
+	border-color: #72aee6;
+	background: #e5f0fa;
+	color: #0a4b78;
+	font-weight: 600;
+}
+
 .nm-series-picker__search {
 	display: block;
 	width: 100%;
@@ -58,6 +75,16 @@
 	background: #e5f0fa;
 	color: #0a4b78;
 	font-weight: 600;
+}
+
+.nm-series-picker__item.is-selected::before {
+	content: "\2713\00a0";
+}
+
+/* A stylesheet's display beats the hidden attribute, so say it here: the search hides rows with it. */
+.nm-series-picker__item[hidden],
+.nm-series-picker__section[hidden] {
+	display: none;
 }
 
 .nm-series-picker__none {

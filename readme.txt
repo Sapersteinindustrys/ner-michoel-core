@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.35
+Stable tag: 0.9.36
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,14 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.36 =
+* Fix: on "Finish Your Upload" (Upload Many at Once), typing a series name in the search box and
+  pressing Enter submitted the whole form and published the batch with NO series. Enter now
+  chooses the first series that matches what was typed (and does nothing when nothing, or
+  nothing matching, is typed). The series picker, here and on Add New Shiur / Add New Written
+  Shiur, now shows a "Chosen: ..." line above the search box (or "No series chosen yet."), puts
+  a check mark on the chosen row, and its search hides rows reliably on every screen.
 
 = 0.9.35 =
 * Signing in now needs more than a password. After the right password, a 6-digit code is

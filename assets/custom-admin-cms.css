@@ -438,6 +438,8 @@ body.nm-no-scroll { overflow: hidden; }
 .nm-app .nm-series-picker__item:hover,
 .nm-app .nm-series-picker__item:focus-visible { background: var(--nm-surface-2); }
 .nm-app .nm-series-picker__item.is-selected { background: var(--nm-primary-soft); color: var(--nm-primary-hover); }
+.nm-app .nm-series-picker__current { padding: 9px 12px; border-radius: 10px; border-color: var(--nm-border-strong); color: var(--nm-text-2); font-size: 13.5px; }
+.nm-app .nm-series-picker__current.has-value { border-color: var(--nm-primary); background: var(--nm-primary-soft); color: var(--nm-primary-hover); }
 
 /* ---------------- Settings screens ---------------- */
 
