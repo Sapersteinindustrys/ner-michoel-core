@@ -160,33 +160,112 @@ function ner_michoel_mazal_tov_lead( $name, $years, $relationship = '' ) {
 	return $lead;
 }
 
-/** The finished sentence (the post title) from its parts. */
-function ner_michoel_mazal_tov_compose_title( $name, $years, $what, $relationship = '' ) {
-	return trim( ner_michoel_mazal_tov_lead( $name, $years, $relationship ) . ' ' . trim( (string) $what ) );
+/**
+ * The place in a stored "what" where the person's name goes is written {name}, for
+ * example "Mazel tov to Rabbi & Mrs. {name} on the birth of a baby boy!". Without it, the
+ * name (and his years) go in front of the "what", as in "Moshe Cohen ('95) on his engagement".
+ */
+function ner_michoel_mazal_tov_name_regex() {
+	return '/\{\s*name\s*\}/i';
 }
 
 /**
- * The two pieces the pages print: 'lead' (the name with his years, shown bold) and
- * 'rest' (what the Mazal Tov is). Plain text: the caller escapes it. No date is
- * part of it on purpose: an announcement is not shown with when it was posted.
+ * A preset's wording as the sentence kept on an announcement: the blank where the person's
+ * name goes becomes {name}. That blank is the one labeled {name} if there is one, otherwise
+ * the first blank. Any other blank stays, for the admin to fill in before it is posted. A
+ * wording with no blanks comes back as it is (the name is then put in front of it).
+ * Mirrors nameSlot() in assets/mazal-tov-presets.js.
+ */
+function ner_michoel_mazal_tov_wording_template( $wording ) {
+	$wording = (string) $wording;
+	if ( ! preg_match_all( '/\{([^{}]{0,60})\}|_{2,}/', $wording, $found, PREG_OFFSET_CAPTURE ) || empty( $found[0] ) ) {
+		return $wording;
+	}
+	$slot = 0;
+	foreach ( $found[0] as $i => $hit ) {
+		$label = isset( $found[1][ $i ][0] ) ? strtolower( trim( preg_replace( '/\s+/', ' ', $found[1][ $i ][0] ) ) ) : '';
+		if ( 'name' === $label ) {
+			$slot = $i;
+			break;
+		}
+	}
+	return substr_replace( $wording, '{name}', $found[0][ $slot ][1], strlen( $found[0][ $slot ][0] ) );
+}
+
+/** A stored "what" cut at the place for the name: array( the words before it, the words after it, whether it has one ). */
+function ner_michoel_mazal_tov_split_what( $what ) {
+	$what = trim( (string) $what );
+	if ( ! preg_match( ner_michoel_mazal_tov_name_regex(), $what, $hit, PREG_OFFSET_CAPTURE ) ) {
+		return array( '', $what, false );
+	}
+	$before = trim( substr( $what, 0, $hit[0][1] ) );
+	$after  = trim( substr( $what, $hit[0][1] + strlen( $hit[0][0] ) ) );
+	return array( $before, $after, true );
+}
+
+/** Every {name} in $words replaced by $lead, as typed (a $1 or a backslash in a name is not a pattern). */
+function ner_michoel_mazal_tov_put_name( $words, $lead ) {
+	return preg_replace_callback(
+		ner_michoel_mazal_tov_name_regex(),
+		function () use ( $lead ) {
+			return $lead;
+		},
+		$words
+	);
+}
+
+/** Words put together with one space, none before punctuation that follows ("{name}!"). */
+function ner_michoel_mazal_tov_join( $a, $b ) {
+	if ( '' === $a || '' === $b ) {
+		return $a . $b;
+	}
+	return preg_match( '/^[.,;:!?)\]”"\']/u', $b ) ? $a . $b : $a . ' ' . $b;
+}
+
+/** The finished sentence (the post title) from its parts. */
+function ner_michoel_mazal_tov_compose_title( $name, $years, $what, $relationship = '' ) {
+	$lead = ner_michoel_mazal_tov_lead( $name, $years, $relationship );
+	list( $before, $after, $has_place ) = ner_michoel_mazal_tov_split_what( $what );
+	if ( $has_place ) {
+		// A second {name} in the same sentence says the name again.
+		$after = ner_michoel_mazal_tov_put_name( $after, $lead );
+	}
+	return trim( preg_replace( '/\s+/', ' ', ner_michoel_mazal_tov_join( ner_michoel_mazal_tov_join( $before, $lead ), $after ) ) );
+}
+
+/**
+ * The pieces the pages print, in reading order: 'before' (words ahead of the name, like
+ * "Mazel tov to Rabbi & Mrs."), 'lead' (the name with his years, shown bold) and 'after'
+ * (what the Mazal Tov is). 'rest' is 'after' (and 'before' when there is one) joined, for a
+ * theme that only knows lead and rest. Plain text: the caller escapes it. No date is part
+ * of it on purpose: an announcement is not shown with when it was posted.
  */
 function ner_michoel_mazal_tov_parts( $post ) {
 	$post = get_post( $post );
 	if ( ! $post ) {
-		return array( 'lead' => '', 'rest' => '' );
+		return array( 'before' => '', 'lead' => '', 'after' => '', 'rest' => '' );
 	}
 	$name         = (string) get_post_meta( $post->ID, '_mazal_tov_name', true );
 	$years        = ner_michoel_get_mazal_tov_years( $post->ID );
 	$relationship = ner_michoel_get_mazal_tov_relationship( $post->ID );
 	if ( '' === trim( $name ) ) {
 		return array(
-			'lead' => ner_michoel_mazal_tov_lead( get_the_title( $post ), $years, $relationship ),
-			'rest' => '',
+			'before' => '',
+			'lead'   => ner_michoel_mazal_tov_lead( get_the_title( $post ), $years, $relationship ),
+			'after'  => '',
+			'rest'   => '',
 		);
 	}
+	$lead = ner_michoel_mazal_tov_lead( $name, $years, $relationship );
+	list( $before, $after, $has_place ) = ner_michoel_mazal_tov_split_what( get_post_meta( $post->ID, '_mazal_tov_what', true ) );
+	if ( $has_place ) {
+		$after = ner_michoel_mazal_tov_put_name( $after, $lead );
+	}
 	return array(
-		'lead' => ner_michoel_mazal_tov_lead( $name, $years, $relationship ),
-		'rest' => trim( (string) get_post_meta( $post->ID, '_mazal_tov_what', true ) ),
+		'before' => $before,
+		'lead'   => $lead,
+		'after'  => $after,
+		'rest'   => trim( $before . ' ' . $after ),
 	);
 }
 

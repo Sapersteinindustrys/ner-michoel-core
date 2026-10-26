@@ -139,15 +139,34 @@ function ner_michoel_handle_mazal_tov_share() {
 	}
 
 	$name       = isset( $_POST['nm_mt_name'] ) ? sanitize_text_field( wp_unslash( $_POST['nm_mt_name'] ) ) : '';
-	$what       = isset( $_POST['nm_mt_what'] ) ? sanitize_text_field( wp_unslash( $_POST['nm_mt_what'] ) ) : '';
-	$type_id    = isset( $_POST['nm_mt_type'] ) ? ner_michoel_mazal_tov_valid_type( wp_unslash( $_POST['nm_mt_type'] ) ) : 0;
 	$from_name  = isset( $_POST['nm_mt_from_name'] ) ? sanitize_text_field( wp_unslash( $_POST['nm_mt_from_name'] ) ) : '';
 	$from_email = isset( $_POST['nm_mt_from_email'] ) ? sanitize_email( wp_unslash( $_POST['nm_mt_from_email'] ) ) : '';
+	$name       = function_exists( 'mb_substr' ) ? mb_substr( $name, 0, 120 ) : substr( $name, 0, 120 );
 
-	$name = function_exists( 'mb_substr' ) ? mb_substr( $name, 0, 120 ) : substr( $name, 0, 120 );
-	$what = function_exists( 'mb_substr' ) ? mb_substr( $what, 0, 200 ) : substr( $what, 0, 200 );
+	// The wording comes from the admin's preset for the kind of simcha the visitor picked: the visitor
+	// gives the name only. The name goes in the preset's first blank (or in front of a wording with no
+	// blank), and any other blank is left for the admin to fill in on the review screen. Only a site
+	// with no presets at all asks for the words, so the form never has nothing to send.
+	$what      = '';
+	$type_id   = 0;
+	$preset_id = 0;
+	$free_text = '';
+	if ( ner_michoel_mazal_tov_share_choices() ) {
+		$preset_id = isset( $_POST['nm_mt_preset'] ) ? absint( wp_unslash( $_POST['nm_mt_preset'] ) ) : 0;
+		foreach ( ner_michoel_get_mazal_tov_presets() as $preset ) {
+			if ( (int) $preset['id'] === $preset_id ) {
+				$what    = ner_michoel_mazal_tov_wording_template( $preset['wording'] );
+				$type_id = (int) $preset['type_id'];
+			}
+		}
+	} else {
+		$free_text = isset( $_POST['nm_mt_what'] ) ? sanitize_text_field( wp_unslash( $_POST['nm_mt_what'] ) ) : '';
+		$what      = function_exists( 'mb_substr' ) ? mb_substr( $free_text, 0, 200 ) : substr( $free_text, 0, 200 );
+		$type_id   = isset( $_POST['nm_mt_type'] ) ? ner_michoel_mazal_tov_valid_type( wp_unslash( $_POST['nm_mt_type'] ) ) : 0;
+		$free_text = $what;
+	}
 
-	if ( '' === $name || '' === $what || '' === $from_name || ! is_email( $from_email ) || ner_michoel_mazal_tov_has_blank( $name . ' ' . $what ) ) {
+	if ( '' === $name || '' === $what || '' === $from_name || ! is_email( $from_email ) || ner_michoel_mazal_tov_has_blank( $name . ' ' . $free_text ) ) {
 		$back( 'error' );
 	}
 
@@ -157,7 +176,7 @@ function ner_michoel_handle_mazal_tov_share() {
 		'email'   => $from_email,
 		'message' => sprintf( 'Mazal Tov for %s: %s', $name, $what ),
 	);
-	if ( ner_michoel_form_guard_is_repeat( 'mazaltov', $name . '|' . $what ) ) {
+	if ( ner_michoel_form_guard_is_repeat( 'mazaltov', $name . '|' . $preset_id . '|' . $free_text ) ) {
 		ner_michoel_form_guard_log( 'duplicate' );
 		$back( 'sent' );
 	}
@@ -172,6 +191,9 @@ function ner_michoel_handle_mazal_tov_share() {
 	$years = ner_michoel_mazal_tov_find_years( $name );
 	$title = ner_michoel_mazal_tov_compose_title( $name, $years['years'], $what );
 
+	// A visitor is not signed in, so WordPress would turn the "&" in "Rabbi & Mrs." into "&amp;" in the saved title.
+	// Everything in the sentence was cleaned above (tags stripped), so the filter is off while it is saved.
+	kses_remove_filters();
 	$post_id = wp_insert_post(
 		array(
 			'post_type'   => 'mazal_tov',
@@ -185,6 +207,7 @@ function ner_michoel_handle_mazal_tov_share() {
 	}
 
 	ner_michoel_mazal_tov_save_parts( $post_id, array( 'name' => $name, 'years' => $years['years'], 'what' => $what ) );
+	kses_init();
 	if ( $type_id ) {
 		wp_set_object_terms( $post_id, array( $type_id ), 'mazal_tov_type' );
 	}
@@ -204,14 +227,14 @@ add_action( 'admin_post_nopriv_nm_mazal_tov_share', 'ner_michoel_handle_mazal_to
  * A failed send does not lose anything: the Mazal Tov is waiting on the review screen either way.
  */
 function ner_michoel_mazal_tov_email_admin( $post_id, $from_name, $from_email ) {
-	$parts = ner_michoel_mazal_tov_parts( $post_id );
-	$type  = ner_michoel_mazal_tov_type_name( $post_id );
+	$look = wp_specialchars_decode( (string) get_post_field( 'post_title', $post_id ), ENT_QUOTES );
+	$type = ner_michoel_mazal_tov_type_name( $post_id );
 
 	$lines = array(
 		__( 'Someone shared a Mazal Tov on the site. It is not on the site yet: it is waiting for you to look it over.', 'ner-michoel-core' ),
 		'',
 		__( 'How it will look:', 'ner-michoel-core' ),
-		( '' !== $type ? '[' . $type . '] ' : '' ) . trim( $parts['lead'] . ' ' . $parts['rest'] ),
+		( '' !== $type ? '[' . $type . '] ' : '' ) . $look,
 		'',
 		sprintf( /* translators: 1: name, 2: email */ __( 'Sent by: %1$s <%2$s>', 'ner-michoel-core' ), $from_name, $from_email ),
 		'',
@@ -221,7 +244,7 @@ function ner_michoel_mazal_tov_email_admin( $post_id, $from_name, $from_email ) 
 
 	return wp_mail(
 		get_option( 'admin_email' ),
-		sprintf( /* translators: 1: site name, 2: the headline */ __( '[%1$s] Mazal Tov to review: %2$s', 'ner-michoel-core' ), get_bloginfo( 'name' ), trim( $parts['lead'] . ' ' . $parts['rest'] ) ),
+		sprintf( /* translators: 1: site name, 2: the headline */ __( '[%1$s] Mazal Tov to review: %2$s', 'ner-michoel-core' ), get_bloginfo( 'name' ), $look ),
 		implode( "\n", $lines ),
 		array( 'Reply-To: ' . $from_name . ' <' . $from_email . '>' )
 	);
@@ -308,12 +331,14 @@ function ner_michoel_render_mazal_tov_review_page() {
 				<input type="hidden" name="action" value="nm_mazal_tov_review" />
 				<input type="hidden" name="nm_mt_id" value="<?php echo esc_attr( $post->ID ); ?>" />
 				<?php ner_michoel_panel_form_field(); ?>
+				<?php // Pressing Enter in a box sends the form's FIRST button: keep that one "Save changes" (off screen), never "Approve and post". ?>
+				<button type="submit" name="nm_mt_do" value="save" class="nm-mtr__default" tabindex="-1" aria-hidden="true"><?php esc_html_e( 'Save changes', 'ner-michoel-core' ); ?></button>
 
 				<div class="nm-mtr__look">
 					<span class="nm-mtr__label"><?php esc_html_e( 'How it will look on the site', 'ner-michoel-core' ); ?></span>
 					<div class="nm-mtr__card">
 						<p class="nm-mtr__type" data-nm-mtr-type><?php echo esc_html( ner_michoel_mazal_tov_type_name( $post->ID ) ); ?></p>
-						<p class="nm-mtr__text"><strong data-nm-mtr-lead><?php echo esc_html( $parts['lead'] ); ?></strong> <span data-nm-mtr-rest><?php echo esc_html( $parts['rest'] ); ?></span></p>
+						<p class="nm-mtr__text"><span data-nm-mtr-before><?php echo esc_html( $parts['before'] ); ?></span> <strong data-nm-mtr-lead><?php echo esc_html( $parts['lead'] ); ?></strong> <span data-nm-mtr-after><?php echo esc_html( $parts['after'] ); ?></span></p>
 					</div>
 				</div>
 
@@ -347,7 +372,11 @@ function ner_michoel_render_mazal_tov_review_page() {
 					</tr>
 					<tr>
 						<th scope="row"><label for="<?php echo esc_attr( $uid ); ?>-what"><?php esc_html_e( 'What the Mazal Tov is', 'ner-michoel-core' ); ?></label></th>
-						<td><input type="text" id="<?php echo esc_attr( $uid ); ?>-what" name="nm_mt_what" class="large-text" value="<?php echo esc_attr( $what ); ?>" data-nm-mtr-field="what" required /></td>
+						<td>
+							<input type="text" id="<?php echo esc_attr( $uid ); ?>-what" name="nm_mt_what" class="large-text" value="<?php echo esc_attr( $what ); ?>" data-nm-mtr-field="what" required />
+							<p class="description"><?php esc_html_e( '{name} is where the name goes. The preset the visitor picked wrote this; you can change any of it.', 'ner-michoel-core' ); ?></p>
+							<p class="nm-mtr__blank" data-nm-mtr-blank hidden><?php esc_html_e( 'There is still a blank (___) to fill in. “Approve and post” works once every blank is filled in.', 'ner-michoel-core' ); ?></p>
+						</td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="<?php echo esc_attr( $uid ); ?>-rel"><?php esc_html_e( 'Relationship', 'ner-michoel-core' ); ?></label></th>
@@ -404,6 +433,9 @@ function ner_michoel_render_mazal_tov_review_page() {
 		.nm-mtr__text{margin:0;font-size:17px;line-height:1.45}
 		.nm-mtr__from{color:#475467;margin:12px 0 0}
 		.nm-mtr__buttons{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0}
+		.nm-mtr__item{position:relative}
+		.nm-mtr__default{position:absolute;left:-9999px;top:0;width:1px;height:1px;overflow:hidden}
+		.nm-mtr__blank{margin:6px 0 0;color:#b32d2e;font-weight:600}
 		.nm-mtr__block{margin-left:auto !important}
 		.nm-mtr__blocked{margin-top:26px;max-width:760px}
 		.nm-mtr__blocked summary{cursor:pointer;font-weight:600}
@@ -420,18 +452,41 @@ function ner_michoel_render_mazal_tov_review_page() {
 				var el = form.querySelector( '[data-nm-mtr-field="' + key + '"]' );
 				return el ? el.value.replace( /\s+/g, ' ' ).trim() : '';
 			}
+			// Same rules as ner_michoel_mazal_tov_compose_title() / _parts(): {name} in the words is where the name goes.
+			var NAME_RE = /\{\s*name\s*\}/i;
+			var BLANK_RE = /_{2,}|\{(?!\s*name\s*\})[^{}]{0,60}\}/i;
 			function update( form ) {
 				var lead = ( field( form, 'relationship' ) + ' ' + field( form, 'name' ) ).trim();
 				var years = field( form, 'years' );
 				if ( lead && years ) {
 					lead += ' (' + years + ')';
 				}
+				var what = field( form, 'what' );
+				var before = '';
+				var after = what;
+				var hit = what.match( NAME_RE );
+				if ( hit ) {
+					before = what.slice( 0, hit.index ).trim();
+					after = what.slice( hit.index + hit[ 0 ].length ).trim().replace( new RegExp( NAME_RE.source, 'gi' ), function () { return lead; } );
+				}
 				var select = form.querySelector( '[data-nm-mtr-field="type"]' );
 				var type = select && select.value ? select.options[ select.selectedIndex ].text : '';
+				form.querySelector( '[data-nm-mtr-before]' ).textContent = before;
 				form.querySelector( '[data-nm-mtr-lead]' ).textContent = lead;
-				form.querySelector( '[data-nm-mtr-rest]' ).textContent = field( form, 'what' );
+				form.querySelector( '[data-nm-mtr-after]' ).textContent = after;
 				form.querySelector( '[data-nm-mtr-type]' ).textContent = type;
+				// A blank left in it cannot be posted: say so, and keep "Approve and post" from being pressed.
+				var blank = BLANK_RE.test( field( form, 'name' ) + ' ' + what );
+				var note = form.querySelector( '[data-nm-mtr-blank]' );
+				var approve = form.querySelector( 'button[value="approve"]' );
+				if ( note ) {
+					note.hidden = ! blank;
+				}
+				if ( approve ) {
+					approve.disabled = blank;
+				}
 			}
+			document.querySelectorAll( '[data-nm-mtr]' ).forEach( update );
 			document.addEventListener( 'input', function ( e ) {
 				var form = e.target.closest ? e.target.closest( '[data-nm-mtr]' ) : null;
 				if ( form ) {

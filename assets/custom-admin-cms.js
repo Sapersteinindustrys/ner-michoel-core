@@ -207,7 +207,7 @@
 			case 'media':
 				// A media field can declare kind 'pdf' (written shiurim) —
 				// same field type on the PHP side, different picker here.
-				return renderMediaField( field.kind === 'pdf' ? 'pdf' : 'media', value );
+				return renderMediaField( field.kind === 'pdf' ? 'pdf' : 'media', value, field );
 			case 'media_multi':
 				return renderMediaMultiField( value );
 			case 'readonly':
@@ -229,17 +229,22 @@
 		return '<span class="nm-cms-media-empty">' + icon( kind === 'image' ? 'image' : ( kind === 'pdf' ? 'file-text' : 'upload' ) ) + '<span>' + ( kind === 'image' ? 'No image yet' : 'No file yet' ) + '</span></span>';
 	}
 
-	function renderMediaField( kind, value ) {
+	function renderMediaField( kind, value, field ) {
 		var hasFile = value && value.id;
 		var noun = kind === 'image' ? 'Image' : kind === 'pdf' ? 'PDF' : 'File';
+		// A shiur's file field (file_tags) can also upload a file right here and reads the file's tags.
+		var uploads = kind === 'media' && field && field.file_tags;
 		return '<div class="nm-cms-media-field" data-media-kind="' + kind + '">' +
 			'<input type="hidden" class="nm-cms-media-id" value="' + ( hasFile ? value.id : '' ) + '">' +
 			'<div class="nm-cms-media-preview-wrap">' + mediaPreview( kind, value ) + '</div>' +
 			'<div class="nm-cms-media-actions">' +
-			'<button type="button" class="nm-btn nm-btn--sm nm-cms-media-choose">' + icon( 'upload' ) + '<span>' + ( hasFile ? 'Change ' : 'Choose ' ) + noun + '</span></button>' +
+			( uploads ? '<button type="button" class="nm-btn nm-btn--sm nm-btn--primary nm-cms-media-upload">' + icon( 'upload' ) + '<span>Upload a file</span></button>' +
+				'<input type="file" class="nm-cms-media-file-input" accept="audio/*,video/*,.mp3,.m4a,.wav,.mp4,.aac,.ogg,.flac" hidden>' : '' ) +
+			'<button type="button" class="nm-btn nm-btn--sm nm-cms-media-choose">' + ( uploads ? '' : icon( 'upload' ) ) + '<span>' + ( hasFile ? 'Change ' : 'Choose ' ) + noun + '</span></button>' +
 			'<button type="button" class="nm-btn nm-btn--sm nm-cms-btn--link nm-cms-media-remove"' + ( hasFile ? '' : ' hidden' ) + '>Remove</button>' +
 			'</div>' +
-			'</div>';
+			'</div>' +
+			( uploads ? '<p class="nm-cms-hint nm-cms-filetag" role="status" hidden></p>' : '' );
 	}
 
 	function mediaMultiItem( id, url ) {
@@ -780,6 +785,11 @@
 
 				$wrap.find( '.nm-cms-save' ).prop( 'disabled', false ).on( 'click', function () {
 					var $btn = $( this );
+					// A file still going up would be left off the shiur.
+					if ( $body.data( 'nmUploading' ) ) {
+						toast( 'The file is still uploading. Please wait until it is done, then press Add again.', 'info' );
+						return;
+					}
 					var payload = self.collectFormData( $body );
 					var titleKey = schema.kind === 'taxonomy' ? 'name' : 'title';
 					$body.find( '.nm-cms-field.has-error' ).removeClass( 'has-error' ).find( '.nm-cms-field-error' ).remove();
@@ -909,6 +919,179 @@
 		}
 	}
 
+	/* ---------------- A shiur's file: upload it here, and let its tags fill the form ---------------- */
+
+	// A line under a field: the upload's progress, or where a speaker or series came from. Empty text hides it.
+	function setFieldNote( $body, key, text, isError ) {
+		var $field = $body.find( '.nm-cms-field[data-field="' + key + '"]' );
+		var $note = $field.find( '.nm-cms-filetag' );
+		if ( ! $note.length ) {
+			if ( ! text ) {
+				return;
+			}
+			$note = $( '<p class="nm-cms-hint nm-cms-filetag" role="status"></p>' ).appendTo( $field );
+		}
+		$note.text( text || '' ).prop( 'hidden', ! text ).toggleClass( 'is-error', !! isError );
+	}
+
+	// Sends one file to the server (includes/shiur-file-tags.php) and gives back what it found in the file.
+	function uploadShiurFile( file, onProgress ) {
+		return new Promise( function ( resolve, reject ) {
+			var form = new FormData();
+			form.append( 'file', file, file.name );
+			var xhr = new XMLHttpRequest();
+			xhr.open( 'POST', apiUrl( 'shiur-file/upload' ) );
+			xhr.setRequestHeader( 'X-WP-Nonce', cfg.nonce );
+			xhr.withCredentials = true;
+			xhr.upload.onprogress = function ( e ) {
+				if ( e.lengthComputable ) {
+					onProgress( Math.round( ( 100 * e.loaded ) / e.total ) );
+				}
+			};
+			xhr.onerror = function () {
+				reject( new Error( 'The upload was interrupted. Please check the connection and try again.' ) );
+			};
+			xhr.onload = function () {
+				var body = null;
+				try {
+					body = JSON.parse( xhr.responseText );
+				} catch ( e ) {
+					body = null;
+				}
+				if ( xhr.status >= 200 && xhr.status < 300 && body && body.id ) {
+					resolve( body );
+					return;
+				}
+				reject( new Error( body && body.message ? body.message : 'The upload did not work (' + xhr.status + '). Please try again.' ) );
+			};
+			xhr.send( form );
+		} );
+	}
+
+	function forgetTerms( taxonomy ) {
+		$.each( termsCache, function ( cacheKey ) {
+			if ( cacheKey.indexOf( taxonomy + '|' ) === 0 ) {
+				delete termsCache[ cacheKey ];
+			}
+		} );
+	}
+
+	// Puts a speaker or series into its field. The series list is a picker built from the select's options, so a
+	// series that was not there yet is added to the select and the picker is built again.
+	function chooseTerm( $select, term ) {
+		var value = String( term.id );
+		var known = $select.find( 'option' ).filter( function () {
+			return this.value === value;
+		} ).length;
+		if ( ! known ) {
+			$select.append( $( '<option></option>' ).val( value ).text( term.name ) );
+			if ( $select.is( '[data-series-picker]' ) && window.NMSeriesPicker && window.NMSeriesPicker.rebuild ) {
+				window.NMSeriesPicker.rebuild( $select[ 0 ] );
+			}
+		}
+		$select.val( value ).data( 'nmTagFilled', value );
+		$select[ 0 ].dispatchEvent( new Event( 'change', { bubbles: true } ) );
+	}
+
+	// Takes back what an earlier file filled in, when the new file says something else (or nothing).
+	function clearTagFilled( $select ) {
+		if ( String( $select.val() || '' ) !== '' && String( $select.val() ) === String( $select.data( 'nmTagFilled' ) || '' ) ) {
+			$select.val( '' ).removeData( 'nmTagFilled' );
+			$select[ 0 ].dispatchEvent( new Event( 'change', { bubbles: true } ) );
+		}
+	}
+
+	function termNames( list ) {
+		return $.map( list || [], function ( term ) {
+			return '“' + term.name + '”';
+		} ).join( ', ' );
+	}
+
+	var TAG_WORDS = {
+		speaker: { tag: 'artist', noun: 'speaker' },
+		series: { tag: 'album', noun: 'series' }
+	};
+
+	// The artist tag is the Speaker and the album tag is the Series. The server has already looked for the closest
+	// name in the list ('matched'); two or more equally close are left for the person to pick ('ambiguous'); none
+	// close enough ('none') asks whether to add the tag as a new name, and adds it only on yes. A speaker or series
+	// the person chose themselves is never replaced.
+	function fillTermFromTag( $body, key, match ) {
+		var words = TAG_WORDS[ key ];
+		var $select = $body.find( '.nm-cms-field[data-field="' + key + '"] select' ).first();
+		if ( ! $select.length ) {
+			return Promise.resolve();
+		}
+		var current = String( $select.val() || '' );
+		if ( current !== '' && current !== String( $select.data( 'nmTagFilled' ) || '' ) ) {
+			return Promise.resolve();
+		}
+		if ( ! match ) {
+			clearTagFilled( $select );
+			setFieldNote( $body, key, '' );
+			return Promise.resolve();
+		}
+
+		var said = 'the file’s ' + words.tag + ' “' + match.tag + '”';
+		if ( match.status === 'matched' ) {
+			chooseTerm( $select, match.term );
+			setFieldNote( $body, key, match.exact ? 'Filled in from ' + said + '.' : 'The closest ' + words.noun + ' to ' + said + '. Change it if that is the wrong one.' );
+			return Promise.resolve();
+		}
+
+		clearTagFilled( $select );
+		if ( match.status === 'ambiguous' ) {
+			setFieldNote( $body, key, 'Not sure which ' + words.noun + ' ' + said + ' means: ' + termNames( match.candidates ) + '. Pick the right one.' );
+			return Promise.resolve();
+		}
+
+		var similar = match.candidates && match.candidates.length
+			? ' Names in the list that are a little like it: ' + termNames( match.candidates ) + '. If it is one of them, choose “Leave it empty” and pick it yourself.'
+			: '';
+		return confirmBox( {
+			title: 'Add “' + match.tag + '” as a new ' + words.noun + '?',
+			message: 'The file’s ' + words.tag + ' tag says “' + match.tag + '”, and no ' + words.noun + ' in the list matches it.' + similar,
+			confirmText: 'Add new ' + words.noun,
+			cancelText: 'Leave it empty',
+			icon: 'plus'
+		} ).then( function ( yes ) {
+			if ( ! yes ) {
+				setFieldNote( $body, key, '“' + match.tag + '” was not added. Pick a ' + words.noun + ' from the list if you want one.' );
+				return null;
+			}
+			return apiFetch( 'shiur-file/add-term', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify( { taxonomy: key, name: match.tag } )
+			} ).then( function ( term ) {
+				forgetTerms( key );
+				chooseTerm( $select, term );
+				var line = term.added ? 'Added “' + term.name + '” as a new ' + words.noun + '.' : '“' + term.name + '” was already in the list.';
+				setFieldNote( $body, key, line );
+				toast( line, 'success' );
+			} ).catch( function ( err ) {
+				setFieldNote( $body, key, 'Could not add “' + match.tag + '”: ' + err.message, true );
+				toast( err.message, 'error' );
+			} );
+		} );
+	}
+
+	// What the server found in a shiur's file (see uploadShiurFile): the title tag becomes the Title, the artist the
+	// Speaker, the album the Series. Fields the person has already filled in are left alone.
+	function applyFileTags( $body, info ) {
+		var tags = info.tags || {};
+		var $title = $body.find( '.nm-cms-field[data-field="title"] input[type="text"]' ).first();
+		if ( tags.title && $title.length ) {
+			var current = $.trim( $title.val() );
+			if ( current === '' || current === $title.data( 'nmFilledTitle' ) ) {
+				$title.val( tags.title ).data( 'nmFilledTitle', tags.title ).trigger( 'input' );
+			}
+		}
+		return fillTermFromTag( $body, 'speaker', info.speaker ).then( function () {
+			return fillTermFromTag( $body, 'series', info.series );
+		} );
+	}
+
 	CmsApp.prototype.bindFieldWidgets = function ( $body, item, markDirty ) {
 		var self = this;
 		var schema = this.schema;
@@ -997,6 +1180,56 @@
 			var kind = $field.data( 'media-kind' );
 			var noun = kind === 'image' ? 'Image' : kind === 'pdf' ? 'PDF' : 'File';
 			var frame;
+
+			// A shiur's file field also uploads right here, and reads the tags of whatever file is chosen.
+			var fieldKey = $field.closest( '.nm-cms-field' ).data( 'field' );
+			var wantsTags = kind === 'media' && !! ( schema.fields[ fieldKey ] && schema.fields[ fieldKey ].file_tags );
+			function readTagsOf( id ) {
+				setFieldNote( $body, fieldKey, 'Reading the file’s tags…' );
+				apiFetch( 'shiur-file/tags?attachment=' + encodeURIComponent( id ) ).then( function ( info ) {
+					setFieldNote( $body, fieldKey, '' );
+					return applyFileTags( $body, info );
+				} ).catch( function () {
+					setFieldNote( $body, fieldKey, '' );
+				} );
+			}
+			if ( wantsTags ) {
+				var $picker = $field.find( '.nm-cms-media-file-input' );
+				$field.find( '.nm-cms-media-upload' ).on( 'click', function () {
+					$picker.trigger( 'click' );
+				} );
+				$picker.on( 'change', function () {
+					var file = this.files && this.files[ 0 ];
+					this.value = '';
+					if ( ! file ) {
+						return;
+					}
+					var busy = function ( on ) {
+						$body.data( 'nmUploading', Math.max( 0, ( $body.data( 'nmUploading' ) || 0 ) + ( on ? 1 : -1 ) ) );
+						$field.find( '.nm-btn' ).prop( 'disabled', on );
+					};
+					busy( true );
+					setFieldNote( $body, fieldKey, 'Uploading “' + file.name + '”… 0%' );
+					uploadShiurFile( file, function ( pct ) {
+						setFieldNote( $body, fieldKey, pct >= 100 ? 'Saving “' + file.name + '”…' : 'Uploading “' + file.name + '”… ' + pct + '%' );
+					} ).then( function ( info ) {
+						$field.find( '.nm-cms-media-id' ).val( info.id );
+						$field.find( '.nm-cms-media-preview-wrap' ).html( mediaPreview( kind, { id: info.id, filename: info.filename, url: info.url } ) );
+						$field.find( '.nm-cms-media-choose span' ).text( 'Change ' + noun );
+						$field.find( '.nm-cms-media-remove' ).prop( 'hidden', false );
+						markDirty();
+						fillTitleFromFile( $body, { filename: info.filename, title: info.title } );
+						setFieldNote( $body, fieldKey, '' );
+						return applyFileTags( $body, info );
+					} ).catch( function ( err ) {
+						setFieldNote( $body, fieldKey, err.message, true );
+						toast( err.message, 'error' );
+					} ).then( function () {
+						busy( false );
+					} );
+				} );
+			}
+
 			$field.find( '.nm-cms-media-choose' ).on( 'click', function () {
 				frame = wp.media( {
 					title: kind === 'image' ? 'Choose an image' : kind === 'pdf' ? 'Choose a PDF' : 'Choose an audio or video file',
@@ -1021,6 +1254,9 @@
 					}
 					if ( kind !== 'image' ) {
 						fillTitleFromFile( $body, att );
+					}
+					if ( wantsTags ) {
+						readTagsOf( att.id );
 					}
 				} );
 				frame.open();
@@ -1093,7 +1329,8 @@
 					typesReady: typeField ? getTerms( typeField.taxonomy, self.type ) : null,
 					manageUrl: cfg.presetsUrl || '',
 					selectId: $host.attr( 'data-select-id' ) || '',
-					selectClass: 'nm-cms-input'
+					selectClass: 'nm-cms-input',
+					nameSlot: true
 				} ) );
 			} ).catch( failed );
 		} );

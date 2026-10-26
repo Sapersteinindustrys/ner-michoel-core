@@ -164,7 +164,7 @@ function ner_michoel_custom_admin_structure() {
 					'keywords' => 'audio video lecture mp3 recording add edit',
 					'help'     => array(
 						'steps' => array(
-							__( 'Click “Add New Shiur”. Choose the audio or video file (the title is filled in from its name, and you can change it), then pick the speaker and series.', 'ner-michoel-core' ),
+							__( 'Click “Add New Shiur”. Press “Upload a file” and choose the audio or video file (or “Choose File” for one that is already uploaded). If the file has its own tags, the title, speaker (artist) and series (album) are filled in for you; a speaker or series that is not in the list yet is added only after you say yes. Without tags, the title comes from the file’s name. You can change anything, then pick the speaker and series if they are still empty.', 'ner-michoel-core' ),
 							__( 'To change a shiur, click its row. Make your changes and press Save.', 'ner-michoel-core' ),
 							__( 'Use the search box, or the Speaker and Series filters, to find a shiur quickly.', 'ner-michoel-core' ),
 							__( 'Set Status to Draft to hide a shiur from visitors without deleting it.', 'ner-michoel-core' ),
@@ -284,7 +284,7 @@ function ner_michoel_custom_admin_structure() {
 							__( 'If the boy is in the Years List, his years fill in by themselves when you type his name, and show in brackets after it.', 'ner-michoel-core' ),
 							__( 'Click any announcement to edit it, or set it to Draft to take it down.', 'ner-michoel-core' ),
 						),
-						'tip'      => __( 'Presets are wordings with blanks, like “on the birth of a baby ___”. They fill in “What the Mazal Tov is”, after the name. You make them once and use them every time.', 'ner-michoel-core' ),
+						'tip'      => __( 'Presets are sentences with blanks, like “Mazel tov to Rabbi & Mrs. ___ on the birth of a baby boy!”. The first blank is where the Name goes, and visitors who share a Mazal Tov pick a preset too. You make them once and use them every time.', 'ner-michoel-core' ),
 						'tip_link' => array(
 							'tab'   => 'mazaltovpresets',
 							'label' => __( 'Make or change a preset', 'ner-michoel-core' ),
@@ -299,11 +299,11 @@ function ner_michoel_custom_admin_structure() {
 					'keywords' => 'simcha quick post mazal tov fast',
 					'help'     => array(
 						'steps' => array(
-							__( 'Type the Name. Then pick a preset (like “Baby”) and fill in its blanks, or leave it on “None” and type what the Mazal Tov is yourself, like “on his engagement to Sarah Levy”.', 'ner-michoel-core' ),
+							__( 'Type the Name. Then pick a preset (like “Baby boy”): the Name goes in its first blank and you fill in any other blank. Or leave it on “None” and type what the Mazal Tov is yourself, like “on his engagement to Sarah Levy”.', 'ner-michoel-core' ),
 							__( 'The years fill in by themselves when the name is in the Years List, and are put in brackets after the name. Add a relationship if you like, for example “Rabbi & Mrs.”.', 'ner-michoel-core' ),
 							__( 'Pick the type of simcha (a preset picks it for you if it has one) and press “Post Mazal Tov”. It goes live straight away.', 'ner-michoel-core' ),
 						),
-						'tip'      => __( 'Presets are wordings with blanks, like “on the birth of a baby ___”. They fill in “What the Mazal Tov is”, after the name. You make them once and use them every time.', 'ner-michoel-core' ),
+						'tip'      => __( 'Presets are sentences with blanks, like “Mazel tov to Rabbi & Mrs. ___ on the birth of a baby boy!”. The first blank is where the Name goes. You make them once and use them every time.', 'ner-michoel-core' ),
 						'tip_link' => array(
 							'tab'   => 'mazaltovpresets',
 							'label' => __( 'Make or change a preset', 'ner-michoel-core' ),
@@ -330,14 +330,14 @@ function ner_michoel_custom_admin_structure() {
 					'label'    => __( 'Mazal Tov Presets', 'ner-michoel-core' ),
 					'icon'     => 'file-text',
 					'cms_type' => 'mazal_tov_preset',
-					'desc'     => __( 'Ready-made wordings with blanks, like “on the birth of a baby ___”. They follow the name. Fill in the blanks when you post.', 'ner-michoel-core' ),
+					'desc'     => __( 'Ready-made sentences with blanks, like “Mazel tov to Rabbi & Mrs. ___ on the birth of a baby boy!”. The first blank is where the name goes. Visitors who share a Mazal Tov pick one too.', 'ner-michoel-core' ),
 					'keywords' => 'simcha preset template wording sentence blank fill in baby engagement wedding bar mitzvah',
 					'help'     => array(
 						'steps' => array(
 							__( 'Click “Add New Preset”.', 'ner-michoel-core' ),
 							__( 'Give it a short name, like “Baby”. This is the name you will pick when you post a Mazal Tov.', 'ner-michoel-core' ),
-							__( 'Type what follows the name, and put three underscores (___) wherever you will want to type something. For example: “on the birth of a baby ___”. The box under it shows how it will look.', 'ner-michoel-core' ),
-							__( 'Optional: choose a Type (for “Baby”, Birth), and it is picked for you each time.', 'ner-michoel-core' ),
+							__( 'Type the whole sentence, and put three underscores (___) where the person’s name should go: the first blank is always the name, and it is put there for you. Any other blank is filled in when you post. For example: “Mazel tov to Rabbi & Mrs. ___ on the engagement of their ___!”. The box under it shows how it will look.', 'ner-michoel-core' ),
+							__( 'Choose the Type (for “Baby boy”, Birth): it is picked for you each time, and it is what files a visitor’s Mazal Tov. A visitor chooses from these presets by name, so give each a name that says what kind of simcha it is. Without a preset, visitors are asked to write the words themselves.', 'ner-michoel-core' ),
 							__( 'Press Save. Next time you add a Mazal Tov (“Quick Mazal Tov” or “Add New Mazal Tov”), pick the preset and fill in the blanks.', 'ner-michoel-core' ),
 						),
 						'tip'   => __( 'To say what goes in a blank, put the words in curly brackets instead of underscores, like “on the birth of a baby {boy or girl}”. Announcements you already posted never change when you edit or delete a preset.', 'ner-michoel-core' ),

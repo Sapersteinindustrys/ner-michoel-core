@@ -11,6 +11,10 @@
  * what you see is what is posted) and unlocked again when you go back to
  * writing it yourself.
  *
+ * One blank is where the person's NAME goes: the one labeled {name}, otherwise the first
+ * blank. Screens that have a Name box (nameSlot) do not ask for it again: the sentence is
+ * written with {name} there, and the server puts the name (and his years) in that place.
+ *
  * Used by the Quick Mazal Tov screen (it mounts itself on [data-nm-mt-fill]) and
  * by the panel's Add New Mazal Tov and preset forms (assets/custom-admin-cms.js).
  * No jQuery: the same code runs on the wp-admin version of the Quick screen.
@@ -20,6 +24,7 @@
 
 	var BLANK_RE = /\{([^{}]{0,60})\}|_{2,}/g;
 	var UNFILLED = '___';
+	var NAME_TOKEN = '{name}';
 	var GENERIC_PLACEHOLDER = 'fill in';
 	var MAX_FILL = 120;
 
@@ -55,11 +60,14 @@
 
 	// The sentence with the blanks filled from values[n]; a blank with nothing
 	// in it stays as ___, which the headline check then refuses to post.
-	function compose( parsed, values ) {
+	function compose( parsed, values, o ) {
 		var out = '';
 		values = values || [];
+		var nameN = o && typeof o.nameN === 'number' ? o.nameN : -1;
 		parsed.parts.forEach( function ( part ) {
-			if ( part.blank ) {
+			if ( part.blank && part.n === nameN ) {
+				out += NAME_TOKEN;
+			} else if ( part.blank ) {
 				var value = clean( values[ part.n ] );
 				out += value ? value : UNFILLED;
 			} else {
@@ -69,14 +77,35 @@
 		return clean( out );
 	}
 
-	function isComplete( parsed, values ) {
+	function isComplete( parsed, values, o ) {
 		values = values || [];
+		var nameN = o && typeof o.nameN === 'number' ? o.nameN : -1;
 		for ( var n = 0; n < parsed.count; n++ ) {
-			if ( ! clean( values[ n ] ) ) {
+			if ( n !== nameN && ! clean( values[ n ] ) ) {
 				return false;
 			}
 		}
 		return true;
+	}
+
+	// Which blank is where the person's name goes: the one labeled "name" ({name}), otherwise
+	// the first blank. -1 when the wording has no blanks (the name then goes in front of it).
+	// Mirrors ner_michoel_mazal_tov_wording_template() in includes/mazal-tov.php.
+	function nameSlot( parsed ) {
+		var first = -1;
+		for ( var i = 0; i < parsed.parts.length; i++ ) {
+			var part = parsed.parts[ i ];
+			if ( ! part.blank ) {
+				continue;
+			}
+			if ( first < 0 ) {
+				first = part.n;
+			}
+			if ( part.label.toLowerCase() === 'name' ) {
+				return part.n;
+			}
+		}
+		return first;
 	}
 
 	/* ---------------- Small DOM helpers ---------------- */
@@ -120,6 +149,10 @@
 		parsed.parts.forEach( function ( part ) {
 			if ( ! part.blank ) {
 				container.appendChild( document.createTextNode( part.text ) );
+				return;
+			}
+			if ( part.n === o.nameN ) {
+				container.appendChild( el( 'span', { 'class': 'nm-mt-nameslot', text: 'the name' } ) );
 				return;
 			}
 			var input = el( 'input', {
@@ -167,7 +200,7 @@
 		var presets = ( opts.presets || [] ).filter( function ( p ) {
 			return p && clean( p.wording );
 		} );
-		var state = { preset: null, parsed: null, values: [], inputs: [], before: null };
+		var state = { preset: null, parsed: null, values: [], inputs: [], before: null, nameN: -1 };
 		var note = null;
 
 		var api = {
@@ -176,7 +209,7 @@
 				return !! state.preset;
 			},
 			isComplete: function () {
-				return ! state.preset || isComplete( state.parsed, state.values );
+				return ! state.preset || isComplete( state.parsed, state.values, { nameN: state.nameN } );
 			},
 			showError: function () {},
 			reset: function () {}
@@ -229,9 +262,10 @@
 			headline.setAttribute( 'dir', 'auto' );
 			headline.classList.add( 'nm-mt-made' );
 			if ( ! note ) {
-				note = el( 'p', { 'class': 'nm-mt-made-note', text: 'Written for you from the blanks. To type it yourself, choose “None” in Preset.' } );
+				note = el( 'p', { 'class': 'nm-mt-made-note' } );
 				headline.parentNode.insertBefore( note, headline.nextSibling );
 			}
+			note.textContent = ( state.nameN >= 0 ? 'Written for you from the blanks. {name} is replaced by the Name above. ' : 'Written for you from the blanks. ' ) + 'To type it yourself, choose “None” in Preset.';
 		}
 
 		function unlock() {
@@ -250,7 +284,7 @@
 			if ( ! headline ) {
 				return;
 			}
-			headline.value = compose( state.parsed, state.values );
+			headline.value = compose( state.parsed, state.values, { nameN: state.nameN } );
 			fire( headline, 'input' );
 		}
 
@@ -305,6 +339,7 @@
 				}
 				state.before = null;
 				state.parsed = null;
+				state.nameN = -1;
 				state.values = [];
 				state.inputs = [];
 				box.hidden = true;
@@ -314,8 +349,10 @@
 			}
 
 			state.parsed = parse( preset.wording );
+			state.nameN = opts.nameSlot ? nameSlot( state.parsed ) : -1;
 			state.values = [];
 			state.inputs = renderSentence( sentence, state.parsed, {
+				nameN: state.nameN,
 				values: state.values,
 				onInput: function ( n, value ) {
 					state.values[ n ] = value;
@@ -327,8 +364,11 @@
 			lock();
 			writeHeadline();
 			applyType( preset );
-			if ( fromUser && state.inputs[ 0 ] ) {
-				state.inputs[ 0 ].focus();
+			if ( fromUser ) {
+				var firstBox = state.inputs.filter( Boolean )[ 0 ];
+				if ( firstBox ) {
+					firstBox.focus();
+				}
 			}
 		}
 
@@ -397,13 +437,16 @@
 				return;
 			}
 			var sentence = el( 'div', { 'class': 'nm-mt-sentence nm-mt-sentence--preview', dir: 'auto', 'aria-hidden': 'true' } );
-			renderSentence( sentence, parsed, { preview: true } );
+			var nameN = nameSlot( parsed );
+			renderSentence( sentence, parsed, { preview: true, nameN: nameN } );
 			preview.appendChild( sentence );
+			var others = parsed.count - ( nameN >= 0 ? 1 : 0 );
 			preview.appendChild( el( 'p', {
 				'class': 'nm-mt-muted',
-				text: parsed.count
-					? parsed.count + ( parsed.count === 1 ? ' blank' : ' blanks' ) + ' to fill in when you post.'
-					: 'No blanks yet, so this will be posted exactly as written. Add ___ where a name goes.'
+				text: ! parsed.count
+					? 'No blanks yet, so the name will be put in front of this. Add ___ where the name should go.'
+					: ( 'The first blank is where the name goes (it is put there for you, and for visitors who share a Mazal Tov). ' +
+						( others ? others + ( others === 1 ? ' other blank is' : ' other blanks are' ) + ' filled in when you post.' : 'There is nothing else to fill in.' ) )
 			} ) );
 		}
 
@@ -434,7 +477,8 @@
 				headline: headlineSel ? document.querySelector( headlineSel ) : null,
 				type: typeSel ? document.querySelector( typeSel ) : null,
 				manageUrl: host.getAttribute( 'data-manage-url' ) || '',
-				selectId: host.getAttribute( 'data-select-id' ) || ''
+				selectId: host.getAttribute( 'data-select-id' ) || '',
+				nameSlot: host.getAttribute( 'data-name-slot' ) === '1'
 			} );
 			var form = host.closest( 'form' );
 			if ( form ) {
@@ -450,6 +494,8 @@
 
 	var api = {
 		UNFILLED: UNFILLED,
+		NAME_TOKEN: NAME_TOKEN,
+		nameSlot: nameSlot,
 		parse: parse,
 		compose: compose,
 		isComplete: isComplete,

@@ -84,6 +84,17 @@
 	font-weight: 400;
 }
 
+/* Where the Name goes: it is put there for you, so it is a tag and not a box. */
+.nm-mt-sentence .nm-mt-nameslot {
+	display: inline-block;
+	padding: 0 0.55em;
+	border: 1px dashed var(--nm-text-3, #8c8f94);
+	border-radius: 999px;
+	color: var(--nm-text-2, #50575e);
+	font-size: 0.9em;
+	line-height: 1.6;
+}
+
 .nm-app .nm-mt-sentence input.nm-mt-blank[type="text"][aria-invalid="true"],
 .nm-mt-sentence input.nm-mt-blank[type="text"][aria-invalid="true"] {
 	border-color: var(--nm-danger, #d63638);

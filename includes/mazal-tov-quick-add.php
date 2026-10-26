@@ -44,11 +44,12 @@ function ner_michoel_render_mazal_tov_quick_add_page() {
 							data-nm-mt-fill
 							data-presets="<?php echo esc_attr( wp_json_encode( $presets ) ); ?>"
 							data-headline="#nm_mt_what"
+							data-name-slot="1"
 							data-type="#nm_mt_type"
 							data-select-id="nm_mt_preset"
 							data-manage-url="<?php echo esc_url( function_exists( 'ner_michoel_mazal_tov_presets_url' ) ? ner_michoel_mazal_tov_presets_url() : '' ); ?>"
 						></div>
-						<p class="description"><?php esc_html_e( 'Optional: pick a ready-made sentence and fill in its blanks. It becomes the part after the name, like “on the birth of a baby boy”.', 'ner-michoel-core' ); ?></p>
+						<p class="description"><?php esc_html_e( 'Optional: pick a ready-made sentence. The Name above is put in its first blank, and you fill in any other blank.', 'ner-michoel-core' ); ?></p>
 					</td>
 				</tr>
 				<tr>
@@ -85,7 +86,7 @@ function ner_michoel_render_mazal_tov_quick_add_page() {
 					<th scope="row"><label for="nm_mt_what"><?php esc_html_e( 'What the Mazal Tov is', 'ner-michoel-core' ); ?></label></th>
 					<td>
 						<input type="text" id="nm_mt_what" name="nm_mt_what" class="large-text" required placeholder="<?php esc_attr_e( 'e.g. on his engagement to Sarah Levy', 'ner-michoel-core' ); ?>" />
-						<p class="description"><?php esc_html_e( 'Written to follow the name: the announcement reads “Name (years) …this…”.', 'ner-michoel-core' ); ?></p>
+						<p class="description"><?php esc_html_e( 'With a preset, it is written for you. Without one, write it to follow the name (the announcement reads “Name (years) …this…”), or put {name} where the name should go.', 'ner-michoel-core' ); ?></p>
 					</td>
 				</tr>
 				<tr>

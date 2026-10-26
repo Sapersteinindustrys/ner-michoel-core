@@ -145,6 +145,50 @@ function ner_michoel_register_account_routes() {
 add_action( 'rest_api_init', 'ner_michoel_register_account_routes' );
 
 /**
+ * The Account page's open routes: sign up, log in, the two sign-in code steps,
+ * the sign-up code steps and forgot password. Nobody is signed in when they are
+ * called, so they take no nonce; the bot check guards them instead.
+ */
+function ner_michoel_account_open_routes() {
+	return array(
+		'account-register',
+		'account-login',
+		'account-forgot-password',
+		'account-verify',
+		'account-resend-code',
+		'account-login-code',
+		'account-login-code-resend',
+	);
+}
+
+/**
+ * Lets a stale nonce through on those routes.
+ *
+ * account.js sends its X-WP-Nonce header with every call, and WordPress's
+ * cookie middleware (rest_cookie_check_errors) turns a nonce that does not match
+ * the browser's own sign-in into "Cookie check failed" (403) before the password
+ * is even looked at. The page's nonce is made when the page is built, so it stops
+ * matching once a day has passed on a page left open, or when the browser has
+ * signed in or out in another tab since. A wrong password then showed a cookie
+ * error instead of "wrong password", and a right one never got in. Here the
+ * request counts as logged out, exactly as it would with no header; the routes
+ * that need a signed-in person (profile, picture, forget computers) keep the check.
+ */
+function ner_michoel_account_open_routes_skip_nonce( $result ) {
+	if ( ! is_wp_error( $result ) || 'rest_cookie_invalid_nonce' !== $result->get_error_code() ) {
+		return $result;
+	}
+	$route  = isset( $GLOBALS['wp']->query_vars['rest_route'] ) ? trim( (string) $GLOBALS['wp']->query_vars['rest_route'], '/' ) : '';
+	$prefix = 'ner-michoel/v1/';
+	if ( 0 !== strpos( $route, $prefix ) || ! in_array( substr( $route, strlen( $prefix ) ), ner_michoel_account_open_routes(), true ) ) {
+		return $result;
+	}
+	wp_set_current_user( 0 );
+	return null;
+}
+add_filter( 'rest_authentication_errors', 'ner_michoel_account_open_routes_skip_nonce', 101 ); // After core's own check, at 100.
+
+/**
  * Sign up: name, email (which is also the username) and password. Creates a
  * `subscriber`.
  *

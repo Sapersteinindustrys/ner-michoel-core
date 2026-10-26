@@ -159,6 +159,13 @@
 
 		search.addEventListener( 'input', applyFilter );
 
+		// The form can set the series from code (a file's album tag): keep the "Chosen:" line and the marked row in step.
+		if ( select._nmPickerRefresh ) {
+			select.removeEventListener( 'change', select._nmPickerRefresh );
+		}
+		select._nmPickerRefresh = refresh;
+		select.addEventListener( 'change', refresh );
+
 		// Enter must not submit the form around the picker (that would publish a batch with no series).
 		// With something typed it chooses the first series shown; with nothing typed it does nothing.
 		search.addEventListener( 'keydown', function ( event ) {
@@ -184,6 +191,20 @@
 		applyFilter();
 	}
 
+	// Builds the picker again from the select's options, after the form added a series to it.
+	function rebuild( select ) {
+		if ( ! select ) {
+			return;
+		}
+		var old = select.previousElementSibling;
+		if ( old && old.classList.contains( 'nm-series-picker' ) ) {
+			old.parentNode.removeChild( old );
+		}
+		select.hidden = false;
+		select.removeAttribute( 'data-picker-ready' );
+		enhance( select );
+	}
+
 	function initAll() {
 		document.querySelectorAll( 'select[data-series-picker]' ).forEach( enhance );
 	}
@@ -194,5 +215,5 @@
 		initAll();
 	}
 
-	window.NMSeriesPicker = { enhance: enhance };
+	window.NMSeriesPicker = { enhance: enhance, rebuild: rebuild };
 } )( window, document );

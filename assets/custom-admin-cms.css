@@ -319,6 +319,9 @@ body.nm-no-scroll { overflow: hidden; }
 
 .nm-app .nm-cms-hint { margin: 6px 0 0; color: var(--nm-text-3); font-size: 13px; line-height: 1.45; }
 .nm-app .nm-cms-hint--top { margin: -3px 0 8px; }
+/* The line under a shiur's file, speaker and series saying what was read from the file (assets/custom-admin-cms.js). */
+.nm-app .nm-cms-filetag { color: var(--nm-text-2); }
+.nm-app .nm-cms-filetag.is-error { color: var(--nm-danger); }
 
 .nm-cms-field.has-error .nm-cms-input { border-color: var(--nm-danger); box-shadow: 0 0 0 4px rgba(207, 58, 58, 0.14); }
 .nm-app .nm-cms-field-error { margin: 7px 0 0; color: var(--nm-danger); font-size: 13px; font-weight: 600; }

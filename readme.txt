@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.38
+Stable tag: 0.9.39
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,27 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.39 =
+* Change: a visitor who shares a Mazal Tov now gives only the name and picks the kind of simcha from
+  the admin's presets (Baby boy, Engagement, ...). They no longer write the words, so they cannot
+  change them: the name, with his years from the Years List, goes in the preset's first blank (or
+  the blank labeled {name}), and the preset's Type files it. Any other blank in the preset is left
+  for the admin on Review Mazal Tovs, and "Approve and post" waits until it is filled in. A site
+  with no presets still asks for the words, so the form is never empty. Needs ner-michoel-child 0.2.72.
+* Change: in Quick Mazal Tov and Add New Mazal Tov a preset's first blank is where the Name goes
+  (shown as a "the name" tag, not a box), so the name is typed once; the other blanks are boxes as
+  before. A preset with no blank puts the name in front. {name} typed into "What the Mazal Tov is"
+  marks the place by hand. The preset form says which blank is the name.
+* Fix: on Review Mazal Tovs, pressing Enter in a box pressed the first button, "Approve and post".
+  The first (off-screen) button is now "Save changes", so Enter only saves.
+* New: Add New Shiur (and the edit form) has an "Upload a file" button next to "Choose File". The
+  file's own tags fill the Title (only while it is empty or still holds what a file filled in), the
+  Speaker (the closest speaker already in the list; asks before adding a new one) and the Series
+  (the same). A speaker or series picked by hand is never replaced.
+* Fix: signing in on the Account page could answer "Cookie check failed" whatever was typed, when the
+  page had been open for a day or the browser had signed in or out in another tab. The open Account
+  routes (sign up, log in, forgot password, the code steps) now ignore a stale page token.
 
 = 0.9.38 =
 * New: the homepage's "This week" section. includes/parsha.php works out the week's parsha from the
