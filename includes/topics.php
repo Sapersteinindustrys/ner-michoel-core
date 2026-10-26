@@ -152,10 +152,60 @@ function ner_michoel_season_today() {
 }
 
 /**
+ * Other spellings of the Yom Tov topics, under the name each has in
+ * ner_michoel_topics_default_seasons(). A topic spelled one of these (or with other
+ * vowels, apostrophes or doubled letters, see ner_michoel_spelling_key()) is the same Yom Tov.
+ * "Shevuos" is left out on purpose: here it is the masechta.
+ */
+function ner_michoel_occasion_aliases() {
+	return array(
+		'Rosh Hashanah'       => array( 'Rosh Hashana', 'Rosh Hashono', 'Rosh Hashonah' ),
+		'Yom Kippur'          => array( 'Yom Kipur', 'Yom Kippor', 'Yom Hakippurim' ),
+		'Sukkos'              => array( 'Sukkot', 'Succos', 'Succot', 'Sukkoth', 'Succoth', 'Sukkes' ),
+		'Chanukah'            => array( 'Chanuka', 'Hanukkah', 'Hanukah', 'Chanukkah', 'Channukah' ),
+		"Asara B'Teves"       => array( "Asarah B'Teves", "Asara B'Tevet", "Asarah B'Tevet", 'Tenth of Teves', 'Tzom Teves' ),
+		'Purim'               => array(),
+		'Pesach'              => array( 'Pesah', 'Passover' ),
+		'Sefiras Haomer'      => array( 'Sefirat Haomer', 'Sfiras Haomer', "Sefirat Ha'omer", "Sefiras Ha'omer" ),
+		'Shavuos'             => array( 'Shavuot', 'Shavuoth', 'Shovuos', 'Shavous' ),
+		'Tisha Bav & 3 Weeks' => array( "Tisha B'Av", 'Tisha Bav', "Tishah B'Av", 'Three Weeks', 'The Three Weeks', 'Tisha Bav & Three Weeks', "Tisha B'Av & 3 Weeks" ),
+	);
+}
+
+/**
+ * The Yom Tov a topic name stands for, by the name it has in
+ * ner_michoel_topics_default_seasons() ("Succos" gives "Sukkos"), or '' when it is none.
+ */
+function ner_michoel_topic_occasion( $topic_name ) {
+	static $map = null;
+	if ( null === $map ) {
+		$map = array();
+		foreach ( ner_michoel_topics_default_seasons() as $name => $window ) {
+			$map[ ner_michoel_spelling_key( $name ) ] = $name;
+		}
+		foreach ( ner_michoel_occasion_aliases() as $name => $aliases ) {
+			foreach ( $aliases as $alias ) {
+				$map[ ner_michoel_spelling_key( $alias ) ] = $name;
+			}
+		}
+	}
+	if ( in_array( ner_michoel_name_raw( $topic_name ), array( 'shevuos', 'shevuot' ), true ) ) {
+		return '';
+	}
+	$key = ner_michoel_spelling_key( $topic_name );
+	return isset( $map[ $key ] ) ? $map[ $key ] : '';
+}
+
+/**
  * The topics showing on the homepage today, for the theme's seasonal boxes.
  * Seasons whose dates include today come first, the one that started most
  * recently first; then the topics set to "always", by name. A topic with no
  * published shiurim is left out.
+ *
+ * The same Yom Tov under other spellings (Sukkos, Succos, Sukkot) is one box, with the
+ * shiurim of all of them. A Yom Tov topic nobody has set up on the homepage (and nobody
+ * has saved as "not on the homepage") shows on its main dates, as the default dates
+ * would give it.
  *
  * Each entry: name, slug, link (the topic page), posts (WP_Post[], shiurim and
  * written shiurim, newest first, up to $per_topic), and also term_id, count (all
@@ -167,32 +217,62 @@ function ner_michoel_get_active_seasons( $per_topic = 6 ) {
 		array(
 			'taxonomy'   => 'topic',
 			'hide_empty' => true,
-			'meta_query' => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- a handful of topics.
-				array(
-					'key'     => 'nm_home',
-					'value'   => array( 'always', 'season' ),
-					'compare' => 'IN',
-				),
-			),
 		)
 	);
 	if ( is_wp_error( $terms ) || ! $terms ) {
 		return array();
 	}
 
-	$today  = ner_michoel_season_today();
-	$chosen = array();
+	// Which Yom Tov each topic is, and which Yom Tovim have dates set on one of their topics.
+	$group = array();
+	$of    = array();
+	$set   = array();
 	foreach ( $terms as $term ) {
-		$s = ner_michoel_topic_home_settings( $term->term_id );
+		$occasion = ner_michoel_topic_occasion( $term->name );
+		if ( '' === $occasion ) {
+			continue;
+		}
+		$of[ $term->term_id ] = $occasion;
+		$group[ $occasion ][] = (int) $term->term_id;
+		if ( in_array( (string) get_term_meta( $term->term_id, 'nm_home', true ), array( 'always', 'season' ), true ) ) {
+			$set[ $occasion ] = true;
+		}
+	}
+
+	$defaults = ner_michoel_topics_default_seasons();
+	$today    = ner_michoel_season_today();
+	$chosen   = array();
+	$used     = array();
+	foreach ( $terms as $term ) {
+		$s        = ner_michoel_topic_home_settings( $term->term_id );
+		$occasion = isset( $of[ $term->term_id ] ) ? $of[ $term->term_id ] : '';
+
 		if ( 'season' === $s['mode'] ) {
 			$started = ner_michoel_hebrew_window_start( $s['from_month'], $s['from_day'], $s['to_month'], $s['to_day'], $today );
 			if ( null === $started ) {
 				continue;
 			}
-			$chosen[] = array( $term, 'season', 0, -$started );
+			$entry = array( $term, 'season', 0, -$started, $occasion );
 		} elseif ( 'always' === $s['mode'] ) {
-			$chosen[] = array( $term, 'always', 1, 0 );
+			$entry = array( $term, 'always', 1, 0, $occasion );
+		} elseif ( '' !== $occasion && ! isset( $set[ $occasion ] ) && ! metadata_exists( 'term', $term->term_id, 'nm_home' ) ) {
+			$window  = $defaults[ $occasion ];
+			$started = ner_michoel_hebrew_window_start( $window[0], $window[1], $window[2], $window[3], $today );
+			if ( null === $started ) {
+				continue;
+			}
+			$entry = array( $term, 'season', 0, -$started, $occasion );
+		} else {
+			continue;
 		}
+
+		if ( '' !== $occasion ) {
+			if ( isset( $used[ $occasion ] ) ) {
+				continue;
+			}
+			$used[ $occasion ] = true;
+		}
+		$chosen[] = $entry;
 	}
 
 	usort(
@@ -205,6 +285,7 @@ function ner_michoel_get_active_seasons( $per_topic = 6 ) {
 	$out = array();
 	foreach ( $chosen as $entry ) {
 		$term  = $entry[0];
+		$ids   = '' !== $entry[4] ? $group[ $entry[4] ] : array( (int) $term->term_id );
 		$posts = get_posts(
 			array(
 				'post_type'           => array( 'shiur', 'written_shiur' ),
@@ -218,13 +299,20 @@ function ner_michoel_get_active_seasons( $per_topic = 6 ) {
 					array(
 						'taxonomy' => 'topic',
 						'field'    => 'term_id',
-						'terms'    => $term->term_id,
+						'terms'    => $ids,
 					),
 				),
 			)
 		);
 		if ( ! $posts ) {
 			continue;
+		}
+
+		$count = 0;
+		foreach ( $terms as $other ) {
+			if ( in_array( (int) $other->term_id, $ids, true ) ) {
+				$count += (int) $other->count;
+			}
 		}
 
 		$link  = get_term_link( $term );
@@ -234,7 +322,7 @@ function ner_michoel_get_active_seasons( $per_topic = 6 ) {
 			'link'    => is_wp_error( $link ) ? '' : $link,
 			'posts'   => $posts,
 			'term_id' => (int) $term->term_id,
-			'count'   => (int) $term->count,
+			'count'   => $count,
 			'label'   => ner_michoel_topic_season_label( $term->term_id ),
 			'mode'    => $entry[1],
 		);

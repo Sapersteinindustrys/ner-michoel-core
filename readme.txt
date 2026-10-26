@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.37
+Stable tag: 0.9.38
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,15 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.38 =
+* New: the homepage's "This week" section. includes/parsha.php works out the week's parsha from the
+  Hebrew calendar (the diaspora reading; Israel's with the ner_michoel_parsha_israel filter) and finds
+  its shiurim: a topic or series counts for a parsha when one of its " / " parts is that parsha in any
+  common spelling (Re'eh, Reeh, Re'a, Reah), and written shiurim are also found by their titles.
+* Changed: the in-season Yom Tov boxes (ner_michoel_get_active_seasons) treat spellings of one Yom Tov
+  (Succos, Sukkot, Sukkos) as one box with all their shiurim, and a Yom Tov topic nobody has set up on
+  the homepage shows on the main holiday dates.
 
 = 0.9.37 =
 * New: visitors can share a Mazal Tov. The theme's "Share a Mazal Tov" button opens a form (the
