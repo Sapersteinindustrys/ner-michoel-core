@@ -26,7 +26,7 @@ function ner_michoel_render_mazal_tov_quick_add_page() {
 		<?php if ( isset( $_GET['nm_mazal_tov'] ) && 'posted' === $_GET['nm_mazal_tov'] ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
 			<div class="notice notice-success"><p><?php esc_html_e( 'Posted.', 'ner-michoel-core' ); ?></p></div>
 		<?php elseif ( isset( $_GET['nm_mazal_tov'] ) && 'error' === $_GET['nm_mazal_tov'] ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
-			<div class="notice notice-error"><p><?php esc_html_e( 'Please enter who this is for.', 'ner-michoel-core' ); ?></p></div>
+			<div class="notice notice-error"><p><?php esc_html_e( 'Please enter who this is for (Name) and what the Mazal Tov is.', 'ner-michoel-core' ); ?></p></div>
 		<?php elseif ( isset( $_GET['nm_mazal_tov'] ) && 'blank' === $_GET['nm_mazal_tov'] ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
 			<div class="notice notice-error"><p><?php esc_html_e( 'Nothing was posted: the sentence still has a blank (___). Fill in every blank and post again.', 'ner-michoel-core' ); ?></p></div>
 		<?php endif; ?>
@@ -43,34 +43,19 @@ function ner_michoel_render_mazal_tov_quick_add_page() {
 						<div
 							data-nm-mt-fill
 							data-presets="<?php echo esc_attr( wp_json_encode( $presets ) ); ?>"
-							data-headline="#nm_mt_honoree"
+							data-headline="#nm_mt_what"
 							data-type="#nm_mt_type"
 							data-select-id="nm_mt_preset"
 							data-manage-url="<?php echo esc_url( function_exists( 'ner_michoel_mazal_tov_presets_url' ) ? ner_michoel_mazal_tov_presets_url() : '' ); ?>"
 						></div>
-						<p class="description"><?php esc_html_e( 'Optional: pick a ready-made sentence and fill in its blanks, instead of typing the Honoree yourself.', 'ner-michoel-core' ); ?></p>
+						<p class="description"><?php esc_html_e( 'Optional: pick a ready-made sentence and fill in its blanks. It becomes the part after the name, like “on the birth of a baby boy”.', 'ner-michoel-core' ); ?></p>
 					</td>
 				</tr>
 				<tr>
-					<th scope="row"><label for="nm_mt_honoree"><?php esc_html_e( 'Honoree', 'ner-michoel-core' ); ?></label></th>
-					<td><input type="text" id="nm_mt_honoree" name="nm_mt_honoree" class="regular-text" required /></td>
-				</tr>
-				<tr>
-					<th scope="row"><label for="nm_mt_relationship"><?php esc_html_e( 'Relationship', 'ner-michoel-core' ); ?></label></th>
+					<th scope="row"><label for="nm_mt_name"><?php esc_html_e( 'Name', 'ner-michoel-core' ); ?></label></th>
 					<td>
-						<input type="text" id="nm_mt_relationship" name="nm_mt_relationship" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. "Rabbi & Mrs."', 'ner-michoel-core' ); ?>" />
-					</td>
-				</tr>
-				<tr>
-					<th scope="row"><label for="nm_mt_type"><?php esc_html_e( 'Type', 'ner-michoel-core' ); ?></label></th>
-					<td>
-						<select id="nm_mt_type" name="nm_mt_type">
-							<option value=""><?php esc_html_e( '— None —', 'ner-michoel-core' ); ?></option>
-							<?php foreach ( $types as $term ) : ?>
-								<option value="<?php echo esc_attr( $term->term_id ); ?>"><?php echo esc_html( $term->name ); ?></option>
-							<?php endforeach; ?>
-						</select>
-						<p class="description"><?php esc_html_e( 'More types can be added from the Mazal Tov screen\'s Types box.', 'ner-michoel-core' ); ?></p>
+						<input type="text" id="nm_mt_name" name="nm_mt_name" class="regular-text" required />
+						<p class="description"><?php esc_html_e( 'Who the Mazal Tov is for, like Moshe Cohen. His years are put in brackets after it.', 'ner-michoel-core' ); ?></p>
 					</td>
 				</tr>
 				<tr>
@@ -81,7 +66,7 @@ function ner_michoel_render_mazal_tov_quick_add_page() {
 						<?php $years_cfg = ner_michoel_years_script_config(); ?>
 						<div
 							data-nm-years-lookup
-							data-source="#nm_mt_honoree"
+							data-source="#nm_mt_name"
 							data-target="#nm_mt_years"
 							data-url="<?php echo esc_url( $years_cfg['url'] ); ?>"
 							data-nonce="<?php echo esc_attr( $years_cfg['nonce'] ); ?>"
@@ -94,6 +79,31 @@ function ner_michoel_render_mazal_tov_quick_add_page() {
 								<a href="<?php echo esc_url( $years_cfg['manageUrl'] ); ?>"><?php esc_html_e( 'Upload or update the list', 'ner-michoel-core' ); ?></a>
 							<?php endif; ?>
 						</p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="nm_mt_what"><?php esc_html_e( 'What the Mazal Tov is', 'ner-michoel-core' ); ?></label></th>
+					<td>
+						<input type="text" id="nm_mt_what" name="nm_mt_what" class="large-text" required placeholder="<?php esc_attr_e( 'e.g. on his engagement to Sarah Levy', 'ner-michoel-core' ); ?>" />
+						<p class="description"><?php esc_html_e( 'Written to follow the name: the announcement reads “Name (years) …this…”.', 'ner-michoel-core' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="nm_mt_relationship"><?php esc_html_e( 'Relationship', 'ner-michoel-core' ); ?></label></th>
+					<td>
+						<input type="text" id="nm_mt_relationship" name="nm_mt_relationship" class="regular-text" placeholder="<?php esc_attr_e( 'Optional, e.g. "Rabbi & Mrs."', 'ner-michoel-core' ); ?>" />
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="nm_mt_type"><?php esc_html_e( 'Type', 'ner-michoel-core' ); ?></label></th>
+					<td>
+						<select id="nm_mt_type" name="nm_mt_type">
+							<option value=""><?php esc_html_e( '— None —', 'ner-michoel-core' ); ?></option>
+							<?php foreach ( $types as $term ) : ?>
+								<option value="<?php echo esc_attr( $term->term_id ); ?>"><?php echo esc_html( $term->name ); ?></option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description"><?php esc_html_e( 'More types can be added from the Mazal Tov screen\'s Types box.', 'ner-michoel-core' ); ?></p>
 					</td>
 				</tr>
 			</table>
@@ -127,18 +137,19 @@ function ner_michoel_handle_mazal_tov_quick_add() {
 	// Back to the Site Control Panel when the form was posted from there.
 	$redirect = ner_michoel_panel_redirect_url( admin_url( 'admin.php?page=nm-mazal-tov-quick-add' ), 'mazaltovadd' );
 
-	$honoree      = isset( $_POST['nm_mt_honoree'] ) ? sanitize_text_field( wp_unslash( $_POST['nm_mt_honoree'] ) ) : '';
+	$name         = isset( $_POST['nm_mt_name'] ) ? sanitize_text_field( wp_unslash( $_POST['nm_mt_name'] ) ) : '';
+	$what         = isset( $_POST['nm_mt_what'] ) ? sanitize_text_field( wp_unslash( $_POST['nm_mt_what'] ) ) : '';
 	$relationship = isset( $_POST['nm_mt_relationship'] ) ? sanitize_text_field( wp_unslash( $_POST['nm_mt_relationship'] ) ) : '';
 	$years        = isset( $_POST['nm_mt_years'] ) ? sanitize_text_field( wp_unslash( $_POST['nm_mt_years'] ) ) : '';
 	$type_id      = isset( $_POST['nm_mt_type'] ) ? absint( $_POST['nm_mt_type'] ) : 0;
 
-	if ( '' === $honoree ) {
+	if ( '' === $name || '' === $what ) {
 		wp_safe_redirect( esc_url_raw( add_query_arg( 'nm_mazal_tov', 'error', $redirect ) ) );
 		exit;
 	}
 
 	// A sentence written from a preset must have every blank filled in (includes/mazal-tov-presets.php).
-	if ( function_exists( 'ner_michoel_mazal_tov_has_blank' ) && ner_michoel_mazal_tov_has_blank( $honoree ) ) {
+	if ( function_exists( 'ner_michoel_mazal_tov_has_blank' ) && ner_michoel_mazal_tov_has_blank( $name . ' ' . $what ) ) {
 		wp_safe_redirect( esc_url_raw( add_query_arg( 'nm_mazal_tov', 'blank', $redirect ) ) );
 		exit;
 	}
@@ -146,7 +157,7 @@ function ner_michoel_handle_mazal_tov_quick_add() {
 	$post_id = wp_insert_post(
 		array(
 			'post_type'   => 'mazal_tov',
-			'post_title'  => $honoree,
+			'post_title'  => ner_michoel_mazal_tov_compose_title( $name, $years, $what, $relationship ),
 			'post_status' => 'publish',
 		),
 		true
@@ -157,12 +168,16 @@ function ner_michoel_handle_mazal_tov_quick_add() {
 		exit;
 	}
 
-	if ( '' !== $relationship ) {
-		update_post_meta( $post_id, '_mazal_tov_relationship', $relationship );
-	}
-	if ( '' !== $years ) {
-		update_post_meta( $post_id, '_mazal_tov_years', $years );
-	}
+	// The name, years, what it is and relationship are kept apart as well, so the announcement can be edited (includes/mazal-tov.php).
+	ner_michoel_mazal_tov_save_parts(
+		$post_id,
+		array(
+			'name'         => $name,
+			'years'        => $years,
+			'what'         => $what,
+			'relationship' => $relationship,
+		)
+	);
 	if ( $type_id ) {
 		wp_set_object_terms( $post_id, array( $type_id ), 'mazal_tov_type' );
 	}

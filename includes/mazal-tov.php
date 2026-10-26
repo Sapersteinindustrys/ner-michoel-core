@@ -136,3 +136,115 @@ function ner_michoel_get_mazal_tov_relationship( $post_id ) {
 function ner_michoel_get_mazal_tov_years( $post_id ) {
 	return sanitize_text_field( get_post_meta( $post_id, '_mazal_tov_years', true ) );
 }
+
+/**
+ * How an announcement reads: the person's name with his years in brackets, then
+ * what the Mazal Tov is.
+ *
+ *     Moshe Cohen ('95) on his engagement to Sarah Levy
+ *
+ * The parts are kept as post meta (_mazal_tov_name, _mazal_tov_years,
+ * _mazal_tov_what, and the older _mazal_tov_relationship, "Rabbi & Mrs.", which
+ * goes before the name) so an announcement can be edited, and the finished
+ * sentence is also kept as the post title, so everything that prints a title
+ * (search, feeds, the REST API) reads the same. An announcement made before the
+ * parts existed has no _mazal_tov_name; its title is the name (or a whole
+ * sentence) and its years are put in brackets after it.
+ */
+function ner_michoel_mazal_tov_lead( $name, $years, $relationship = '' ) {
+	$lead  = trim( trim( (string) $relationship ) . ' ' . trim( (string) $name ) );
+	$years = trim( (string) $years );
+	if ( '' !== $lead && '' !== $years ) {
+		$lead .= ' (' . $years . ')';
+	}
+	return $lead;
+}
+
+/** The finished sentence (the post title) from its parts. */
+function ner_michoel_mazal_tov_compose_title( $name, $years, $what, $relationship = '' ) {
+	return trim( ner_michoel_mazal_tov_lead( $name, $years, $relationship ) . ' ' . trim( (string) $what ) );
+}
+
+/**
+ * The two pieces the pages print: 'lead' (the name with his years, shown bold) and
+ * 'rest' (what the Mazal Tov is). Plain text: the caller escapes it. No date is
+ * part of it on purpose: an announcement is not shown with when it was posted.
+ */
+function ner_michoel_mazal_tov_parts( $post ) {
+	$post = get_post( $post );
+	if ( ! $post ) {
+		return array( 'lead' => '', 'rest' => '' );
+	}
+	$name         = (string) get_post_meta( $post->ID, '_mazal_tov_name', true );
+	$years        = ner_michoel_get_mazal_tov_years( $post->ID );
+	$relationship = ner_michoel_get_mazal_tov_relationship( $post->ID );
+	if ( '' === trim( $name ) ) {
+		return array(
+			'lead' => ner_michoel_mazal_tov_lead( get_the_title( $post ), $years, $relationship ),
+			'rest' => '',
+		);
+	}
+	return array(
+		'lead' => ner_michoel_mazal_tov_lead( $name, $years, $relationship ),
+		'rest' => trim( (string) get_post_meta( $post->ID, '_mazal_tov_what', true ) ),
+	);
+}
+
+/**
+ * Writes an announcement's parts and its finished title. $parts: name, years, what,
+ * relationship (any may be ''). Meta that is empty is removed. Returns the title.
+ */
+function ner_michoel_mazal_tov_save_parts( $post_id, array $parts ) {
+	$map = array(
+		'name'         => '_mazal_tov_name',
+		'years'        => '_mazal_tov_years',
+		'what'         => '_mazal_tov_what',
+		'relationship' => '_mazal_tov_relationship',
+	);
+	$clean = array();
+	foreach ( $map as $key => $meta_key ) {
+		$clean[ $key ] = isset( $parts[ $key ] ) ? sanitize_text_field( (string) $parts[ $key ] ) : '';
+		if ( '' !== $clean[ $key ] ) {
+			update_post_meta( $post_id, $meta_key, $clean[ $key ] );
+		} else {
+			delete_post_meta( $post_id, $meta_key );
+		}
+	}
+	$title = ner_michoel_mazal_tov_compose_title( $clean['name'], $clean['years'], $clean['what'], $clean['relationship'] );
+	if ( get_post_field( 'post_title', $post_id ) !== $title ) {
+		wp_update_post( array( 'ID' => $post_id, 'post_title' => $title ) );
+	}
+	return $title;
+}
+
+/**
+ * For the panel's Add New / Edit form (includes/custom-admin-api.php, 'title_from'):
+ * the title from what was sent, filling anything the request leaves out from what is
+ * stored. A WP_Error when the name or the "what" is missing or still has a blank.
+ */
+function ner_michoel_mazal_tov_cms_title( array $body, $id ) {
+	// A request that touches none of the parts (a status change) leaves the title as it is.
+	if ( $id && ! array_intersect( array( 'name', 'years', 'what', 'relationship' ), array_keys( $body ) ) ) {
+		return (string) get_post_field( 'post_title', $id );
+	}
+	// An announcement made before the parts existed has no stored name: it may be saved without a "what".
+	$legacy = $id && '' === trim( (string) get_post_meta( $id, '_mazal_tov_name', true ) );
+	$pick   = function ( $key, $meta_key ) use ( $body, $id ) {
+		if ( array_key_exists( $key, $body ) ) {
+			return sanitize_text_field( (string) $body[ $key ] );
+		}
+		return $id ? (string) get_post_meta( $id, $meta_key, true ) : '';
+	};
+	$name = $pick( 'name', '_mazal_tov_name' );
+	$what = $pick( 'what', '_mazal_tov_what' );
+	if ( '' === trim( $name ) ) {
+		return new WP_Error( 'nm_cms_missing_field', __( '“Name” is required.', 'ner-michoel-core' ), array( 'status' => 400 ) );
+	}
+	if ( '' === trim( $what ) && ! $legacy ) {
+		return new WP_Error( 'nm_cms_missing_field', __( '“What the Mazal Tov is” is required.', 'ner-michoel-core' ), array( 'status' => 400 ) );
+	}
+	if ( function_exists( 'ner_michoel_mazal_tov_has_blank' ) && ( ner_michoel_mazal_tov_has_blank( $what ) || ner_michoel_mazal_tov_has_blank( $name ) ) ) {
+		return new WP_Error( 'nm_cms_unfilled_blank', __( 'The sentence still has a blank (___) to fill in.', 'ner-michoel-core' ), array( 'status' => 400 ) );
+	}
+	return ner_michoel_mazal_tov_compose_title( $name, $pick( 'years', '_mazal_tov_years' ), $what, $pick( 'relationship', '_mazal_tov_relationship' ) );
+}

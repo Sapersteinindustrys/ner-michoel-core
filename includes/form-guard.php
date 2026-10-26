@@ -59,6 +59,7 @@ function ner_michoel_form_guard_forms() {
 	return array(
 		'contact' => array( 'min_seconds' => 4, 'limit' => 5, 'window' => HOUR_IN_SECONDS ),
 		'magid'   => array( 'min_seconds' => 4, 'limit' => 5, 'window' => HOUR_IN_SECONDS ),
+		'mazaltov' => array( 'min_seconds' => 4, 'limit' => 5, 'window' => HOUR_IN_SECONDS ),
 		'signup'  => array( 'min_seconds' => 3, 'limit' => 5, 'window' => HOUR_IN_SECONDS ),
 		'login'   => array( 'min_seconds' => 0, 'limit' => 30, 'window' => 15 * MINUTE_IN_SECONDS ),
 		'forgot'  => array( 'min_seconds' => 2, 'limit' => 5, 'window' => HOUR_IN_SECONDS ),

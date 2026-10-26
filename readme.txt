@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.36
+Stable tag: 0.9.37
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,22 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.37 =
+* New: visitors can share a Mazal Tov. The theme's "Share a Mazal Tov" button opens a form (the
+  person's name, the kind of simcha, what it is, and the sender's own name and email). Nothing a
+  visitor sends is shown: it waits as a "pending" Mazal Tov, the site admin address gets an email,
+  and Announcements > Review Mazal Tovs (also under the wp-admin menu) shows each one as it will
+  look, with its sender, so the admin can Approve and post, change it and Save, or Block it (a
+  blocked one can be brought back or deleted for good). The years are never typed: they are
+  looked up in the Years List from the name, when it arrives and again on the review screen.
+  The form has the same bot checks as the Contact form (trap field, browser check, Turnstile, a
+  limit of 5 an hour per address); spam-looking ones are kept under Submissions.
+* Change: a Mazal Tov now reads "Name (years) what it is", for example "Moshe Cohen ('95) on his
+  engagement to Sarah Levy". Quick Mazal Tov and Add New Mazal Tov have a Name box, the Years box
+  (filled in from the Years List) and a "What the Mazal Tov is" box, and build the headline from
+  them. Presets now hold what follows the name ("on the birth of a baby ___"). Older
+  announcements read as before, with their years in brackets after the title.
 
 = 0.9.36 =
 * Fix: on "Finish Your Upload" (Upload Many at Once), typing a series name in the search box and

@@ -163,7 +163,7 @@
 				// A sentence with blanks (a Mazal Tov preset): the box to type it in, a button that adds a
 				// blank, and a preview of how it will look when someone posts with it (mazal-tov-presets.js).
 				return '<div class="nm-mt-wording">' +
-					'<textarea' + idAttr + maxAttr + ' class="nm-cms-input" rows="3" placeholder="Mazel Tov to the ___ family on the birth of a baby ___">' + esc( value || '' ) + '</textarea>' +
+					'<textarea' + idAttr + maxAttr + ' class="nm-cms-input" rows="3" placeholder="on the birth of a baby ___">' + esc( value || '' ) + '</textarea>' +
 					'<div class="nm-mt-wording__tools">' +
 					'<button type="button" class="nm-btn nm-btn--sm nm-mt-add-blank">' + icon( 'plus' ) + '<span>Add a blank</span></button>' +
 					'<span class="nm-cms-hint">Or type three underscores (___) where a name goes. To say what goes in a blank, write it in curly brackets, like {Family name}.</span>' +

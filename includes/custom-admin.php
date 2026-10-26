@@ -279,12 +279,12 @@ function ner_michoel_custom_admin_structure() {
 					'help'     => array(
 						'steps' => array(
 							__( 'Click “Add New Mazal Tov” for an announcement with a photo.', 'ner-michoel-core' ),
-							__( 'To save typing, pick a preset at the top (like “Baby”) and fill in the blanks. The headline is written for you.', 'ner-michoel-core' ),
-							__( 'Or use “Quick Mazal Tov” for a fast, four-box version.', 'ner-michoel-core' ),
-							__( 'If the boy is in the Years List, his years fill in by themselves when you type his name.', 'ner-michoel-core' ),
+							__( 'To save typing, pick a preset at the top (like “Baby”) and fill in the blanks. “What the Mazal Tov is” is written for you.', 'ner-michoel-core' ),
+							__( 'Or use “Quick Mazal Tov” for a fast version without a photo.', 'ner-michoel-core' ),
+							__( 'If the boy is in the Years List, his years fill in by themselves when you type his name, and show in brackets after it.', 'ner-michoel-core' ),
 							__( 'Click any announcement to edit it, or set it to Draft to take it down.', 'ner-michoel-core' ),
 						),
-						'tip'      => __( 'Presets are sentences with blanks, like “Mazel Tov to the ___ family on the birth of a baby ___”. You make them once and use them every time.', 'ner-michoel-core' ),
+						'tip'      => __( 'Presets are wordings with blanks, like “on the birth of a baby ___”. They fill in “What the Mazal Tov is”, after the name. You make them once and use them every time.', 'ner-michoel-core' ),
 						'tip_link' => array(
 							'tab'   => 'mazaltovpresets',
 							'label' => __( 'Make or change a preset', 'ner-michoel-core' ),
@@ -295,36 +295,52 @@ function ner_michoel_custom_admin_structure() {
 					'label'    => __( 'Quick Mazal Tov', 'ner-michoel-core' ),
 					'icon'     => 'zap',
 					'callback' => 'ner_michoel_render_mazal_tov_quick_add_page',
-					'desc'     => __( 'Post a simcha announcement in four boxes. No photo needed.', 'ner-michoel-core' ),
+					'desc'     => __( 'Post a simcha announcement in a few boxes. No photo needed.', 'ner-michoel-core' ),
 					'keywords' => 'simcha quick post mazal tov fast',
 					'help'     => array(
 						'steps' => array(
-							__( 'Pick a preset (like “Baby”) and fill in the blanks in the sentence, or leave it on “None” and type who it’s for in the Honoree box.', 'ner-michoel-core' ),
-							__( 'Add the relationship and years if you like, for example “Rabbi & Mrs.” and “’05, ’08”. If the name is in the Years List, the years fill in by themselves.', 'ner-michoel-core' ),
+							__( 'Type the Name. Then pick a preset (like “Baby”) and fill in its blanks, or leave it on “None” and type what the Mazal Tov is yourself, like “on his engagement to Sarah Levy”.', 'ner-michoel-core' ),
+							__( 'The years fill in by themselves when the name is in the Years List, and are put in brackets after the name. Add a relationship if you like, for example “Rabbi & Mrs.”.', 'ner-michoel-core' ),
 							__( 'Pick the type of simcha (a preset picks it for you if it has one) and press “Post Mazal Tov”. It goes live straight away.', 'ner-michoel-core' ),
 						),
-						'tip'      => __( 'Presets are sentences with blanks, like “Mazel Tov to the ___ family on the birth of a baby ___”. You make them once and use them every time.', 'ner-michoel-core' ),
+						'tip'      => __( 'Presets are wordings with blanks, like “on the birth of a baby ___”. They fill in “What the Mazal Tov is”, after the name. You make them once and use them every time.', 'ner-michoel-core' ),
 						'tip_link' => array(
 							'tab'   => 'mazaltovpresets',
 							'label' => __( 'Make or change a preset', 'ner-michoel-core' ),
 						),
 					),
 				),
+				'mazaltovreview' => array(
+					'label'      => __( 'Review Mazal Tovs', 'ner-michoel-core' ) . ( function_exists( 'ner_michoel_mazal_tov_waiting_count' ) && ner_michoel_mazal_tov_waiting_count() ? ' (' . ner_michoel_mazal_tov_waiting_count() . ')' : '' ),
+					'icon'       => 'inbox',
+					'callback'   => 'ner_michoel_render_mazal_tov_review_page',
+					'capability' => 'edit_others_posts',
+					'desc'       => __( 'Mazal Tovs that visitors shared. Look each one over, then approve, change or block it.', 'ner-michoel-core' ),
+					'keywords'   => 'simcha review approve block pending visitors shared submitted moderate waiting',
+					'help'       => array(
+						'steps' => array(
+							__( 'When a visitor shares a Mazal Tov from the site, you get an email and it waits here. Nothing shows on the site until you approve it.', 'ner-michoel-core' ),
+							__( 'The box at the top of each one is how it will look on the site. The years were looked up in the Years List from the name; change them if they are wrong or missing.', 'ner-michoel-core' ),
+							__( 'Press “Approve and post” to put it on the site, “Save changes” to keep your edits and decide later, or “Block” to keep it off the site.', 'ner-michoel-core' ),
+						),
+						'tip'   => __( 'A blocked one is not lost: open “Blocked” at the bottom and press “Bring back”, or delete it for good.', 'ner-michoel-core' ),
+					),
+				),
 				'mazaltovpresets' => array(
 					'label'    => __( 'Mazal Tov Presets', 'ner-michoel-core' ),
 					'icon'     => 'file-text',
 					'cms_type' => 'mazal_tov_preset',
-					'desc'     => __( 'Ready-made sentences with blanks, like “Mazel Tov to the ___ family on the birth of a baby ___”. Fill in the blanks when you post.', 'ner-michoel-core' ),
+					'desc'     => __( 'Ready-made wordings with blanks, like “on the birth of a baby ___”. They follow the name. Fill in the blanks when you post.', 'ner-michoel-core' ),
 					'keywords' => 'simcha preset template wording sentence blank fill in baby engagement wedding bar mitzvah',
 					'help'     => array(
 						'steps' => array(
 							__( 'Click “Add New Preset”.', 'ner-michoel-core' ),
 							__( 'Give it a short name, like “Baby”. This is the name you will pick when you post a Mazal Tov.', 'ner-michoel-core' ),
-							__( 'Type the sentence, and put three underscores (___) wherever you will want to type a name. For example: “Mazel Tov to the ___ family on the birth of a baby ___”. The box under it shows how it will look.', 'ner-michoel-core' ),
+							__( 'Type what follows the name, and put three underscores (___) wherever you will want to type something. For example: “on the birth of a baby ___”. The box under it shows how it will look.', 'ner-michoel-core' ),
 							__( 'Optional: choose a Type (for “Baby”, Birth), and it is picked for you each time.', 'ner-michoel-core' ),
 							__( 'Press Save. Next time you add a Mazal Tov (“Quick Mazal Tov” or “Add New Mazal Tov”), pick the preset and fill in the blanks.', 'ner-michoel-core' ),
 						),
-						'tip'   => __( 'To say what goes in a blank, put the words in curly brackets instead of underscores, like “Mazel Tov to the {Family name} family”. Announcements you already posted never change when you edit or delete a preset.', 'ner-michoel-core' ),
+						'tip'   => __( 'To say what goes in a blank, put the words in curly brackets instead of underscores, like “on the birth of a baby {boy or girl}”. Announcements you already posted never change when you edit or delete a preset.', 'ner-michoel-core' ),
 					),
 				),
 				'mazaltovyears' => array(
@@ -1015,12 +1031,29 @@ function ner_michoel_render_custom_admin_overview() {
 		array( 'tab' => 'shiurim', 'args' => array( 'new' => 1 ), 'icon' => 'headphones', 'title' => __( 'Add a shiur', 'ner-michoel-core' ), 'desc' => __( 'One audio or video shiur', 'ner-michoel-core' ), 'tone' => 'green' ),
 		array( 'tab' => 'bulk', 'args' => array(), 'icon' => 'upload', 'title' => __( 'Upload many shiurim', 'ner-michoel-core' ), 'desc' => __( 'A whole batch at once', 'ner-michoel-core' ), 'tone' => 'blue' ),
 		array( 'tab' => 'written', 'args' => array( 'new' => 1 ), 'icon' => 'file-text', 'title' => __( 'Add a written shiur', 'ner-michoel-core' ), 'desc' => __( 'Publish a PDF', 'ner-michoel-core' ), 'tone' => 'violet' ),
-		array( 'tab' => 'mazaltovadd', 'args' => array(), 'icon' => 'sparkles', 'title' => __( 'Post a Mazal Tov', 'ner-michoel-core' ), 'desc' => __( 'Share a simcha in four boxes', 'ner-michoel-core' ), 'tone' => 'amber' ),
+		array( 'tab' => 'mazaltovadd', 'args' => array(), 'icon' => 'sparkles', 'title' => __( 'Post a Mazal Tov', 'ner-michoel-core' ), 'desc' => __( 'Share a simcha in a few boxes', 'ner-michoel-core' ), 'tone' => 'amber' ),
 		array( 'tab' => 'newslist', 'args' => array( 'new' => 1 ), 'icon' => 'newspaper', 'title' => __( 'Post news', 'ner-michoel-core' ), 'desc' => __( 'For the News & Events page', 'ner-michoel-core' ), 'tone' => 'rose' ),
 		array( 'tab' => 'hero', 'args' => array(), 'icon' => 'banner', 'title' => __( 'Edit the homepage', 'ner-michoel-core' ), 'desc' => __( 'Welcome words and pictures', 'ner-michoel-core' ), 'tone' => 'teal' ),
 		array( 'tab' => 'live', 'args' => array(), 'icon' => 'video', 'title' => __( 'Update the Zoom link', 'ner-michoel-core' ), 'desc' => __( 'Live shiur link and times', 'ner-michoel-core' ), 'tone' => 'blue' ),
 		array( 'tab' => 'inquiries', 'args' => array(), 'icon' => 'inbox', 'title' => __( 'Read messages', 'ner-michoel-core' ), 'desc' => __( 'From the contact forms', 'ner-michoel-core' ), 'tone' => 'slate' ),
 	);
+
+	// Visitors' Mazal Tovs waiting for an OK (includes/mazal-tov-share.php): a tile only while there are some.
+	$mt_waiting = function_exists( 'ner_michoel_mazal_tov_waiting_count' ) ? ner_michoel_mazal_tov_waiting_count() : 0;
+	if ( $mt_waiting && current_user_can( 'edit_others_posts' ) ) {
+		array_unshift(
+			$actions,
+			array(
+				'tab'   => 'mazaltovreview',
+				'args'  => array(),
+				'icon'  => 'inbox',
+				'title' => __( 'Review Mazal Tovs', 'ner-michoel-core' ),
+				/* translators: %s: how many are waiting */
+				'desc'  => sprintf( _n( '%s is waiting for your OK', '%s are waiting for your OK', $mt_waiting, 'ner-michoel-core' ), number_format_i18n( $mt_waiting ) ),
+				'tone'  => 'amber',
+			)
+		);
+	}
 
 	$stats = array(
 		array( 'tab' => 'shiurim', 'icon' => 'headphones', 'label' => __( 'Shiurim', 'ner-michoel-core' ), 'value' => $shiurim, 'sub' => $drafts ? sprintf( /* translators: %s: number of drafts */ _n( '+ %s draft', '+ %s drafts', $drafts, 'ner-michoel-core' ), number_format_i18n( $drafts ) ) : __( 'published', 'ner-michoel-core' ) ),

@@ -135,6 +135,8 @@ function ner_michoel_cms_registry() {
 			'label'        => __( 'Mazal Tov', 'ner-michoel-core' ),
 			'label_plural' => __( 'Mazal Tov Announcements', 'ner-michoel-core' ),
 			'taxonomies'   => array( 'mazal_tov_type' ),
+			// The title is built from the name, his years and what the Mazal Tov is (includes/mazal-tov.php), not typed.
+			'title_from'   => 'ner_michoel_mazal_tov_cms_title',
 			'list_columns' => array(
 				array( 'key' => 'title', 'label' => __( 'Headline', 'ner-michoel-core' ), 'render' => 'title' ),
 				array( 'key' => 'mazal_tov_type', 'label' => __( 'Type', 'ner-michoel-core' ), 'render' => 'taxonomy', 'taxonomy' => 'mazal_tov_type' ),
@@ -142,13 +144,14 @@ function ner_michoel_cms_registry() {
 				array( 'key' => 'date', 'label' => __( 'Date', 'ner-michoel-core' ), 'render' => 'date' ),
 			),
 			'fields'       => array(
-				// Not saved: a helper (includes/mazal-tov-presets.php) that writes the headline, and the Type, from a preset. Shown on a new announcement only.
-				'preset'         => array( 'type' => 'preset_picker', 'label' => __( 'Start from a preset', 'ner-michoel-core' ), 'fills' => 'title', 'type_field' => 'mazal_tov_type', 'hint' => __( 'Optional. Pick a ready-made wording like “Baby”, fill in the blanks, and the headline is written for you.', 'ner-michoel-core' ) ),
-				'title'          => array( 'type' => 'text', 'label' => __( 'Headline', 'ner-michoel-core' ), 'required' => true, 'target' => 'post_title', 'no_blanks' => true ),
-				'mazal_tov_type' => array( 'type' => 'taxonomy', 'label' => __( 'Type', 'ner-michoel-core' ), 'taxonomy' => 'mazal_tov_type' ),
-				'relationship'   => array( 'type' => 'text', 'label' => __( 'Relationship (e.g. "Rabbi & Mrs. Cohen")', 'ner-michoel-core' ), 'meta' => '_mazal_tov_relationship' ),
+				// Not saved: a helper (includes/mazal-tov-presets.php) that writes "what the Mazal Tov is", and the Type, from a preset. Shown on a new announcement only.
+				'preset'         => array( 'type' => 'preset_picker', 'label' => __( 'Start from a preset', 'ner-michoel-core' ), 'fills' => 'what', 'type_field' => 'mazal_tov_type', 'hint' => __( 'Optional. Pick a ready-made wording like “Engagement”, fill in the blanks, and the sentence after the name is written for you.', 'ner-michoel-core' ) ),
+				'name'           => array( 'type' => 'text', 'label' => __( 'Name', 'ner-michoel-core' ), 'required' => true, 'meta' => '_mazal_tov_name', 'maxlength' => 120, 'hint' => __( 'Who the Mazal Tov is for, like Moshe Cohen. His years are put in brackets after it.', 'ner-michoel-core' ) ),
 				// years_from: the field whose name is looked up in the Years List (includes/years-list.php); an empty Years box is filled in from it.
-				'years'          => array( 'type' => 'text', 'label' => __( "Years (e.g. '05, '08)", 'ner-michoel-core' ), 'meta' => '_mazal_tov_years', 'years_from' => 'title', 'hint' => __( 'Optional. If the boy is in the Years List, his years are filled in when you type his name in the headline. You can change them.', 'ner-michoel-core' ) ),
+				'years'          => array( 'type' => 'text', 'label' => __( "Years (e.g. '05, '08)", 'ner-michoel-core' ), 'meta' => '_mazal_tov_years', 'years_from' => 'name', 'hint' => __( 'Filled in for you when the name is in the Years List. You can change it, or leave it empty.', 'ner-michoel-core' ) ),
+				'what'           => array( 'type' => 'text', 'label' => __( 'What the Mazal Tov is', 'ner-michoel-core' ), 'required' => true, 'meta' => '_mazal_tov_what', 'maxlength' => 200, 'hint' => __( 'Written to follow the name, like “on his engagement to Sarah Levy” or “on the birth of a baby boy”.', 'ner-michoel-core' ) ),
+				'mazal_tov_type' => array( 'type' => 'taxonomy', 'label' => __( 'Type', 'ner-michoel-core' ), 'taxonomy' => 'mazal_tov_type' ),
+				'relationship'   => array( 'type' => 'text', 'label' => __( 'Relationship (e.g. "Rabbi & Mrs.")', 'ner-michoel-core' ), 'meta' => '_mazal_tov_relationship', 'hint' => __( 'Optional. Put before the name.', 'ner-michoel-core' ) ),
 				'thumbnail'      => array( 'type' => 'image', 'label' => __( 'Photo (optional)', 'ner-michoel-core' ), 'target' => 'thumbnail' ),
 				'status'         => array( 'type' => 'select', 'label' => __( 'Status', 'ner-michoel-core' ), 'target' => 'status', 'options' => $status_options ),
 			),
@@ -172,7 +175,7 @@ function ner_michoel_cms_registry() {
 			),
 			'fields'         => array(
 				'title'   => array( 'type' => 'text', 'label' => __( 'Name', 'ner-michoel-core' ), 'required' => true, 'target' => 'post_title', 'maxlength' => 60, 'hint' => __( 'A short name you will pick from the list when you post, like “Baby”.', 'ner-michoel-core' ) ),
-				'wording' => array( 'type' => 'wording', 'label' => __( 'Wording', 'ner-michoel-core' ), 'required' => true, 'meta' => '_nm_preset_wording', 'maxlength' => 300, 'hint' => __( 'Type the sentence the way it should read. Wherever you will want to type a name when you post, put three underscores (___), for example: Mazel Tov to the ___ family on the birth of a baby ___', 'ner-michoel-core' ) ),
+				'wording' => array( 'type' => 'wording', 'label' => __( 'Wording', 'ner-michoel-core' ), 'required' => true, 'meta' => '_nm_preset_wording', 'maxlength' => 300, 'hint' => __( 'Type what follows the name, the way it should read. Wherever you will want to type something when you post, put three underscores (___), for example: on the birth of a baby ___', 'ner-michoel-core' ) ),
 				// Not called 'type': a field named like a route parameter (type, id) would replace it, since the JSON body wins.
 				'default_type' => array( 'type' => 'select', 'label' => __( 'Type', 'ner-michoel-core' ), 'meta' => '_nm_preset_type', 'options_callback' => 'ner_michoel_mazal_tov_type_options', 'hint' => __( 'Optional. When you pick this preset, the announcement is filed under this type for you (a “Baby” preset would be Birth).', 'ner-michoel-core' ) ),
 			),
@@ -666,6 +669,11 @@ function ner_michoel_cms_format_post_full( $post, $config ) {
 		}
 	}
 
+	// An announcement made before it had a Name box: its title was the name (or a whole sentence), so the box shows that until it is saved.
+	if ( ! empty( $config['title_from'] ) && array_key_exists( 'name', $config['fields'] ) && empty( $data['name'] ) ) {
+		$data['name'] = $post->post_title;
+	}
+
 	return $data;
 }
 
@@ -777,6 +785,15 @@ function ner_michoel_cms_save_post( $id, $config, WP_REST_Request $request ) {
 		}
 	}
 
+	// A type whose title is built from its other fields (Mazal Tov: name, years, what it is).
+	if ( ! empty( $config['title_from'] ) && is_callable( $config['title_from'] ) ) {
+		$built = call_user_func( $config['title_from'], $body, $id );
+		if ( is_wp_error( $built ) ) {
+			return $built;
+		}
+		$postarr['post_title'] = $built;
+	}
+
 	if ( ! $id && empty( $postarr['post_status'] ) ) {
 		$postarr['post_status'] = isset( $config['default_status'] ) ? $config['default_status'] : 'draft';
 	}
@@ -784,9 +801,9 @@ function ner_michoel_cms_save_post( $id, $config, WP_REST_Request $request ) {
 		return new WP_Error( 'nm_cms_missing_title', __( 'A title is required.', 'ner-michoel-core' ), array( 'status' => 400 ) );
 	}
 
-	// A required field that is kept as post meta (the title is checked just above).
+	// A required field that is kept as post meta (the title is checked just above). A type that builds its title from its fields has already checked its own.
 	foreach ( $config['fields'] as $key => $field ) {
-		if ( empty( $field['required'] ) || isset( $field['target'] ) || ! isset( $field['meta'] ) ) {
+		if ( ! empty( $config['title_from'] ) || empty( $field['required'] ) || isset( $field['target'] ) || ! isset( $field['meta'] ) ) {
 			continue;
 		}
 		$given = array_key_exists( $key, $body ) ? sanitize_text_field( (string) $body[ $key ] ) : ( $id ? (string) get_post_meta( $id, $field['meta'], true ) : '' );

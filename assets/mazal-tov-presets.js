@@ -189,7 +189,7 @@
 			var none = el( 'p', { 'class': 'nm-mt-none' }, [ 'No presets yet. ' ] );
 			if ( opts.manageUrl ) {
 				none.appendChild( el( 'a', { href: opts.manageUrl, target: '_blank', rel: 'noopener', text: 'Make one' } ) );
-				none.appendChild( document.createTextNode( ' to save time: a sentence with blanks, like “Mazel Tov to the ___ family on the birth of a baby ___”.' ) );
+				none.appendChild( document.createTextNode( ' to save time: a sentence with blanks, like “on the birth of a baby ___”.' ) );
 			}
 			host.appendChild( none );
 			return api;
