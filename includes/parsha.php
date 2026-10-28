@@ -716,25 +716,59 @@ function ner_michoel_parsha_shiurim( array $numbers, $per_page = 6 ) {
 
 /**
  * This week's parsha for the homepage, or null when this Shabbos has no parsha of its own
- * (Yom Tov or Chol Hamoed). The week runs Sunday to Shabbos; an editor can preview
- * another day with ?nm_season_date=YYYY-MM-DD (topics.php). Israel's reading instead of
- * the diaspora's: add_filter( 'ner_michoel_parsha_israel', '__return_true' ).
+ * (Yom Tov or Chol Hamoed), or when an editor has hidden the box (week-settings.php). The
+ * week runs Sunday to Shabbos; an editor can preview another day with
+ * ?nm_season_date=YYYY-MM-DD (topics.php). An editor can also choose a parsha by hand, for a
+ * few days or until they change it back; then the box is that parsha's.
+ *
+ * Whose reading: Chutz La'aretz's, or Eretz Yisroel's when $israel is true. Left out (null),
+ * it is the one the Homepage & Look > This Week screen says (the filter
+ * 'ner_michoel_parsha_israel' can still decide: add_filter( 'ner_michoel_parsha_israel',
+ * '__return_true' )). In the weeks they read different parshiyos, ner_michoel_get_week_regions()
+ * gives both.
  *
  * Returns: numbers (parsha numbers), name ("Re'eh", "Mattos-Massei"), title ("Parshas
  * Re'eh"), shabbos (fixed day), date ("Oct 31"), hebrew ("19 Cheshvan 5787"), posts
- * (WP_Post[]), count (all its shiurim), link (the topic page with the most, or '').
+ * (WP_Post[]), count (all its shiurim), link (the topic page with the most, or ''), pinned
+ * (true when an editor chose it).
  *
- * @param int $per_page How many shiurim to list.
+ * @param int       $per_page How many shiurim to list.
+ * @param bool|null $israel   Eretz Yisroel's reading instead of Chutz La'aretz's.
  * @return array|null
  */
-function ner_michoel_get_week_parsha( $per_page = 6 ) {
-	$today   = ner_michoel_season_today();
-	$shabbos = ner_michoel_parsha_shabbos_on_or_after( $today );
-	$numbers = ner_michoel_parsha_of_shabbos( $shabbos, (bool) apply_filters( 'ner_michoel_parsha_israel', false ) );
-	if ( ! $numbers ) {
+function ner_michoel_get_week_parsha( $per_page = 6, $israel = null ) {
+	if ( null === $israel ) {
+		$israel = ner_michoel_week_default_israel();
+	}
+	$pin = ner_michoel_week_parsha_pin();
+	if ( 'hide' === $pin ) {
 		return null;
 	}
 
+	$today   = ner_michoel_season_today();
+	$shabbos = ner_michoel_parsha_shabbos_on_or_after( $today );
+	if ( is_array( $pin ) ) {
+		return ner_michoel_week_parsha_box( $pin, $shabbos, $per_page, true );
+	}
+
+	$numbers = ner_michoel_parsha_of_shabbos( $shabbos, (bool) $israel );
+	if ( ! $numbers ) {
+		return null;
+	}
+	return ner_michoel_week_parsha_box( $numbers, $shabbos, $per_page, false );
+}
+
+/**
+ * The box for some parshiyos: see ner_michoel_get_week_parsha(). A parsha an editor chose
+ * has no Shabbos of its own to date, so its date and Hebrew date are empty.
+ *
+ * @param int[] $numbers  Parsha numbers.
+ * @param int   $shabbos  Fixed day of this week's Shabbos.
+ * @param int   $per_page How many shiurim to list.
+ * @param bool  $pinned   Chosen by an editor.
+ * @return array
+ */
+function ner_michoel_week_parsha_box( array $numbers, $shabbos, $per_page, $pinned ) {
 	$all  = ner_michoel_parsha_names();
 	$name = implode( '-', array_map( function ( $n ) use ( $all ) {
 		return $all[ $n ];
@@ -766,11 +800,50 @@ function ner_michoel_get_week_parsha( $per_page = 6 ) {
 		/* translators: %s: the parsha's name, such as Re'eh */
 		'title'   => sprintf( __( 'Parshas %s', 'ner-michoel-core' ), $name ),
 		'shabbos' => $shabbos,
-		'date'    => ner_michoel_fixed_date_label( $shabbos ),
-		'hebrew'  => ner_michoel_hebrew_date_label( $shabbos ),
+		'date'    => $pinned ? '' : ner_michoel_fixed_date_label( $shabbos ),
+		'hebrew'  => $pinned ? '' : ner_michoel_hebrew_date_label( $shabbos ),
 		'posts'   => $found['posts'],
 		// With a topic page to go to, the count is that page's, so "All 62 shiurim" matches what it lists.
 		'count'   => ( '' !== $link && $best > 0 ) ? $best : $found['count'],
 		'link'    => $link,
+		'pinned'  => $pinned,
+	);
+}
+
+/**
+ * Both readings of this week, for the homepage's buttons between Chutz La'aretz and Eretz
+ * Yisroel. They differ for the weeks after a Yom Tov that fell on Shabbos in Chutz La'aretz
+ * only (a few weeks of most years), until Chutz La'aretz catches up.
+ *
+ * Returns: default ('diaspora' or 'israel': the one shown first), toggle (true when the two
+ * differ, the buttons are on, and nobody chose the parsha by hand), diaspora and israel (each
+ * as ner_michoel_get_week_parsha() returns it; when toggle is false they are the same).
+ *
+ * @param int $per_page How many shiurim to list.
+ * @return array
+ */
+function ner_michoel_get_week_regions( $per_page = 6 ) {
+	$israel  = ner_michoel_week_default_israel();
+	$default = $israel ? 'israel' : 'diaspora';
+
+	$shabbos = ner_michoel_parsha_shabbos_on_or_after( ner_michoel_season_today() );
+	$differs = null === ner_michoel_week_parsha_pin()
+		&& ner_michoel_parsha_of_shabbos( $shabbos, false ) !== ner_michoel_parsha_of_shabbos( $shabbos, true );
+
+	if ( ! $differs || ! ner_michoel_week_toggle_on() ) {
+		$week = ner_michoel_get_week_parsha( $per_page, $israel );
+		return array(
+			'default'  => $default,
+			'toggle'   => false,
+			'diaspora' => $week,
+			'israel'   => $week,
+		);
+	}
+
+	return array(
+		'default'  => $default,
+		'toggle'   => true,
+		'diaspora' => ner_michoel_get_week_parsha( $per_page, false ),
+		'israel'   => ner_michoel_get_week_parsha( $per_page, true ),
 	);
 }

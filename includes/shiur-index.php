@@ -25,6 +25,8 @@
  *   c  kind: a audio, v video, w written (PDF)
  *   u  relative link        d  duration, when known
  *   g  topic term IDs, when it has any (topics.php)
+ *   f  the kinds this shiur comes in when that is more than one, own kind
+ *      included, e.g. "aw" (audio and written; shiur-formats.php)
  * The speaker, series and topic names are in `speakers`, `series` and `topics`,
  * keyed by term ID.
  */
@@ -46,8 +48,11 @@ define(
  * Builds the index JSON. Rows are read as plain arrays (much lighter than
  * objects at this size), and the speaker, series and media of every post come
  * from one query each, not one per shiur.
+ *
+ * $formats, when given, receives the shiurim that come in more than one format
+ * (ner_michoel_shiur_formats_group()), for the rebuild to save.
  */
-function ner_michoel_shiur_index_build( $version ) {
+function ner_michoel_shiur_index_build( $version, &$formats = null ) {
 	global $wpdb;
 
 	wp_raise_memory_limit( 'ner_michoel_shiur_index' );
@@ -103,6 +108,42 @@ function ner_michoel_shiur_index_build( $version ) {
 	}
 	unset( $attachment_ids );
 
+	// Each shiur's kind, and which shiurim are one shiur in several formats
+	// (shiur-formats.php). Only a shiur that has its file counts as a format.
+	$kinds   = array();
+	$members = array();
+	foreach ( (array) $posts as $row ) {
+		$id     = (int) $row[0];
+		$values = isset( $meta[ $id ] ) ? $meta[ $id ] : array();
+
+		if ( 'written_shiur' === $row[4] ) {
+			$kind     = 'w';
+			$has_file = ! empty( $values['_written_pdf_id'] );
+		} elseif ( ! empty( $values['_shiur_vimeo_id'] ) ) {
+			$kind     = 'v';
+			$has_file = true;
+		} else {
+			$attachment = isset( $values['_shiur_audio_id'] ) ? (int) $values['_shiur_audio_id'] : 0;
+			$kind       = ( $attachment && isset( $video_files[ $attachment ] ) ) ? 'v' : 'a';
+			$has_file   = (bool) $attachment;
+		}
+
+		$kinds[ $id ] = $kind;
+		if ( $has_file ) {
+			$members[] = array(
+				$id,
+				$kind,
+				ner_michoel_shiur_format_key(
+					$row[1],
+					isset( $first[ $id ]['speaker'] ) ? $first[ $id ]['speaker'] : 0,
+					isset( $first[ $id ]['series'] ) ? $first[ $id ]['series'] : 0
+				),
+			);
+		}
+	}
+	$formats = ner_michoel_shiur_formats_group( $members );
+	unset( $members );
+
 	$flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
 	$parts = array();
 	$used  = array(
@@ -114,15 +155,7 @@ function ner_michoel_shiur_index_build( $version ) {
 	foreach ( (array) $posts as $row ) {
 		$id     = (int) $row[0];
 		$values = isset( $meta[ $id ] ) ? $meta[ $id ] : array();
-
-		if ( 'written_shiur' === $row[4] ) {
-			$kind = 'w';
-		} elseif ( ! empty( $values['_shiur_vimeo_id'] ) ) {
-			$kind = 'v';
-		} else {
-			$attachment = isset( $values['_shiur_audio_id'] ) ? (int) $values['_shiur_audio_id'] : 0;
-			$kind       = ( $attachment && isset( $video_files[ $attachment ] ) ) ? 'v' : 'a';
-		}
+		$kind   = $kinds[ $id ];
 
 		// A post object made from the row, so get_permalink() doesn't fetch the post
 		// again. get_post() takes it as it is only because 'filter' is 'raw'.
@@ -157,6 +190,9 @@ function ner_michoel_shiur_index_build( $version ) {
 		if ( ! empty( $topics[ $id ] ) ) {
 			$item['g'] = $topics[ $id ];
 		}
+		if ( isset( $formats[ $id ] ) ) {
+			$item['f'] = implode( '', array_keys( $formats[ $id ] ) );
+		}
 
 		$json = wp_json_encode( $item, $flags );
 		if ( false === $json ) {
@@ -176,7 +212,7 @@ function ner_michoel_shiur_index_build( $version ) {
 			}
 		}
 	}
-	unset( $posts, $meta, $first, $topics );
+	unset( $posts, $meta, $first, $topics, $kinds );
 
 	// Names only for terms the items use, decoded (names can be stored as &#8217;).
 	$lists = array();
@@ -197,7 +233,9 @@ function ner_michoel_shiur_index_build( $version ) {
  */
 function ner_michoel_shiur_index_rebuild() {
 	$version = time();
-	$json    = ner_michoel_shiur_index_build( $version );
+	$formats = array();
+	$json    = ner_michoel_shiur_index_build( $version, $formats );
+	ner_michoel_shiur_formats_save( $formats );
 
 	// Gzipped it's about a fifth of the size; base64 keeps it safe in a text column.
 	// Saved plain where zlib is missing, with a prefix that says which.

@@ -133,11 +133,11 @@ function ner_michoel_topic_home_summary( $term ) {
 }
 
 /**
- * Today's fixed day number (hebrew-calendar.php), in the site's timezone.
+ * Today's date as YYYY-MM-DD, in the site's timezone.
  * Someone who can edit can preview another day with ?nm_season_date=YYYY-MM-DD.
  * Logged-in pages aren't cached, so no visitor ever sees a preview.
  */
-function ner_michoel_season_today() {
+function ner_michoel_season_today_ymd() {
 	$date = current_time( 'Y-m-d' );
 
 	if ( isset( $_GET['nm_season_date'] ) && current_user_can( 'edit_posts' ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only preview.
@@ -147,7 +147,14 @@ function ner_michoel_season_today() {
 		}
 	}
 
-	list( $year, $month, $day ) = array_map( 'intval', explode( '-', $date ) );
+	return $date;
+}
+
+/**
+ * Today's fixed day number (hebrew-calendar.php): the day above, as the Hebrew calendar counts it.
+ */
+function ner_michoel_season_today() {
+	list( $year, $month, $day ) = array_map( 'intval', explode( '-', ner_michoel_season_today_ymd() ) );
 	return ner_michoel_fixed_from_gregorian( $year, $month, $day );
 }
 

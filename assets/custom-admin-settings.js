@@ -1,6 +1,6 @@
 /**
  * Generic single-form UI for the custom /admin's Settings screens
- * (Appearance, Layout Toggle, Hero Slider, Admin Login Shortcut,
+ * (Appearance, Hero Slider, Admin Login Shortcut,
  * Storage, ...) — same "schema drives the renderer" idea as
  * custom-admin-cms.js, but for one singleton form instead of a list +
  * edit panel, since these are option groups, not repeatable records.
@@ -104,10 +104,21 @@
 				return '<textarea class="nm-cms-input" data-key="' + esc( key ) + '" rows="' + ( field.rows || 3 ) + '" placeholder="' + esc( field.placeholder || '' ) + '"' + maxlength + '>' + esc( value || '' ) + '</textarea>';
 			case 'checkbox':
 				return '<label class="nm-settings-checkbox' + ( value ? ' is-on' : '' ) + '"><input type="checkbox" data-key="' + esc( key ) + '"' + ( value ? ' checked' : '' ) + '> <span>' + esc( field.label ) + '</span></label>';
+			case 'date':
+				// A day to pick from the browser's own calendar; "min" is the earliest day it allows.
+				return '<input type="date" class="nm-cms-input" data-key="' + esc( key ) + '" value="' + esc( value || '' ) + '"' + ( field.min ? ' min="' + esc( field.min ) + '"' : '' ) + '>';
 			case 'select':
 				var opts = '';
 				$.each( field.options || {}, function ( optKey, optLabel ) {
 					opts += '<option value="' + esc( optKey ) + '"' + ( optKey === value ? ' selected' : '' ) + '>' + esc( optLabel ) + '</option>';
+				} );
+				// Long lists come in named groups (the This Week screen: parshiyos, topics, series).
+				$.each( field.groups || [], function ( i, group ) {
+					opts += '<optgroup label="' + esc( group.label ) + '">';
+					$.each( group.options || {}, function ( optKey, optLabel ) {
+						opts += '<option value="' + esc( optKey ) + '"' + ( optKey === value ? ' selected' : '' ) + '>' + esc( optLabel ) + '</option>';
+					} );
+					opts += '</optgroup>';
 				} );
 				return '<select class="nm-cms-input" data-key="' + esc( key ) + '">' + opts + '</select>';
 			case 'color':
@@ -357,6 +368,10 @@
 		$.each( schema.fields, function ( key, field ) {
 			if ( field.type === 'repeater' ) {
 				return;
+			}
+			// A choice box whose long list the server sends once, with the screen's extras.
+			if ( field.groups_from && schema.extra && schema.extra.groups ) {
+				field = $.extend( {}, field, { groups: schema.extra.groups[ field.groups_from ] || [] } );
 			}
 			// A field can start a named group (the Homepage screen: Welcome, Photos, Banner at the bottom).
 			if ( field.section ) {
@@ -836,7 +851,7 @@
 					$( '.nm-brand__text strong' ).text( payload.name );
 					$( '.nm-brand__mark:not(.nm-brand__mark--img)' ).text( payload.name.charAt( 0 ).toUpperCase() );
 				}
-				if ( 'admin_login' === self.key || 'security' === self.key || 'storage' === self.key ) {
+				if ( 'admin_login' === self.key || 'security' === self.key || 'storage' === self.key || 'week' === self.key ) {
 					self.init( 'Saved.' ); // Re-fetch so the status line reflects the new state.
 				} else {
 					self.setState( 'saved' );

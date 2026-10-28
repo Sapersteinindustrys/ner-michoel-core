@@ -464,6 +464,7 @@ body.nm-no-scroll { overflow: hidden; }
 .nm-app .nm-settings-field > label:not(.nm-settings-checkbox) { display: block; margin: 0 0 7px; color: var(--nm-text); font-size: 14px; font-weight: 600; }
 .nm-app-body .nm-settings-field .nm-cms-input { width: 100%; }
 .nm-app-body .nm-settings-field input[type="number"].nm-cms-input { max-width: 160px; }
+.nm-app-body .nm-settings-field input[type="date"].nm-cms-input { max-width: 220px; }
 
 .nm-app .nm-settings-checkbox {
 	display: flex;

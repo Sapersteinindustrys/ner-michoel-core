@@ -1,7 +1,7 @@
 <?php
 /**
  * Generic read/save engine behind the custom /admin UI's Settings
- * screens (Appearance, Layout Toggle, Hero Slider, Admin Login
+ * screens (Appearance, Hero Slider, Admin Login
  * Shortcut, Storage) — same idea as custom-admin-api.php's content
  * registry, but for singleton option groups instead of repeatable
  * records: one schema per screen, one GET route to read current
@@ -310,6 +310,70 @@ function ner_michoel_settings_registry() {
 				return ner_michoel_footer_settings_values();
 			},
 		),
+		// This Week: what the homepage's two "This week" boxes show, and whose parsha (includes/week-settings.php; the theme lays it out).
+		'week'          => array(
+			'capability'    => 'edit_posts',
+			'label'         => __( 'This Week', 'ner-michoel-core' ),
+			'rest_path'     => 'week-settings',
+			'options_title' => __( 'What the “This week” boxes show', 'ner-michoel-core' ),
+			'options_sub'   => __( 'Both boxes follow the Hebrew calendar by themselves. Choose something here only when you want to put something else up, and set its last day so the box goes back to the calendar on its own.', 'ner-michoel-core' ),
+			'fields'        => array(
+				'parsha'       => array(
+					'type'        => 'select',
+					'label'       => __( 'The parsha box shows', 'ner-michoel-core' ),
+					'section'     => __( 'Parsha box', 'ner-michoel-core' ),
+					'options'     => array(
+						'auto' => __( 'This week’s parsha, by the calendar', 'ner-michoel-core' ),
+						'hide' => __( 'Nothing (hide this box)', 'ner-michoel-core' ),
+					),
+					'groups_from' => 'parsha',
+					'desc'        => __( 'On a Shabbos that is Yom Tov or Chol Hamoed there is no parsha, so by the calendar this box simply leaves that week.', 'ner-michoel-core' ),
+				),
+				'parsha_until' => array(
+					'type'  => 'date',
+					'label' => __( 'Last day of this choice (optional)', 'ner-michoel-core' ),
+					'min'   => current_time( 'Y-m-d' ),
+					'desc'  => __( 'After this day the box goes back to the calendar by itself. Leave it empty to keep your choice until you change it. It only matters when you chose a parsha or hid the box.', 'ner-michoel-core' ),
+				),
+				'season'       => array(
+					'type'        => 'select',
+					'label'       => __( 'The second box shows', 'ner-michoel-core' ),
+					'section'     => __( 'Second box', 'ner-michoel-core' ),
+					'options'     => array(
+						'auto' => __( 'The Yom Tov in season, by the calendar', 'ner-michoel-core' ),
+						'hide' => __( 'Nothing (hide this box)', 'ner-michoel-core' ),
+					),
+					'groups_from' => 'season',
+					'desc'        => __( 'Choose a topic such as Succos or Pesach to put its shiurim up before the Yom Tov, or any other topic or series. The newest shiurim in it show, with a link to all of them.', 'ner-michoel-core' ),
+				),
+				'season_until' => array(
+					'type'  => 'date',
+					'label' => __( 'Last day of this choice (optional)', 'ner-michoel-core' ),
+					'min'   => current_time( 'Y-m-d' ),
+					'desc'  => __( 'After this day the box goes back to the calendar by itself. Leave it empty to keep your choice until you change it.', 'ner-michoel-core' ),
+				),
+				'region'       => array(
+					'type'    => 'select',
+					'label'   => __( 'Show first', 'ner-michoel-core' ),
+					'section' => __( 'Chutz La’aretz and Eretz Yisroel', 'ner-michoel-core' ),
+					'options' => array(
+						'diaspora' => __( 'Chutz La’aretz', 'ner-michoel-core' ),
+						'israel'   => __( 'Eretz Yisroel', 'ner-michoel-core' ),
+					),
+					'desc'    => __( 'A few weeks a year (after a Yom Tov that fell on Shabbos only in Chutz La’aretz) the two read different parshiyos. This is the one visitors see until they pick the other.', 'ner-michoel-core' ),
+				),
+				'toggle'       => array(
+					'type'  => 'checkbox',
+					'label' => __( 'In those weeks, show visitors buttons to switch between Chutz La’aretz and Eretz Yisroel', 'ner-michoel-core' ),
+				),
+			),
+			'get_values'    => function () {
+				return ner_michoel_week_settings_values();
+			},
+			'get_extra'     => function () {
+				return ner_michoel_week_settings_extra();
+			},
+		),
 		'security'      => array(
 			'capability' => 'manage_options',
 			'label'      => __( 'Security', 'ner-michoel-core' ),
@@ -360,18 +424,6 @@ function ner_michoel_settings_registry() {
 			},
 			'get_extra'  => function () {
 				return array( 'status_lines' => ner_michoel_form_guard_status_lines() );
-			},
-		),
-		'layout_toggle' => array(
-			'capability' => 'edit_posts',
-			'label'      => __( 'Layout Toggle', 'ner-michoel-core' ),
-			'rest_path'  => 'layout-toggle-settings',
-			'fields'     => array(
-				'position' => array( 'type' => 'select', 'label' => __( 'Placement', 'ner-michoel-core' ), 'options' => ner_michoel_layout_toggle_positions() ),
-				'opacity'  => array( 'type' => 'number', 'label' => __( 'Background darkness (%)', 'ner-michoel-core' ), 'min' => 0, 'max' => 100 ),
-			),
-			'get_values' => function () {
-				return ner_michoel_layout_toggle_settings();
 			},
 		),
 		'admin_login'   => array(

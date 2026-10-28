@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.39
+Stable tag: 0.9.40
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,19 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.40 =
+* New: Control Panel > Homepage & Look > This Week. Choose by hand what the homepage's parsha box (a
+  parsha) and the second box (any topic or series; the spellings of a Yom Tov go together) show, hide
+  either one, set an optional last day after which it goes back to the Hebrew calendar by itself, and
+  choose whether Chutz La'aretz or Eretz Yisroel shows first. Needs ner-michoel-child 0.2.73.
+* New: a shiur that exists as audio, video and/or written (PDF) posts is now matched by title and
+  speaker (case and punctuation ignored), so the site can offer Listen / Watch / Read for it and label
+  lists and search results ("Audio + Written"). The search index carries the formats. Needs
+  ner-michoel-child 0.2.73.
+* Change: Modern, Classic and 24Six are gone; Studio is the only layout. The Layout Switch screen in the
+  Control Panel, its settings (placement and darkness), its REST route and its old wp-admin page are
+  removed. (The saved option stays in the database, unused.) Needs ner-michoel-child 0.2.73.
 
 = 0.9.39 =
 * Change: a visitor who shares a Mazal Tov now gives only the name and picks the kind of simcha from

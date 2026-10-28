@@ -1,7 +1,7 @@
 <?php
 /**
- * "Appearance" settings — colors and font for the Modern/Classic app
- * system (Shiurim, Galleries, News & Events, the player bar), so the
+ * "Appearance" settings — colors and font for the app look
+ * (Shiurim, Galleries, News & Events, the player bar), so the
  * admin can theme those screens without a developer touching CSS.
  *
  * Writes plain options; ner-michoel-child reads them (see

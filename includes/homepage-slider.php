@@ -374,10 +374,8 @@ function ner_michoel_handle_hero_slider_settings_rest( WP_REST_Request $request 
 }
 
 /**
- * Same 9-slot grid as the Layout Toggle's placement setting
- * (Site Control Panel > Layout Toggle) — kept as its own copy rather
- * than a shared cross-file dependency, since the two features are
- * otherwise unrelated and each is meant to stand alone.
+ * The 9-slot grid for the button's placement (the layout switch's
+ * placement setting had the same one, before that switch was taken out).
  */
 function ner_michoel_homepage_slider_button_positions() {
 	return array(
@@ -419,8 +417,7 @@ function ner_michoel_get_homepage_slider_button_style() {
 }
 
 /**
- * Validated against the real option list, same reasoning as
- * ner_michoel_get_layout_toggle_position() — a renamed/removed
+ * Validated against the real option list — a renamed/removed
  * position from a future version shouldn't be able to render a
  * button with no matching CSS class.
  */

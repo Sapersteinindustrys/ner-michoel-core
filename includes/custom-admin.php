@@ -97,6 +97,7 @@ function ner_michoel_admin_icon_paths() {
 		'book'        => '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
 		'clock'       => '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
 		'footer'      => '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 15h18"/>',
+		'calendar'    => '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>',
 	);
 }
 
@@ -452,6 +453,22 @@ function ner_michoel_custom_admin_structure() {
 						'tip'   => __( 'The newest shiurim, the Mazal Tov box and the galleries on the homepage fill themselves in from what you post. The Zoom banner has its own page.', 'ner-michoel-core' ),
 					),
 				),
+				'week'   => array(
+					'label'         => __( 'This Week', 'ner-michoel-core' ),
+					'icon'          => 'calendar',
+					'settings_type' => 'week',
+					'desc'          => __( 'The parsha and Yom Tov boxes on the homepage: put other shiurim up for a while, and choose Chutz La’aretz or Eretz Yisroel.', 'ner-michoel-core' ),
+					'keywords'      => 'this week parsha yom tov holiday season box homepage featured series topic pin chol hamoed eretz yisroel israel chutz laaretz diaspora shabbos',
+					'help'          => array(
+						'steps' => array(
+							__( 'The lines at the top say what each box shows right now.', 'ner-michoel-core' ),
+							__( 'To put something else up, for example the shiurim of a Yom Tov before it starts, pick it in “The second box shows” (a topic or a series). To show a different parsha, pick it in “The parsha box shows”.', 'ner-michoel-core' ),
+							__( 'Set the last day, so the box goes back to the calendar by itself. Leave it empty to keep your choice until you change it back to the first line of the list.', 'ner-michoel-core' ),
+							__( 'Under Chutz La’aretz and Eretz Yisroel, choose which one visitors see first, and press Save.', 'ner-michoel-core' ),
+						),
+						'tip'   => __( 'A Shabbos that is Yom Tov or Chol Hamoed has no parsha, so the parsha box leaves by itself that week and the Yom Tov box stays.', 'ner-michoel-core' ),
+					),
+				),
 				'identity' => array(
 					'label'         => __( 'Site Name & Logo', 'ner-michoel-core' ),
 					'icon'          => 'globe',
@@ -525,20 +542,6 @@ function ner_michoel_custom_admin_structure() {
 							__( 'Turn the Contribute button and the Amazon Smile link on or off and say where each one goes, then press Save.', 'ner-michoel-core' ),
 						),
 						'tip'   => __( 'The footer shows on the home page only until you change “Show it on” to every page.', 'ner-michoel-core' ),
-					),
-				),
-				'layout' => array(
-					'label'         => __( 'Layout Switch', 'ner-michoel-core' ),
-					'icon'          => 'toggle',
-					'settings_type' => 'layout_toggle',
-					'desc'          => __( 'The small buttons on the Shiurim pages that switch between the page styles (Studio, Modern, 24Six and Classic).', 'ner-michoel-core' ),
-					'keywords'      => 'layout toggle modern classic 24six studio switch',
-					'help'          => array(
-						'steps' => array(
-							__( 'Choose where the switch sits on the screen.', 'ner-michoel-core' ),
-							__( 'Set how dark its background is.', 'ner-michoel-core' ),
-							__( 'Press Save.', 'ner-michoel-core' ),
-						),
 					),
 				),
 			),
