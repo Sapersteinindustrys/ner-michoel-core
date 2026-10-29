@@ -12,6 +12,7 @@
 	border-radius: 4px;
 	color: #50575e;
 	font-size: 13px;
+	overflow-wrap: anywhere;
 }
 
 .nm-series-picker__current.has-value {
@@ -22,7 +23,8 @@
 	font-weight: 600;
 }
 
-.nm-series-picker__search {
+.nm-series-picker__search,
+.nm-series-picker__add-input {
 	display: block;
 	width: 100%;
 	margin: 0 0 8px;
@@ -30,19 +32,26 @@
 	box-sizing: border-box;
 	border: 1px solid #c3c4c7;
 	border-radius: 4px;
+	/* 16px: a smaller field makes a phone zoom in when it is tapped. */
 	font: inherit;
+	font-size: 16px;
 }
 
+/* What a search finds: every series at every level, by its whole name. */
 .nm-series-picker__list {
 	max-height: 280px;
 	overflow-y: auto;
+	margin: 0 0 8px;
 	border: 1px solid #c3c4c7;
 	border-radius: 4px;
 	background: #fff;
 }
 
-.nm-series-picker__section + .nm-series-picker__section {
-	border-top: 1px solid #e5e7eb;
+.nm-series-picker__section {
+	margin: 0 0 8px;
+	border: 1px solid #e5e7eb;
+	border-radius: 4px;
+	background: #fff;
 }
 
 .nm-series-picker__heading {
@@ -64,6 +73,7 @@
 	font: inherit;
 	text-align: start;
 	cursor: pointer;
+	overflow-wrap: anywhere;
 }
 
 .nm-series-picker__item:hover,
@@ -81,13 +91,126 @@
 	content: "\2713\00a0";
 }
 
-/* A stylesheet's display beats the hidden attribute, so say it here: the search hides rows with it. */
-.nm-series-picker__item[hidden],
-.nm-series-picker__section[hidden] {
-	display: none;
+/* The parents in front of a series' own name, a little quieter. */
+.nm-series-picker__crumb {
+	color: #646970;
+	font-weight: 400;
 }
 
-.nm-series-picker__none {
-	border-bottom: 1px solid #e5e7eb;
+.nm-series-picker__item.is-selected .nm-series-picker__crumb {
+	color: inherit;
+}
+
+.nm-series-picker__own {
+	font-weight: 600;
+}
+
+.nm-series-picker__mark {
+	padding: 0;
+	background: #fff3b0;
+	color: inherit;
+}
+
+.nm-series-picker__empty,
+.nm-series-picker__more {
+	padding: 9px 12px;
 	color: #50575e;
+	font-size: 13px;
+}
+
+/* One drop-down per level. */
+.nm-series-picker__levels {
+	display: grid;
+	gap: 8px;
+}
+
+.nm-series-picker__level {
+	display: grid;
+	gap: 3px;
+	margin: 0;
+}
+
+.nm-series-picker__level-label {
+	color: #50575e;
+	font-size: 12px;
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+.nm-series-picker__level-select {
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+	font-size: 16px;
+}
+
+/* Adding a series or a sub-series. */
+.nm-series-picker__add {
+	margin: 8px 0 0;
+	padding: 10px;
+	border: 1px solid #72aee6;
+	border-radius: 4px;
+	background: #f0f6fc;
+}
+
+.nm-series-picker__add-title {
+	margin: 0 0 6px;
+	font-size: 13px;
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+.nm-series-picker__add-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.nm-series-picker__add-row .nm-series-picker__add-input {
+	flex: 1 1 180px;
+	width: auto;
+	margin: 0;
+}
+
+.nm-series-picker__add-go,
+.nm-series-picker__add-cancel {
+	padding: 7px 14px;
+	border: 1px solid #2271b1;
+	border-radius: 4px;
+	background: #2271b1;
+	color: #fff;
+	font: inherit;
+	font-size: 14px;
+	cursor: pointer;
+}
+
+.nm-series-picker__add-cancel {
+	background: #fff;
+	color: #2271b1;
+}
+
+.nm-series-picker__add-go:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+.nm-series-picker__note {
+	margin: 8px 0 0;
+	font-size: 13px;
+	color: #1d6b32;
+}
+
+.nm-series-picker__note.is-error {
+	color: #b32d2e;
+}
+
+/* A stylesheet's display beats the hidden attribute, so say it here: the search and the add box use it. */
+.nm-series-picker [hidden],
+.nm-series-picker__item[hidden],
+.nm-series-picker__section[hidden],
+.nm-series-picker__list[hidden],
+.nm-series-picker__levels[hidden],
+.nm-series-picker__add[hidden],
+.nm-series-picker__note[hidden] {
+	display: none;
 }

@@ -486,7 +486,7 @@ function ner_michoel_topics_seed_tick() {
 			return;
 		}
 
-		$ids = ner_michoel_topic_ids_for_names( ner_michoel_topic_names_from_series( $term->name ) );
+		$ids = ner_michoel_topic_ids_for_names( ner_michoel_topic_names_from_series( ner_michoel_series_label( (int) $term->term_id ) ) );
 		if ( $ids ) {
 			$objects = array_map( 'intval', (array) get_objects_in_term( (int) $term->term_id, 'series' ) );
 			sort( $objects );

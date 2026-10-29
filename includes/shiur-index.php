@@ -214,12 +214,15 @@ function ner_michoel_shiur_index_build( $version, &$formats = null ) {
 	}
 	unset( $posts, $meta, $first, $topics, $kinds );
 
-	// Names only for terms the items use, decoded (names can be stored as &#8217;).
-	$lists = array();
+	// Names only for terms the items use, decoded (names can be stored as &#8217;). A series goes in by its whole
+	// name ("Gemara / Bava Kamma / Perek 3"), which search and the Studio rows read.
+	$series_labels = ner_michoel_series_label_map();
+	$lists         = array();
 	foreach ( array( 'speaker', 'series', 'topic' ) as $taxonomy ) {
 		$list = array();
 		foreach ( array_keys( $used[ $taxonomy ] ) as $term_id ) {
-			$list[ $term_id ] = html_entity_decode( (string) $names[ $taxonomy ][ $term_id ], ENT_QUOTES, 'UTF-8' );
+			$text             = ( 'series' === $taxonomy && isset( $series_labels[ $term_id ] ) ) ? $series_labels[ $term_id ] : $names[ $taxonomy ][ $term_id ];
+			$list[ $term_id ] = html_entity_decode( (string) $text, ENT_QUOTES, 'UTF-8' );
 		}
 		// As an object, so an empty list is {} and term IDs stay keys.
 		$lists[ $taxonomy ] = wp_json_encode( (object) $list, $flags );

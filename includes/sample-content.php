@@ -138,6 +138,11 @@ function ner_michoel_render_sample_content_page() {
  * missing, and returns its term_id.
  */
 function ner_michoel_sample_content_get_or_create_term( $name, $taxonomy ) {
+	// A series is named by its whole path ("Gemara / Bava Kamma / Perek 3"): find it in the tree, or make it there.
+	if ( 'series' === $taxonomy && function_exists( 'ner_michoel_series_find_or_create_path' ) ) {
+		$found = ner_michoel_series_find_or_create_path( $name, 0, true );
+		return is_wp_error( $found ) ? 0 : (int) $found['term_id'];
+	}
 	$term = get_term_by( 'name', $name, $taxonomy );
 	if ( $term ) {
 		return $term->term_id;

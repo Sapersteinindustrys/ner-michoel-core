@@ -191,7 +191,7 @@
 				// field.picker === 'recent' makes this the searchable list with "Recent" on top
 				// (series-picker.js, enhanced once the terms have loaded).
 				return '<select' + idAttr + ' class="nm-cms-input nm-cms-taxonomy-select"' +
-					( field.picker === 'recent' ? ' data-series-picker data-placeholder="Type to search series…" data-recent-label="Recently used" data-all-label="All series"' : '' ) +
+					( field.picker === 'recent' ? ' data-series-picker data-placeholder="Type to search series…" data-recent-label="Recently used" data-add-url="' + esc( apiUrl( 'series/add' ) ) + '" data-nonce="' + esc( cfg.nonce ) + '"' : '' ) +
 					' data-taxonomy="' + esc( field.taxonomy ) + '" data-selected="' + esc( value || '' ) + '"><option value="">— None —</option></select>';
 			case 'taxonomy_multi':
 				// Several terms (topics): a filter box over a checkbox list, filled once the
@@ -351,6 +351,7 @@
 			html += '<button type="button" class="nm-btn nm-btn--primary nm-cms-add">' + icon( 'plus' ) + '<span>Add New ' + esc( schema.label ) + '</span></button>';
 		}
 		html += '</div>';
+		html += '<div class="nm-cms-split" role="status" hidden></div>';
 		html += '<div class="nm-cms-table-wrap"><table class="nm-cms-table"><thead><tr>';
 		$.each( schema.list_columns, function ( i, col ) {
 			html += '<th scope="col">' + esc( col.label ) + '</th>';
@@ -376,6 +377,94 @@
 		} );
 
 		this.renderFilters();
+		this.renderSplitBanner();
+	};
+
+	// The Series screen says whether the old names with a whole path in them ("Gemara / Bava Kamma") have been split into
+	// series and sub-series, and can split them or undo it (includes/series-tree.php does the work).
+	CmsApp.prototype.renderSplitBanner = function () {
+		var self = this;
+		var $box = this.$root.find( '.nm-cms-split' );
+		if ( this.type !== 'series' || ! $box.length ) {
+			return;
+		}
+		var timer = null;
+		var busy = false;
+
+		function paint( status ) {
+			clearTimeout( timer );
+			var html = '';
+			if ( status.pending > 0 && ( status.running || busy ) ) {
+				html = '<span class="nm-spinner" aria-hidden="true"></span> Splitting the series into sub-series… ' + formatNumber( status.pending ) + ' to go.';
+				if ( ! busy ) {
+					timer = setTimeout( poll, 4000 );
+				}
+			} else if ( status.pending > 0 ) {
+				html = '<strong>' + formatNumber( status.pending ) + ' series still have a whole path in their name</strong>, like “Gemara / Bava Kamma”. ' +
+					'Split them into series and sub-series, so Bava Kamma sits inside Gemara. Nothing is lost, and it can be undone. ' +
+					'<button type="button" class="nm-btn nm-btn--sm nm-btn--primary nm-cms-split-go">Split them now</button>';
+			} else if ( status.can_undo ) {
+				html = 'The series are split into series and sub-series (' + formatNumber( status.changed ) + ' renamed, ' + formatNumber( status.created ) + ' bigger series added). ' +
+					'<button type="button" class="nm-btn nm-btn--sm nm-cms-split-undo">Undo the split</button>';
+			}
+			if ( status.skipped && status.skipped.length && ! busy ) {
+				html += '<p class="nm-cms-split__skipped">' + formatNumber( status.skipped.length ) + ' could not be split and were left as they are: ' +
+					$.map( status.skipped.slice( 0, 5 ), function ( row ) {
+						return '“' + esc( decodeName( row.name ) ) + '”';
+					} ).join( ', ' ) + ( status.skipped.length > 5 ? '…' : '' ) + '</p>';
+			}
+			$box.prop( 'hidden', ! html ).html( html );
+			$box.find( '.nm-cms-split-go' ).on( 'click', function () {
+				run( 'series/split' );
+			} );
+			$box.find( '.nm-cms-split-undo' ).on( 'click', function () {
+				confirmBox( {
+					title: 'Undo the split?',
+					message: 'Every series that was split gets its old name back (like “Gemara / Bava Kamma / Perek 3”), and the bigger series that were added for it are removed. Series you have renamed or moved since are left as they are.',
+					confirmText: 'Yes, undo it',
+					cancelText: 'Keep it split',
+					danger: true
+				} ).then( function ( yes ) {
+					if ( yes ) {
+						run( 'series/split-undo' );
+					}
+				} );
+			} );
+		}
+
+		function poll() {
+			apiFetch( 'series/split-status' ).then( function ( status ) {
+				paint( status );
+				if ( ! status.running && ! busy && status.pending === 0 && self.splitWasRunning ) {
+					self.splitWasRunning = false;
+					self.loadList();
+				}
+				self.splitWasRunning = self.splitWasRunning || status.running;
+			} ).catch( function () {} );
+		}
+
+		// Goes on until the server says there is nothing more to do in this go.
+		function run( path ) {
+			busy = true;
+			$box.find( 'button' ).prop( 'disabled', true );
+			return apiFetch( path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' } ).then( function ( status ) {
+				if ( status.run && status.run.more ) {
+					paint( status );
+					return run( path );
+				}
+				busy = false;
+				forgetTerms( 'series' );
+				paint( status );
+				self.loadList();
+				return status;
+			} ).catch( function ( err ) {
+				busy = false;
+				toast( err.message, 'error' );
+				poll();
+			} );
+		}
+
+		poll();
 	};
 
 	CmsApp.prototype.renderFilters = function () {
@@ -392,7 +481,7 @@
 			$wrap.append( $select );
 			getTerms( taxonomy ).then( function ( terms ) {
 				$.each( terms, function ( j, term ) {
-					$select.append( $( '<option></option>' ).val( term.id ).text( label + ': ' + decodeName( term.name ) ) );
+					$select.append( $( '<option></option>' ).val( term.id ).text( label + ': ' + decodeName( term.path || term.name ) ) );
 				} );
 			} );
 			$select.on( 'change', function () {
@@ -452,6 +541,16 @@
 		var muted = '<span class="nm-cms-muted">—</span>';
 		switch ( col.render ) {
 			case 'title':
+				if ( item.depth > 0 ) {
+					// A series inside another: indented by how deep it is, and, in a search (where its parents are not
+					// around it), with the series it sits inside under the name.
+					var own = decodeName( item.name );
+					var whole = decodeName( item.path || item.name );
+					var inside = whole.slice( -( own.length + 3 ) ) === ' / ' + own ? whole.slice( 0, whole.length - own.length - 3 ) : '';
+					return '<div class="nm-cms-titlecell nm-cms-titlecell--sub" style="padding-inline-start:' + Math.min( item.depth, 6 ) * 18 + 'px">' +
+						'<span class="nm-cms-titlecell__text"><strong>' + esc( own ) + '</strong>' +
+						( this.search && inside ? '<span class="nm-cms-titlecell__path">in ' + esc( inside ) + '</span>' : '' ) + '</span></div>';
+				}
 				return '<div class="nm-cms-titlecell">' +
 					( item.thumbnail ? '<img class="nm-cms-thumb" src="' + esc( item.thumbnail ) + '" alt="">' : '' ) +
 					'<strong>' + esc( decodeName( item.title || item.name ) ) + '</strong></div>';
@@ -518,6 +617,9 @@
 				} ).join( '' );
 				var actions = '<td class="nm-cms-col-actions"><div class="nm-cms-actions">';
 				actions += '<button type="button" class="nm-btn nm-btn--sm nm-cms-edit" data-id="' + item.id + '">' + icon( schema.readonly ? 'eye' : 'pencil' ) + '<span>' + ( schema.readonly ? 'Open' : 'Edit' ) + '</span></button>';
+				if ( schema.hierarchical && ! schema.readonly ) {
+					actions += '<button type="button" class="nm-btn nm-btn--sm nm-cms-sub" data-id="' + item.id + '" title="Add a series inside this one">' + icon( 'plus' ) + '<span>Sub-series</span></button>';
+				}
 				if ( item.edit_link ) {
 					actions += '<a class="nm-icon-btn nm-cms-row-icon" href="' + esc( item.edit_link ) + '" target="_blank" rel="noopener" title="See it on the site" aria-label="See it on the site">' + icon( 'external' ) + '</a>';
 				}
@@ -556,6 +658,9 @@
 		$tbody.find( '.nm-cms-edit' ).on( 'click', function () {
 			self.openForm( $( this ).data( 'id' ) );
 		} );
+		$tbody.find( '.nm-cms-sub' ).on( 'click', function () {
+			self.openForm( null, { parent: $( this ).data( 'id' ) } );
+		} );
 		$tbody.find( '.nm-cms-delete' ).on( 'click', function () {
 			self.confirmDelete( $( this ).data( 'id' ) );
 		} );
@@ -569,7 +674,8 @@
 		var noun = schema.label.toLowerCase();
 		var message;
 		if ( schema.kind === 'taxonomy' ) {
-			message = ( name ? '“' + name + '” will be removed. ' : '' ) + 'Any shiurim in it are kept — they just won’t be listed under it any more.';
+			message = ( name ? '“' + name + '” will be removed. ' : '' ) + 'Any shiurim in it are kept — they just won’t be listed under it any more.' +
+				( item.children > 0 ? ' The ' + formatNumber( item.children ) + ' series inside it move up one level.' : '' );
 		} else if ( schema.readonly ) {
 			message = 'This message will be deleted for good.';
 		} else if ( schema.delete_note ) {
@@ -646,7 +752,7 @@
 
 	/* ---------------- Edit/Add panel ---------------- */
 
-	CmsApp.prototype.openForm = function ( id ) {
+	CmsApp.prototype.openForm = function ( id, defaults ) {
 		var self = this;
 		var schema = this.schema;
 		var isNew = ! id;
@@ -747,7 +853,7 @@
 			}
 		} );
 
-		var dataPromise = isNew ? Promise.resolve( {} ) : apiFetch( 'cms/' + this.type + '/' + id );
+		var dataPromise = isNew ? Promise.resolve( defaults || {} ) : apiFetch( 'cms/' + this.type + '/' + id );
 
 		dataPromise
 			.then( function ( item ) {
@@ -756,7 +862,7 @@
 
 				// Typing in a search/filter box isn't a change to the item.
 				$body.on( 'input change', function ( e ) {
-					if ( $( e.target ).is( '.nm-cms-multi__filter, .nm-series-picker__search' ) ) {
+					if ( $( e.target ).is( '.nm-cms-multi__filter, .nm-series-picker__search, .nm-series-picker__add-input' ) ) {
 						return;
 					}
 					markDirty();
@@ -976,6 +1082,11 @@
 		} );
 	}
 
+	// The series picker added a series or a sub-series: the lists other forms and filters build from are out of date.
+	document.addEventListener( 'nm-series-added', function () {
+		forgetTerms( 'series' );
+	} );
+
 	// Puts a speaker or series into its field. The series list is a picker built from the select's options, so a
 	// series that was not there yet is added to the select and the picker is built again.
 	function chooseTerm( $select, term ) {
@@ -984,7 +1095,11 @@
 			return this.value === value;
 		} ).length;
 		if ( ! known ) {
-			$select.append( $( '<option></option>' ).val( value ).text( term.name ) );
+			var $added = $( '<option></option>' ).val( value ).text( term.name );
+			if ( $select.is( '[data-series-picker]' ) ) {
+				$added.attr( 'data-name', term.own || term.name ).attr( 'data-parent', term.parent || 0 );
+			}
+			$select.append( $added );
 			if ( $select.is( '[data-series-picker]' ) && window.NMSeriesPicker && window.NMSeriesPicker.rebuild ) {
 				window.NMSeriesPicker.rebuild( $select[ 0 ] );
 			}
@@ -1018,7 +1133,7 @@
 	// the person chose themselves is never replaced.
 	function fillTermFromTag( $body, key, match ) {
 		var words = TAG_WORDS[ key ];
-		var $select = $body.find( '.nm-cms-field[data-field="' + key + '"] select' ).first();
+		var $select = $body.find( '.nm-cms-field[data-field="' + key + '"] select.nm-cms-taxonomy-select' ).first();
 		if ( ! $select.length ) {
 			return Promise.resolve();
 		}
@@ -1103,7 +1218,12 @@
 			var selected = String( $select.data( 'selected' ) || '' );
 			getTerms( taxonomy, self.type ).then( function ( terms ) {
 				$.each( terms, function ( i, term ) {
-					var $opt = $( '<option></option>' ).val( term.id ).text( decodeName( term.name ) );
+					// A series shows its whole name ("Gemara / Bava Kamma / Perek 3"); the picker also needs its own name and
+					// the series it sits inside.
+					var $opt = $( '<option></option>' ).val( term.id ).text( decodeName( term.path || term.name ) );
+					if ( term.path ) {
+						$opt.attr( 'data-name', decodeName( term.name ) ).attr( 'data-parent', term.parent || 0 );
+					}
 					if ( term.last ) {
 						$opt.attr( 'data-last', term.last );
 					}
@@ -1162,11 +1282,26 @@
 		if ( $parentSelect.length && schema.kind === 'taxonomy' ) {
 			var selectedParent = String( $parentSelect.data( 'selected' ) || '' );
 			getTerms( self.type ).then( function ( terms ) {
+				// Not itself, and not a series inside it (a series can't sit inside its own sub-series).
+				var blocked = {};
+				if ( item.id ) {
+					blocked[ item.id ] = true;
+					var grew = true;
+					while ( grew ) {
+						grew = false;
+						$.each( terms, function ( j, other ) {
+							if ( ! blocked[ other.id ] && other.parent && blocked[ other.parent ] ) {
+								blocked[ other.id ] = true;
+								grew = true;
+							}
+						} );
+					}
+				}
 				$.each( terms, function ( i, term ) {
-					if ( item.id && term.id === item.id ) {
+					if ( blocked[ term.id ] ) {
 						return;
 					}
-					var $opt = $( '<option></option>' ).val( term.id ).text( decodeName( term.name ) );
+					var $opt = $( '<option></option>' ).val( term.id ).text( decodeName( term.path || term.name ) );
 					if ( String( term.id ) === selectedParent ) {
 						$opt.prop( 'selected', true );
 					}
@@ -1369,7 +1504,8 @@
 			switch ( type ) {
 				case 'taxonomy':
 				case 'term_parent':
-					data[ key ] = $field.find( 'select' ).val() || '';
+					// The series picker has drop-downs of its own: read the one that holds the value.
+					data[ key ] = $field.find( 'select.nm-cms-taxonomy-select, select.nm-cms-parent-select' ).first().val() || '';
 					break;
 				case 'select':
 					data[ key ] = $field.find( 'select' ).val();

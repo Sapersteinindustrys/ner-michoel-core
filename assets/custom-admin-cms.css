@@ -443,6 +443,56 @@ body.nm-no-scroll { overflow: hidden; }
 .nm-app .nm-series-picker__item.is-selected { background: var(--nm-primary-soft); color: var(--nm-primary-hover); }
 .nm-app .nm-series-picker__current { padding: 9px 12px; border-radius: 10px; border-color: var(--nm-border-strong); color: var(--nm-text-2); font-size: 13.5px; }
 .nm-app .nm-series-picker__current.has-value { border-color: var(--nm-primary); background: var(--nm-primary-soft); color: var(--nm-primary-hover); }
+.nm-app .nm-series-picker__section { border-color: var(--nm-border); border-radius: 12px; overflow: hidden; }
+.nm-app .nm-series-picker__crumb { color: var(--nm-text-3); }
+.nm-app .nm-series-picker__item.is-selected .nm-series-picker__crumb { color: inherit; }
+.nm-app .nm-series-picker__mark { background: var(--nm-warn-soft); }
+.nm-app .nm-series-picker__level-label { color: var(--nm-text-3); font-weight: 600; }
+.nm-app .nm-series-picker__level-select {
+	min-height: 42px;
+	padding: 8px 12px;
+	border: 1px solid var(--nm-border-strong);
+	border-radius: 10px;
+	background-color: var(--nm-surface);
+	color: var(--nm-text);
+	font-size: 16px;
+	box-shadow: var(--nm-shadow-xs);
+}
+.nm-app .nm-series-picker__level-select:focus { border-color: var(--nm-primary); box-shadow: 0 0 0 4px var(--nm-primary-ring); outline: none; }
+.nm-app .nm-series-picker__add { border-color: var(--nm-primary); border-radius: 12px; background: var(--nm-primary-soft); }
+.nm-app .nm-series-picker__add-input {
+	min-height: 42px;
+	border: 1px solid var(--nm-border-strong);
+	border-radius: 10px;
+	background: var(--nm-surface);
+	color: var(--nm-text);
+}
+.nm-app .nm-series-picker__add-input:focus { border-color: var(--nm-primary); box-shadow: 0 0 0 4px var(--nm-primary-ring); outline: none; }
+.nm-app .nm-series-picker__add-go,
+.nm-app .nm-series-picker__add-cancel { min-height: 42px; border-radius: 10px; border-color: var(--nm-primary); }
+.nm-app .nm-series-picker__add-go { background: var(--nm-primary); }
+.nm-app .nm-series-picker__add-cancel { background: var(--nm-surface); color: var(--nm-primary-hover); }
+.nm-app .nm-series-picker__note { color: var(--nm-primary-hover); }
+.nm-app .nm-series-picker__note.is-error { color: #b32d2e; }
+
+/* The Series list is a tree (assets/custom-admin-cms.js). */
+.nm-cms-titlecell__text { display: grid; gap: 1px; min-width: 0; }
+.nm-cms-titlecell__path { color: var(--nm-text-3); font-size: 12.5px; font-weight: 400; overflow-wrap: anywhere; }
+.nm-cms-titlecell--sub { border-inline-start: 2px solid var(--nm-border); margin-inline-start: 4px; }
+.nm-cms-split {
+	margin: 0 0 14px;
+	padding: 12px 16px;
+	border: 1px solid var(--nm-info);
+	border-radius: 12px;
+	background: var(--nm-info-soft);
+	color: var(--nm-text);
+	font-size: 14px;
+	line-height: 1.5;
+}
+.nm-cms-split[hidden] { display: none; }
+.nm-cms-split .nm-btn { margin-inline-start: 6px; }
+.nm-cms-split .nm-spinner { vertical-align: -3px; margin-inline-end: 6px; }
+.nm-cms-split__skipped { margin: 8px 0 0; color: var(--nm-warn); font-size: 13px; }
 
 /* ---------------- Settings screens ---------------- */
 
@@ -667,6 +717,10 @@ body.nm-no-scroll { overflow: hidden; }
 /* ---------------- Phones ---------------- */
 
 @media (max-width: 720px) {
+	/* The series picker's boxes at 16 px: a smaller field makes a phone zoom in when it is tapped. */
+	.nm-app-body .nm-app .nm-series-picker__search,
+	.nm-app-body .nm-app .nm-series-picker__add-input,
+	.nm-app-body .nm-app .nm-series-picker__level-select { font-size: 16px; }
 	.nm-cms-searchbox { max-width: none; flex-basis: 100%; }
 	.nm-cms-filters { width: 100%; }
 	.nm-app-body .nm-cms-filter { flex: 1 1 calc(50% - 4px); max-width: none; min-width: 0; }

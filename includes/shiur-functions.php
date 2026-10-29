@@ -22,9 +22,12 @@ function ner_michoel_get_series_shiurim( $term_id ) {
 			'orderby'        => array( 'menu_order' => 'ASC', 'date' => 'ASC' ),
 			'tax_query'      => array(
 				array(
-					'taxonomy' => 'series',
-					'field'    => 'term_id',
-					'terms'    => $term_id,
+					'taxonomy'         => 'series',
+					'field'            => 'term_id',
+					'terms'            => $term_id,
+					// A series' own shiurim: the ones in a series inside it are that series' (a Perek's page is not
+					// also its Shiur Klali's).
+					'include_children' => false,
 				),
 			),
 		)

@@ -121,7 +121,6 @@ function ner_michoel_render_bulk_assign_page() {
 	}
 
 	$speakers = get_terms( array( 'taxonomy' => 'speaker', 'hide_empty' => false ) );
-	$series   = get_terms( array( 'taxonomy' => 'series', 'hide_empty' => false ) );
 
 	// Series picker: the three most recent series go on top under "Recent".
 	// The dates come from the server (series-picker.php), and the list is built
@@ -177,11 +176,9 @@ function ner_michoel_render_bulk_assign_page() {
 				<tr>
 					<th scope="row"><label for="nm_bulk_series"><?php esc_html_e( 'Series', 'ner-michoel-core' ); ?></label></th>
 					<td>
-						<select name="nm_bulk_series" id="nm_bulk_series" data-series-picker data-placeholder="<?php esc_attr_e( 'Search series…', 'ner-michoel-core' ); ?>" data-recent-label="<?php esc_attr_e( 'Recent', 'ner-michoel-core' ); ?>" data-all-label="<?php esc_attr_e( 'All series', 'ner-michoel-core' ); ?>">
+						<select name="nm_bulk_series" id="nm_bulk_series" data-series-picker data-placeholder="<?php esc_attr_e( 'Search series…', 'ner-michoel-core' ); ?>" data-recent-label="<?php esc_attr_e( 'Recent', 'ner-michoel-core' ); ?>"<?php echo ner_michoel_series_picker_add_attrs(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in the helper. ?>>
 							<option value=""><?php esc_html_e( '— None —', 'ner-michoel-core' ); ?></option>
-							<?php foreach ( $series as $term ) : ?>
-								<option value="<?php echo esc_attr( $term->term_id ); ?>"<?php echo isset( $series_last[ $term->term_id ] ) ? ' data-last="' . esc_attr( $series_last[ $term->term_id ] ) . '"' : ''; ?>><?php echo esc_html( $term->name ); ?></option>
-							<?php endforeach; ?>
+							<?php echo ner_michoel_series_picker_options_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in the helper. ?>
 						</select>
 					</td>
 				</tr>

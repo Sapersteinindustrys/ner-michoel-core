@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.40
+Stable tag: 0.9.41
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,23 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.41 =
+* New: series can sit inside series. The series that came over written as "Gemara / Bava Kamma / Perek 3"
+  are split into Gemara, with Bava Kamma inside it, and Perek 3 inside that, by a background job that
+  starts by itself after this update. Each series keeps its address, its shiurim, its description and
+  its cover. Control Panel > Series shows what was done and has an Undo. Everything on the site still
+  reads the whole name, so public pages look the same. Needs ner-michoel-child 0.2.74 (install the
+  theme first).
+* New: the Series box on Add New Shiur, Add New Written Shiur and Finish Your Upload shows one drop-down
+  per level (pick Gemara, then what is inside Gemara, and so on), a search that finds a series at any
+  level and fills in the whole chain, and a way to add a series or a sub-series right there.
+* New: Control Panel > Series is a tree with a Sub-series button on each row, and Parent Series lists
+  whole names. A series name can no longer contain " / ".
+* Change: a series page lists only its own shiurim. A series that only holds other series gets a page
+  with a "Series inside" row of cards.
+* Change: a name written as a path ("Gemara / Bava Kamma") in the importer or in a file's album tag finds
+  or makes the series in the tree.
 
 = 0.9.40 =
 * New: Control Panel > Homepage & Look > This Week. Choose by hand what the homepage's parsha box (a

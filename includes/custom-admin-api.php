@@ -255,7 +255,7 @@ function ner_michoel_cms_registry() {
 			'fields'       => array(
 				'name'        => array( 'type' => 'text', 'label' => __( 'Name', 'ner-michoel-core' ), 'required' => true, 'target' => 'name' ),
 				'description' => array( 'type' => 'textarea', 'label' => __( 'Description (optional)', 'ner-michoel-core' ), 'target' => 'description', 'rows' => 4 ),
-				'parent'      => array( 'type' => 'term_parent', 'label' => __( 'Parent Series (optional)', 'ner-michoel-core' ), 'hint' => __( 'Only if this series sits inside a bigger one. Most series leave this empty.', 'ner-michoel-core' ) ),
+				'parent'      => array( 'type' => 'term_parent', 'label' => __( 'Parent Series (optional)', 'ner-michoel-core' ), 'hint' => __( 'The series this one sits inside, like Gemara for Bava Kamma. Leave it empty for a series at the top.', 'ner-michoel-core' ) ),
 				'image'       => array( 'type' => 'image', 'label' => __( 'Cover Image', 'ner-michoel-core' ), 'term_meta' => 'ner_michoel_image_id' ),
 			),
 		),
@@ -403,17 +403,26 @@ function ner_michoel_cms_route_terms( WP_REST_Request $request ) {
 	if ( ! taxonomy_exists( $taxonomy ) ) {
 		return new WP_Error( 'nm_cms_bad_taxonomy', __( 'Unknown taxonomy.', 'ner-michoel-core' ), array( 'status' => 404 ) );
 	}
-	$terms = get_terms( array( 'taxonomy' => $taxonomy, 'hide_empty' => false ) );
-	if ( is_wp_error( $terms ) ) {
-		return new WP_REST_Response( array(), 200 );
-	}
 	// 'last': when a post of the calling form's own post type last used this
 	// term. The series picker uses it to put the three most recent at the
 	// top — scoped to post_type so editing a written shiur doesn't surface
 	// series that are only recently active for audio shiurim, or vice versa.
 	// Only series need it.
 	$post_type = $request->get_param( 'post_type' ) ? sanitize_key( $request->get_param( 'post_type' ) ) : 'shiur';
-	$latest    = 'series' === $taxonomy && function_exists( 'ner_michoel_term_latest_dates' ) ? ner_michoel_term_latest_dates( $taxonomy, $post_type ) : array();
+
+	// Series come as a tree, parents first: each with its whole name ('path'), how deep it sits ('depth')
+	// and how many series are directly inside it ('children'). The picker and the Parent Series box build
+	// their lists from this.
+	if ( 'series' === $taxonomy && function_exists( 'ner_michoel_series_rows' ) ) {
+		$tree = ner_michoel_series_rows( $post_type );
+		return new WP_REST_Response( $tree, 200 );
+	}
+
+	$terms = get_terms( array( 'taxonomy' => $taxonomy, 'hide_empty' => false ) );
+	if ( is_wp_error( $terms ) ) {
+		return new WP_REST_Response( array(), 200 );
+	}
+	$latest = 'series' === $taxonomy && function_exists( 'ner_michoel_term_latest_dates' ) ? ner_michoel_term_latest_dates( $taxonomy, $post_type ) : array();
 
 	$out = array();
 	foreach ( $terms as $term ) {
@@ -535,17 +544,41 @@ function ner_michoel_cms_list_posts( $config, WP_REST_Request $request ) {
 
 function ner_michoel_cms_list_terms( $config, WP_REST_Request $request ) {
 	$search = sanitize_text_field( (string) $request->get_param( 'search' ) );
-	$args   = array(
-		'taxonomy'   => $config['taxonomy'],
-		'hide_empty' => false,
-		'orderby'    => 'name',
-	);
-	if ( '' !== $search ) {
-		$args['search'] = $search;
-	}
-	$terms = get_terms( $args );
-	if ( is_wp_error( $terms ) ) {
-		$terms = array();
+
+	// Series are listed as a tree, parents first, and a search looks at the whole name, so "bava kamma
+	// perek 3" finds Perek 3 inside Bava Kamma.
+	$tree = array();
+	if ( 'series' === $config['taxonomy'] && function_exists( 'ner_michoel_series_rows' ) ) {
+		$tokens = array_filter( explode( ' ', ner_michoel_series_key( $search ) ), 'strlen' );
+		$terms  = array();
+		foreach ( ner_michoel_series_rows() as $series_row ) {
+			if ( $tokens ) {
+				$haystack = ner_michoel_series_key( $series_row['path'] );
+				foreach ( $tokens as $token ) {
+					if ( false === strpos( $haystack, $token ) ) {
+						continue 2;
+					}
+				}
+			}
+			$series_term = get_term( $series_row['id'], 'series' );
+			if ( $series_term && ! is_wp_error( $series_term ) ) {
+				$terms[]                    = $series_term;
+				$tree[ $series_row['id'] ] = $series_row;
+			}
+		}
+	} else {
+		$args = array(
+			'taxonomy'   => $config['taxonomy'],
+			'hide_empty' => false,
+			'orderby'    => 'name',
+		);
+		if ( '' !== $search ) {
+			$args['search'] = $search;
+		}
+		$terms = get_terms( $args );
+		if ( is_wp_error( $terms ) ) {
+			$terms = array();
+		}
 	}
 
 	$items = array();
@@ -557,6 +590,11 @@ function ner_michoel_cms_list_terms( $config, WP_REST_Request $request ) {
 			'count'  => $term->count,
 			'parent' => $term->parent,
 		);
+		if ( isset( $tree[ $term->term_id ] ) ) {
+			$row['depth']    = $tree[ $term->term_id ]['depth'];
+			$row['path']     = $tree[ $term->term_id ]['path'];
+			$row['children'] = $tree[ $term->term_id ]['children'];
+		}
 		foreach ( $config['fields'] as $key => $field ) {
 			if ( ! isset( $field['term_meta'] ) ) {
 				continue;
@@ -594,8 +632,11 @@ function ner_michoel_cms_format_post_row( $post, $config ) {
 		}
 		switch ( $col['render'] ) {
 			case 'taxonomy':
-				$terms              = get_the_terms( $post->ID, $col['taxonomy'] );
-				$row[ $col['key'] ] = ( $terms && ! is_wp_error( $terms ) ) ? wp_list_pluck( $terms, 'name' ) : array();
+				$terms = get_the_terms( $post->ID, $col['taxonomy'] );
+				// A series is listed by its whole name ("Gemara / Bava Kamma / Perek 3"), not just its last part.
+				$row[ $col['key'] ] = ( $terms && ! is_wp_error( $terms ) )
+					? ( function_exists( 'ner_michoel_term_label' ) ? array_map( 'ner_michoel_term_label', array_values( $terms ) ) : wp_list_pluck( $terms, 'name' ) )
+					: array();
 				break;
 			case 'number':
 				$row[ $col['key'] ] = 'plays' === $col['key'] ? ner_michoel_get_shiur_play_count( $post->ID ) : 0;
@@ -898,9 +939,20 @@ function ner_michoel_cms_save_term( $id, $config, WP_REST_Request $request ) {
 		return new WP_Error( 'nm_cms_missing_name', __( 'A name is required.', 'ner-michoel-core' ), array( 'status' => 400 ) );
 	}
 
+	// A series' name is its own part only; where it sits is its Parent Series. (The old names that carried the whole
+	// path in the name are split by includes/series-tree.php.)
+	if ( 'series' === $config['taxonomy'] && function_exists( 'ner_michoel_series_split_name' ) && count( ner_michoel_series_split_name( $name ) ) > 1 ) {
+		return new WP_Error( 'nm_cms_series_slash', __( 'A series name can’t have “ / ” in it. To put a series inside another one, choose that one as its Parent Series.', 'ner-michoel-core' ), array( 'status' => 400 ) );
+	}
+
 	$args = array( 'description' => $description );
 	if ( ! empty( $config['hierarchical'] ) ) {
 		$args['parent'] = ( $parent && $parent !== $id ) ? $parent : 0;
+	}
+	// A new series gets the address of its whole name (gemara-bava-kamma-perek-3), like the old ones, so two
+	// "Perek 3" never fight over one address.
+	if ( ! $id && 'series' === $config['taxonomy'] && function_exists( 'ner_michoel_series_label' ) ) {
+		$args['slug'] = sanitize_title( ( $args['parent'] ? html_entity_decode( ner_michoel_series_label( $args['parent'] ), ENT_QUOTES, 'UTF-8' ) . ' / ' : '' ) . $name );
 	}
 
 	if ( $id ) {

@@ -359,9 +359,10 @@ function ner_michoel_get_suggested_for_user( $user_id, $limit = 12 ) {
 		}
 		if ( $series_weight ) {
 			$tax_query[] = array(
-				'taxonomy' => 'series',
-				'field'    => 'term_id',
-				'terms'    => array_slice( array_keys( $series_weight ), 0, 3 ),
+				'taxonomy'         => 'series',
+				'field'            => 'term_id',
+				'terms'            => array_slice( array_keys( $series_weight ), 0, 3 ),
+				'include_children' => false,
 			);
 		}
 

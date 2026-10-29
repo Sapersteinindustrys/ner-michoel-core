@@ -2,7 +2,8 @@
 /**
  * Data for the series picker (assets/series-picker.js): when each term was last
  * used by a published post. The picker lists the three most recent at the top
- * under "Recent", then the rest.
+ * under "Recent", and offers the rest as drop-downs, one per level, with a search
+ * over every level (see series-tree.php for the tree itself).
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -39,4 +40,37 @@ function ner_michoel_term_latest_dates( $taxonomy, $post_type = 'shiur' ) {
 	}
 
 	return $dates;
+}
+
+/**
+ * The <option> list for a series picker drawn by PHP: every series, parents first, each saying its whole name
+ * (its text), its own name (data-name), the series it sits inside (data-parent) and when it was last used
+ * (data-last). Put an empty "None" option in front of it yourself.
+ *
+ * @param int    $selected  The series to mark chosen.
+ * @param string $post_type Post type "Recent" is judged by.
+ * @return string Escaped HTML.
+ */
+function ner_michoel_series_picker_options_html( $selected = 0, $post_type = 'shiur' ) {
+	$html = '';
+	foreach ( ner_michoel_series_rows( $post_type ) as $row ) {
+		$html .= sprintf(
+			'<option value="%1$d" data-name="%2$s" data-parent="%3$d"%4$s%5$s>%6$s</option>',
+			(int) $row['id'],
+			esc_attr( $row['name'] ),
+			(int) $row['parent'],
+			'' !== $row['last'] ? ' data-last="' . esc_attr( $row['last'] ) . '"' : '',
+			selected( (int) $selected, (int) $row['id'], false ),
+			esc_html( $row['path'] )
+		);
+	}
+	return $html;
+}
+
+/**
+ * The attributes that let a picker add a series or a sub-series (the route and the REST nonce), as one
+ * escaped string for a <select data-series-picker>.
+ */
+function ner_michoel_series_picker_add_attrs() {
+	return ' data-add-url="' . esc_url( rest_url( 'ner-michoel/v1/series/add' ) ) . '" data-nonce="' . esc_attr( wp_create_nonce( 'wp_rest' ) ) . '"';
 }

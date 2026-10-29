@@ -341,7 +341,7 @@ function ner_michoel_shiur_search_ranking( $raw_term, $post_type = 'shiur' ) {
 		foreach ( $terms as $term ) {
 			$label = 'speaker' === $taxonomy
 				? sprintf( /* translators: %s: speaker name */ __( 'Speaker: %s', 'ner-michoel-core' ), $term->name )
-				: sprintf( /* translators: %s: series name */ __( 'Series: %s', 'ner-michoel-core' ), $term->name );
+				: sprintf( /* translators: %s: series name */ __( 'Series: %s', 'ner-michoel-core' ), ner_michoel_term_label( $term ) );
 
 			$only_speakers = 'series' === $taxonomy ? $matched_speaker_ids : array();
 			foreach ( ner_michoel_search_term_shiur_ids( $term->term_id, $taxonomy, $post_type, $only_speakers ) as $shiur_id ) {
@@ -386,7 +386,7 @@ function ner_michoel_shiur_search_ranking( $raw_term, $post_type = 'shiur' ) {
 			foreach ( $terms as $term ) {
 				$label = 'speaker' === $taxonomy
 					? sprintf( /* translators: %s: speaker name */ __( 'Speaker: %s (close match)', 'ner-michoel-core' ), $term->name )
-					: sprintf( /* translators: %s: series name */ __( 'Series: %s (close match)', 'ner-michoel-core' ), $term->name );
+					: sprintf( /* translators: %s: series name */ __( 'Series: %s (close match)', 'ner-michoel-core' ), ner_michoel_term_label( $term ) );
 
 				$only_speakers = 'series' === $taxonomy ? $any_speaker_ids : array();
 				foreach ( ner_michoel_search_term_shiur_ids( $term->term_id, $taxonomy, $post_type, $only_speakers ) as $shiur_id ) {
@@ -438,7 +438,7 @@ function ner_michoel_search_matching_terms( $taxonomy, $phrase, $words, $total )
 	$matched     = array();
 
 	foreach ( $terms as $term ) {
-		$name = ner_michoel_search_fold( $term->name );
+		$name = ner_michoel_search_fold( ner_michoel_term_label( $term ) );
 
 		if ( false !== strpos( $name, $phrase ) ) {
 			$matched[] = array(
@@ -469,7 +469,7 @@ function ner_michoel_search_matching_terms( $taxonomy, $phrase, $words, $total )
 			if ( $a['rank'] !== $b['rank'] ) {
 				return $b['rank'] - $a['rank'];
 			}
-			return strcmp( $a['term']->name, $b['term']->name );
+			return strcmp( ner_michoel_term_label( $a['term'] ), ner_michoel_term_label( $b['term'] ) );
 		}
 	);
 
@@ -610,8 +610,9 @@ function ner_michoel_search_close_terms( $taxonomy, $close_words, $skip_ids ) {
 		if ( isset( $skip[ (int) $term->term_id ] ) ) {
 			continue;
 		}
-		$name   = ner_michoel_search_fold( $term->name );
-		$tokens = ner_michoel_search_tokens( $term->name );
+		$label  = ner_michoel_term_label( $term );
+		$name   = ner_michoel_search_fold( $label );
+		$tokens = ner_michoel_search_tokens( $label );
 		$total  = 0;
 		foreach ( $close_words as $entry ) {
 			$word = $entry['word'];
@@ -650,7 +651,7 @@ function ner_michoel_search_close_terms( $taxonomy, $close_words, $skip_ids ) {
 			if ( $a['rank'] !== $b['rank'] ) {
 				return $a['rank'] - $b['rank'];
 			}
-			return strcmp( $a['term']->name, $b['term']->name );
+			return strcmp( ner_michoel_term_label( $a['term'] ), ner_michoel_term_label( $b['term'] ) );
 		}
 	);
 
@@ -670,9 +671,11 @@ function ner_michoel_search_first_letter( $word ) {
 function ner_michoel_search_term_shiur_ids( $term_id, $taxonomy, $post_type = 'shiur', $only_speakers = array() ) {
 	$tax_query = array(
 		array(
-			'taxonomy' => $taxonomy,
-			'field'    => 'term_id',
-			'terms'    => (int) $term_id,
+			'taxonomy'         => $taxonomy,
+			'field'            => 'term_id',
+			'terms'            => (int) $term_id,
+			// A series' own shiurim only: a series inside it is matched (or not) by its own name.
+			'include_children' => false,
 		),
 	);
 	if ( $only_speakers ) {

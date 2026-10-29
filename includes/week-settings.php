@@ -186,7 +186,7 @@ function ner_michoel_week_pinned_term( $taxonomy, $term_id, $per_page = 4 ) {
 
 	$link = get_term_link( $term );
 	return array(
-		'name'    => $term->name,
+		'name'    => ner_michoel_term_label( $term ),
 		'slug'    => $term->slug,
 		'link'    => is_wp_error( $link ) ? '' : $link,
 		'posts'   => $posts,
@@ -279,8 +279,17 @@ function ner_michoel_week_term_options( $taxonomy, $prefix ) {
 	if ( is_wp_error( $terms ) ) {
 		return $out;
 	}
+	// A series is listed by its whole name, in the order of those names (the order the flat names had).
+	if ( 'series' === $taxonomy ) {
+		usort(
+			$terms,
+			function ( $a, $b ) {
+				return ner_michoel_series_compare_labels( ner_michoel_term_label( $a ), ner_michoel_term_label( $b ) );
+			}
+		);
+	}
 	foreach ( $terms as $term ) {
-		$out[ $prefix . ':' . $term->term_id ] = sprintf( '%s (%d)', html_entity_decode( $term->name, ENT_QUOTES, 'UTF-8' ), (int) $term->count );
+		$out[ $prefix . ':' . $term->term_id ] = sprintf( '%s (%d)', html_entity_decode( ner_michoel_term_label( $term ), ENT_QUOTES, 'UTF-8' ), (int) $term->count );
 	}
 	return $out;
 }

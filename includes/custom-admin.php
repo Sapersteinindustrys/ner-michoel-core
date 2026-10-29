@@ -239,13 +239,13 @@ function ner_michoel_custom_admin_structure() {
 					'icon'       => 'layers',
 					'cms_type'   => 'series',
 					'capability' => 'manage_categories',
-					'desc'       => __( 'Groups of shiurim that belong together, like a course, a sefer, or a yearly cycle.', 'ner-michoel-core' ),
-					'keywords'   => 'course sefer group collection',
+					'desc'       => __( 'Groups of shiurim that belong together, like a course, a sefer, or a yearly cycle. A series can have series inside it: Gemara, then Bava Kamma, then Perek 3.', 'ner-michoel-core' ),
+					'keywords'   => 'course sefer group collection sub-series subseries parent',
 					'help'       => array(
 						'steps' => array(
 							__( 'Click “Add New Series” and give it a name and a cover image.', 'ner-michoel-core' ),
-							__( 'A series can sit inside a bigger one using “Parent Series”, which is handy for sub-sections.', 'ner-michoel-core' ),
-							__( 'Shiurim are put into a series from the shiur’s own form (the Series box).', 'ner-michoel-core' ),
+							__( 'To put a series inside a bigger one, press “Sub-series” on the bigger one in the list (or pick it as the “Parent Series”).', 'ner-michoel-core' ),
+							__( 'Shiurim are put into a series from the shiur’s own form (the Series box): pick a series, then one inside it, and so on. Typing in the box finds a series at any level, so you only pick the last one. You can add a series or a sub-series there too.', 'ner-michoel-core' ),
 						),
 						'tip'   => __( 'The order of shiurim inside a series comes from each shiur’s “Order” number.', 'ner-michoel-core' ),
 					),

@@ -306,6 +306,10 @@ function ner_michoel_shiur_file_info( $attachment_id ) {
 		if ( '' === $tag || ! taxonomy_exists( $taxonomy ) ) {
 			return null;
 		}
+		// A series is matched by its whole name ("Gemara / Bava Kamma / Perek 3"), since that is what an album tag says.
+		if ( 'series' === $taxonomy && function_exists( 'ner_michoel_series_label_map' ) ) {
+			return ner_michoel_match_tag_to_terms( $tag, ner_michoel_series_label_map(), $is_person );
+		}
 		$terms = get_terms( array( 'taxonomy' => $taxonomy, 'hide_empty' => false, 'fields' => 'id=>name' ) );
 		return ner_michoel_match_tag_to_terms( $tag, is_wp_error( $terms ) ? array() : (array) $terms, $is_person );
 	};
@@ -441,6 +445,25 @@ function ner_michoel_shiur_file_route_add_term( WP_REST_Request $request ) {
 	$tax = get_taxonomy( $taxonomy );
 	if ( ! $tax || ! current_user_can( $tax->cap->edit_terms ) ) {
 		return new WP_Error( 'nm_forbidden', __( "You don't have permission to do that.", 'ner-michoel-core' ), array( 'status' => 403 ) );
+	}
+
+	// A series: the name may be a path, which is found or made in the tree.
+	if ( 'series' === $taxonomy && function_exists( 'ner_michoel_series_find_or_create_path' ) ) {
+		$found = ner_michoel_series_find_or_create_path( $name, 0, true );
+		if ( is_wp_error( $found ) ) {
+			return new WP_Error( 'nm_add_failed', $found->get_error_message(), array( 'status' => 400 ) );
+		}
+		$made_term = get_term( (int) $found['term_id'], 'series' );
+		return new WP_REST_Response(
+			array(
+				'id'     => (int) $found['term_id'],
+				'name'   => $made_term && ! is_wp_error( $made_term ) ? html_entity_decode( ner_michoel_series_label( $made_term ), ENT_QUOTES, 'UTF-8' ) : $name,
+				'own'    => $made_term && ! is_wp_error( $made_term ) ? html_entity_decode( (string) $made_term->name, ENT_QUOTES, 'UTF-8' ) : $name,
+				'parent' => $made_term && ! is_wp_error( $made_term ) ? (int) $made_term->parent : 0,
+				'added'  => (bool) $found['added'],
+			),
+			200
+		);
 	}
 
 	$existing = term_exists( $name, $taxonomy );

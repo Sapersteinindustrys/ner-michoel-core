@@ -566,7 +566,7 @@ function ner_michoel_parsha_term_map( $taxonomy ) {
 		if ( ! is_wp_error( $terms ) ) {
 			foreach ( $terms as $term ) {
 				$found = array();
-				foreach ( preg_split( '#\s+/\s+#u', html_entity_decode( $term->name, ENT_QUOTES, 'UTF-8' ) ) as $part ) {
+				foreach ( preg_split( '#\s+/\s+#u', html_entity_decode( ner_michoel_term_label( $term ), ENT_QUOTES, 'UTF-8' ) ) as $part ) {
 					$found = array_merge( $found, ner_michoel_parsha_match_name( $part ) );
 				}
 				if ( $found ) {
@@ -647,9 +647,10 @@ function ner_michoel_parsha_shiurim( array $numbers, $per_page = 6 ) {
 	}
 	if ( $series_ids ) {
 		$by_term[] = array(
-			'taxonomy' => 'series',
-			'field'    => 'term_id',
-			'terms'    => $series_ids,
+			'taxonomy'         => 'series',
+			'field'            => 'term_id',
+			'terms'            => $series_ids,
+			'include_children' => false,
 		);
 	}
 
