@@ -13,19 +13,38 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Matches a shiur with no `_shiur_audio_id` meta at all, or with it
- * present but empty (e.g. a meta box save that got cleared).
+ * present but empty (e.g. a meta box save that got cleared), that is not a
+ * Vimeo video either: a Vimeo shiur has its file (on Vimeo), and its audio, when
+ * the origin site has it, is its own audio shiur with the same title (the
+ * Listen / Watch switch, shiur-formats.php). Counting the 450-odd Vimeo videos
+ * here made the number look like 450 broken shiurim.
  */
 function ner_michoel_missing_audio_meta_query() {
 	return array(
-		'relation' => 'OR',
+		'relation' => 'AND',
 		array(
-			'key'     => '_shiur_audio_id',
-			'compare' => 'NOT EXISTS',
+			'relation' => 'OR',
+			array(
+				'key'     => '_shiur_audio_id',
+				'compare' => 'NOT EXISTS',
+			),
+			array(
+				'key'     => '_shiur_audio_id',
+				'value'   => '',
+				'compare' => '=',
+			),
 		),
 		array(
-			'key'     => '_shiur_audio_id',
-			'value'   => '',
-			'compare' => '=',
+			'relation' => 'OR',
+			array(
+				'key'     => '_shiur_vimeo_id',
+				'compare' => 'NOT EXISTS',
+			),
+			array(
+				'key'     => '_shiur_vimeo_id',
+				'value'   => '',
+				'compare' => '=',
+			),
 		),
 	);
 }

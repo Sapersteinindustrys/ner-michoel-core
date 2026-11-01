@@ -126,6 +126,104 @@ function ner_michoel_get_series_cover_url( $term_id ) {
 }
 
 /**
+ * The square picture for a shiur: its own featured image, else the photo
+ * of its speaker (the first of its speakers that has one), else '' and the
+ * template draws its letter tile. Most shiurim have no picture of their
+ * own, so this puts the speaker's face beside them everywhere.
+ *
+ * @param WP_Post|int $post A shiur or written shiur.
+ * @param string      $size Size for the shiur's own image.
+ * @return string
+ */
+function ner_michoel_get_shiur_art_url( $post, $size = 'thumbnail' ) {
+	$url = get_the_post_thumbnail_url( $post, $size );
+	if ( $url ) {
+		return $url;
+	}
+	$speakers = get_the_terms( $post, 'speaker' );
+	if ( $speakers && ! is_wp_error( $speakers ) ) {
+		foreach ( $speakers as $speaker ) {
+			$photo = ner_michoel_get_speaker_photo_url( $speaker->term_id );
+			if ( $photo ) {
+				return $photo;
+			}
+		}
+	}
+	return '';
+}
+
+/**
+ * The square picture for a series: its own cover, else the photo of the
+ * speaker with the most shiurim in it (then the next, if that one has no
+ * photo), else ''.
+ *
+ * @param int $term_id Series term ID.
+ * @return string
+ */
+function ner_michoel_get_series_art_url( $term_id ) {
+	$url = ner_michoel_get_series_cover_url( $term_id );
+	if ( $url ) {
+		return $url;
+	}
+	$map = ner_michoel_series_speaker_ids();
+	if ( ! empty( $map[ (int) $term_id ] ) ) {
+		foreach ( $map[ (int) $term_id ] as $speaker_id ) {
+			$photo = ner_michoel_get_speaker_photo_url( $speaker_id );
+			if ( $photo ) {
+				return $photo;
+			}
+		}
+	}
+	return '';
+}
+
+/**
+ * Every series' speakers, most published shiurim first: series term ID =>
+ * speaker term IDs. One query for the whole library, kept until the library
+ * changes (ner_michoel_library_cache()).
+ *
+ * @return array
+ */
+function ner_michoel_series_speaker_ids() {
+	static $map = null;
+	if ( null === $map ) {
+		$map = function_exists( 'ner_michoel_library_cache' )
+			? ner_michoel_library_cache( 'series-speaker-ids', 'ner_michoel_series_speaker_ids_query' )
+			: ner_michoel_series_speaker_ids_query();
+	}
+	return is_array( $map ) ? $map : array();
+}
+
+/**
+ * The query behind ner_michoel_series_speaker_ids().
+ *
+ * @return array
+ */
+function ner_michoel_series_speaker_ids_query() {
+	global $wpdb;
+
+	// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery -- fixed strings and table names only, no input.
+	$rows = $wpdb->get_results(
+		"SELECT se.term_id AS series_id, sp.term_id AS speaker_id, COUNT(DISTINCT p.ID) AS n
+		FROM {$wpdb->posts} p
+		INNER JOIN {$wpdb->term_relationships} tr_se ON tr_se.object_id = p.ID
+		INNER JOIN {$wpdb->term_taxonomy} se ON se.term_taxonomy_id = tr_se.term_taxonomy_id AND se.taxonomy = 'series'
+		INNER JOIN {$wpdb->term_relationships} tr_sp ON tr_sp.object_id = p.ID
+		INNER JOIN {$wpdb->term_taxonomy} sp ON sp.term_taxonomy_id = tr_sp.term_taxonomy_id AND sp.taxonomy = 'speaker'
+		WHERE p.post_type IN ( 'shiur', 'written_shiur' ) AND p.post_status = 'publish'
+		GROUP BY se.term_id, sp.term_id
+		ORDER BY se.term_id, n DESC, sp.term_id"
+	);
+	// phpcs:enable
+
+	$map = array();
+	foreach ( (array) $rows as $row ) {
+		$map[ (int) $row->series_id ][] = (int) $row->speaker_id;
+	}
+	return $map;
+}
+
+/**
  * Optional email address on a `speaker` term — where "Email a Magid
  * Shiur" submissions for that speaker get sent (see
  * ner_michoel_handle_email_magid_submit() in forms.php).

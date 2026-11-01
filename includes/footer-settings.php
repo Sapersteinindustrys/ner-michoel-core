@@ -7,8 +7,9 @@
  *
  *   - The title ("Tomo Official site") and the small line at the very bottom.
  *   - A list of links to pages: a name and an address each, in order.
- *   - A Contribute button and an Amazon Smile link, each with its own words and
- *     address, and each can be switched off.
+ *   - A Contribute button with its own words and address, which can be switched off.
+ *     (The Amazon Smile link is gone: Amazon closed AmazonSmile in 2023. A saved
+ *     'smile' part in nm_footer is left alone and never shown.)
  *   - Whether the footer is on, and where: on the home page only (the default) or on
  *     every page except the Shiurim pages.
  *
@@ -37,8 +38,6 @@ function ner_michoel_footer_default_words() {
 		'note'             => __( '© {year} {title}', 'ner-michoel-core' ),
 		'contribute_label' => __( 'Contribute', 'ner-michoel-core' ),
 		'contribute_url'   => '/contribute/',
-		'smile_label'      => __( 'Amazon Smile', 'ner-michoel-core' ),
-		'smile_url'        => 'https://smile.amazon.com/',
 	);
 }
 
@@ -231,7 +230,7 @@ function ner_michoel_footer_default_links() {
  *   title      string
  *   links      list of {label, url, external}
  *   contribute {label, url, external}, or null when switched off
- *   smile      {label, url, external}, or null when switched off
+ *   smile      always null (kept so an older theme still finds the key)
  *   note       string  the small line, {year} and {title} filled in
  */
 function ner_michoel_get_footer() {
@@ -252,8 +251,8 @@ function ner_michoel_get_footer() {
 		);
 	}
 
-	$buttons = array();
-	foreach ( array( 'contribute', 'smile' ) as $key ) {
+	$buttons = array( 'smile' => null );
+	foreach ( array( 'contribute' ) as $key ) {
 		$part = isset( $saved[ $key ] ) ? $saved[ $key ] : array();
 		if ( isset( $part['on'] ) && ! $part['on'] ) {
 			$buttons[ $key ] = null;
@@ -305,7 +304,7 @@ function ner_michoel_footer_settings_values() {
 		'note'  => isset( $saved['note'] ) ? $saved['note'] : '',
 		'links' => $links,
 	);
-	foreach ( array( 'contribute', 'smile' ) as $key ) {
+	foreach ( array( 'contribute' ) as $key ) {
 		$part                      = isset( $saved[ $key ] ) ? $saved[ $key ] : array();
 		$values[ $key . '_on' ]    = isset( $part['on'] ) ? $part['on'] : true;
 		$values[ $key . '_label' ] = isset( $part['label'] ) ? $part['label'] : '';
@@ -331,7 +330,7 @@ add_action( 'rest_api_init', 'ner_michoel_register_footer_settings_rest_route' )
 
 /**
  * Saves {on, scope, title, note, links: [{label, link_url}], contribute_on,
- * contribute_label, contribute_url, smile_on, smile_label, smile_url}. A key that is
+ * contribute_label, contribute_url}. A key that is
  * not sent is left as it was. An empty box goes back to the site's own words. Unlike
  * the quiet fallbacks above, a link that cannot work is an error, so nothing is
  * dropped without the person saving it hearing about it.
@@ -403,7 +402,7 @@ function ner_michoel_handle_footer_settings_rest( WP_REST_Request $request ) {
 		$data['links'] = $links;
 	}
 
-	foreach ( array( 'contribute', 'smile' ) as $key ) {
+	foreach ( array( 'contribute' ) as $key ) {
 		$part = ( isset( $data[ $key ] ) && is_array( $data[ $key ] ) ) ? $data[ $key ] : array();
 
 		if ( array_key_exists( $key . '_on', $body ) ) {
@@ -424,7 +423,7 @@ function ner_michoel_handle_footer_settings_rest( WP_REST_Request $request ) {
 			} else {
 				$url = ner_michoel_footer_store_url( $raw );
 				if ( '' === $url ) {
-					$name = 'contribute' === $key ? __( 'The Contribute button', 'ner-michoel-core' ) : __( 'The Amazon Smile link', 'ner-michoel-core' );
+					$name = __( 'The Contribute button', 'ner-michoel-core' );
 					/* translators: %s: the name of a button or link */
 					return new WP_Error( 'nm_footer_' . $key . '_url', sprintf( __( '%s needs a web address that works, like https://example.org or /contribute/. Leave the box empty to use the site’s own.', 'ner-michoel-core' ), $name ), array( 'status' => 400 ) );
 				}

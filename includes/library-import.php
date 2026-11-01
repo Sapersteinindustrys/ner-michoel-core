@@ -345,6 +345,110 @@ function ner_michoel_extract_shiur_detail( $html ) {
 }
 
 /**
+ * The post this queue row already became, if any: one of the same post type
+ * and title AND the same kind. The origin site lists the audio and the video
+ * of one shiur as two rows with the same title ("Corresponding video"). Before
+ * this, whichever came second was skipped as "already exists", so 400+ videos
+ * had no audio shiur (Missing Audio) and some audio shiurim no video.
+ *
+ * - video: a shiur with this Vimeo ID, or with this title and any Vimeo ID.
+ * - audio: a shiur with this title that is not a Vimeo video.
+ * - pdf:   a written shiur with this title (it is its own post type).
+ *
+ * Returns an array with the post ID, or an empty array.
+ */
+function ner_michoel_import_existing_post( $post_type, $title, $media_type, $vimeo_id = '' ) {
+	$args = array(
+		'post_type'   => $post_type,
+		'title'       => $title,
+		'post_status' => 'any',
+		'numberposts' => 1,
+		'fields'      => 'ids',
+	);
+
+	if ( 'video' === $media_type ) {
+		if ( '' !== (string) $vimeo_id ) {
+			$same_video = get_posts(
+				array(
+					'post_type'   => $post_type,
+					'post_status' => 'any',
+					'numberposts' => 1,
+					'fields'      => 'ids',
+					'meta_key'    => '_shiur_vimeo_id', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+					'meta_value'  => (string) $vimeo_id, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+				)
+			);
+			if ( $same_video ) {
+				return $same_video;
+			}
+		}
+		$args['meta_query'] = array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+			array(
+				'key'     => '_shiur_vimeo_id',
+				'value'   => '',
+				'compare' => '!=',
+			),
+		);
+	} elseif ( 'shiur' === $post_type ) {
+		$args['meta_query'] = array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+			'relation' => 'OR',
+			array(
+				'key'     => '_shiur_vimeo_id',
+				'compare' => 'NOT EXISTS',
+			),
+			array(
+				'key'     => '_shiur_vimeo_id',
+				'value'   => '',
+				'compare' => '=',
+			),
+		);
+	}
+
+	return get_posts( $args );
+}
+
+/**
+ * Rows skipped as "already exists" only because the existing post was the
+ * other kind (an audio row whose title belonged to a video shiur, or the other
+ * way round) go back in the queue, once, so the processor makes the missing
+ * audio / video shiur. Same title, speaker and series as the origin site, so
+ * the Listen / Watch switch (shiur-formats.php) joins the two by itself.
+ * A skip against a post of the same kind is left alone.
+ */
+function ner_michoel_requeue_other_kind_rows() {
+	if ( get_option( 'nm_import_kind_requeue_v1' ) ) {
+		return;
+	}
+	if ( get_option( 'nm_import_queue_db_version' ) !== NER_MICHOEL_IMPORT_QUEUE_DB_VERSION ) {
+		return; // No queue table yet: nothing was ever skipped.
+	}
+
+	global $wpdb;
+	$table   = ner_michoel_import_queue_table_name();
+	$skipped = 'A post with this title already exists';
+
+	// Audio rows whose "existing" post is a Vimeo video, and video rows whose
+	// "existing" post is not one. Plain subqueries, no UPDATE ... JOIN.
+	$vimeo_posts = "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_shiur_vimeo_id' AND meta_value <> ''";
+	$set         = "SET status = 'discovered', attempts = 0, error_message = NULL, processed_at = NULL, created_post_id = NULL";
+
+	$audio = (int) $wpdb->query( // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->prepare( "UPDATE {$table} {$set} WHERE status = 'skipped' AND media_type = 'audio' AND error_message = %s AND created_post_id IN ({$vimeo_posts})", $skipped )
+	);
+	$video = (int) $wpdb->query( // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->prepare( "UPDATE {$table} {$set} WHERE status = 'skipped' AND media_type = 'video' AND error_message = %s AND created_post_id IS NOT NULL AND created_post_id NOT IN ({$vimeo_posts})", $skipped )
+	);
+
+	update_option( 'nm_import_kind_requeue_v1', array( 'audio' => $audio, 'video' => $video, 'time' => time() ), false );
+
+	// Start the processor now if the importer is on; otherwise Start / Resume does.
+	if ( ( $audio || $video ) && ner_michoel_import_is_running() && ! wp_next_scheduled( 'nm_import_process_batch' ) ) {
+		wp_schedule_single_event( time() + 5, 'nm_import_process_batch' );
+	}
+}
+add_action( 'admin_init', 'ner_michoel_requeue_other_kind_rows', 21 );
+
+/**
  * Processes one queued row into a real shiur post. Mirrors
  * ner_michoel_sample_content_get_or_create_term() /
  * ner_michoel_sample_content_sideload_audio() in sample-content.php —
@@ -391,17 +495,10 @@ function ner_michoel_process_queue_row( $row ) {
 		return;
 	}
 
-	// Idempotency across retries/reprocessing: title match within the
-	// same post type, same reasoning as ner_michoel_handle_import_sample_content().
-	$existing = get_posts(
-		array(
-			'post_type'   => $post_type,
-			'title'       => $row->title,
-			'post_status' => 'any',
-			'numberposts' => 1,
-			'fields'      => 'ids',
-		)
-	);
+	// Idempotency across retries/reprocessing: a post of the same kind with
+	// this title (ner_michoel_import_existing_post()). The audio and the video
+	// of one shiur share a title on the origin site, so the kind matters.
+	$existing = ner_michoel_import_existing_post( $post_type, $row->title, $media_type, $vimeo_id );
 	if ( $existing ) {
 		ner_michoel_mark_queue_row( $row->id, 'skipped', 'A post with this title already exists', $existing[0] );
 		return;
@@ -914,6 +1011,10 @@ function ner_michoel_render_library_import_page() {
 				<tr><th><?php esc_html_e( 'Discovered (queued)', 'ner-michoel-core' ); ?></th><td><?php echo esc_html( number_format_i18n( $counts['discovered'] ) ); ?></td></tr>
 				<tr><th><?php esc_html_e( 'Imported', 'ner-michoel-core' ); ?></th><td><?php echo esc_html( number_format_i18n( $counts['imported'] ) ); ?></td></tr>
 				<tr><th><?php esc_html_e( 'Skipped (already existed)', 'ner-michoel-core' ); ?></th><td><?php echo esc_html( number_format_i18n( $counts['skipped'] ) ); ?></td></tr>
+				<?php $kind_requeue = get_option( 'nm_import_kind_requeue_v1' ); ?>
+				<?php if ( is_array( $kind_requeue ) && ( $kind_requeue['audio'] || $kind_requeue['video'] ) ) : ?>
+					<tr><th><?php esc_html_e( 'Audio / video put back in the queue', 'ner-michoel-core' ); ?></th><td><?php echo esc_html( sprintf( /* translators: 1: audio rows, 2: video rows, 3: date */ __( '%1$d audio and %2$d video files that were skipped because the other kind had the same title (%3$s). They are imported as their own shiurim, and the shiur page offers Listen / Watch.', 'ner-michoel-core' ), (int) $kind_requeue['audio'], (int) $kind_requeue['video'], wp_date( 'j M Y', (int) $kind_requeue['time'] ) ) ); ?></td></tr>
+				<?php endif; ?>
 				<tr><th><?php esc_html_e( 'Failed', 'ner-michoel-core' ); ?></th><td><?php echo esc_html( number_format_i18n( $counts['failed'] ) ); ?></td></tr>
 				<tr><th><?php esc_html_e( 'Written summaries waiting', 'ner-michoel-core' ); ?></th><td><?php echo esc_html( number_format_i18n( ner_michoel_summary_batch_pending_count() ) ); ?></td></tr>
 				<tr><th><?php esc_html_e( 'Last new-shiur check', 'ner-michoel-core' ); ?></th><td><?php echo $last_check ? esc_html( wp_date( 'j M Y, H:i', $last_check ) ) . ' — ' . esc_html( sprintf( /* translators: %d: number of new shiurim found */ __( '%d new', 'ner-michoel-core' ), (int) get_option( 'nm_import_last_check_added', 0 ) ) ) : esc_html__( 'Not yet', 'ner-michoel-core' ); ?></td></tr>

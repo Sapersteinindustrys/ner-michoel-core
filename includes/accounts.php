@@ -279,6 +279,9 @@ function ner_michoel_handle_account_register( WP_REST_Request $request ) {
 		}
 	}
 
+	// Alumni only (alumni-accounts.php): a sign-up that isn't in the Years List waits for the office.
+	$alumni_wait = function_exists( 'ner_michoel_alumni_on_signup' ) && ner_michoel_alumni_on_signup( $user_id, $name, $email, ! $verify );
+
 	if ( $verify ) {
 		$begin = ner_michoel_verification_begin( $user_id );
 		return new WP_REST_Response(
@@ -298,6 +301,10 @@ function ner_michoel_handle_account_register( WP_REST_Request $request ) {
 
 	update_user_meta( $user_id, 'nm_pref_updates', $prefs['updates'] );
 	update_user_meta( $user_id, 'nm_pref_new_shiur_alerts', $prefs['alerts'] );
+
+	if ( $alumni_wait ) {
+		return new WP_REST_Response( array( 'success' => true, 'alumni_pending' => true, 'message' => ner_michoel_alumni_pending_message() ), 200 );
+	}
 
 	ner_michoel_sign_in_user( $user_id );
 
@@ -396,6 +403,9 @@ function ner_michoel_handle_account_login( WP_REST_Request $request ) {
 	if ( is_wp_error( $user ) && 'nm_login_code_needed' === $user->get_error_code() ) {
 		return ner_michoel_login_code_rest_response( $user ); // The right password; the code step comes next.
 	}
+	if ( is_wp_error( $user ) && 'nm_alumni_pending' === $user->get_error_code() ) {
+		return ner_michoel_account_error( 'alumni_pending', $user->get_error_message(), 403 ); // Only reached with the right password.
+	}
 	if ( is_wp_error( $user ) && 'nm_login_code_unsupported' === $user->get_error_code() ) {
 		return ner_michoel_account_error( 'login_code_unsupported', $user->get_error_message() );
 	}
@@ -482,6 +492,11 @@ function ner_michoel_handle_account_update_profile( WP_REST_Request $request ) {
 	$result = wp_update_user( $updates );
 	if ( is_wp_error( $result ) ) {
 		return ner_michoel_account_error( 'update_failed', $result->get_error_message() );
+	}
+
+	// Phone and address (alumni-accounts.php emails the office what changed).
+	if ( function_exists( 'ner_michoel_alumni_save_contact' ) ) {
+		ner_michoel_alumni_save_contact( $user_id, $request->get_param( 'phone' ), $request->get_param( 'address' ) );
 	}
 	if ( $was_remembered ) {
 		ner_michoel_trusted_add( $user_id );
@@ -584,6 +599,8 @@ function ner_michoel_get_current_account() {
 		'name'      => $user->display_name,
 		'email'     => $user->user_email,
 		'avatarUrl' => get_avatar_url( $user->ID, array( 'size' => 160 ) ),
+		'phone'     => (string) get_user_meta( $user->ID, 'nm_phone', true ),
+		'address'   => (string) get_user_meta( $user->ID, 'nm_address', true ),
 	);
 }
 

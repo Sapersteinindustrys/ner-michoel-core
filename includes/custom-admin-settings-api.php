@@ -226,7 +226,7 @@ function ner_michoel_settings_registry() {
 			'rest_path'     => 'footer-settings',
 			'options_first' => true,
 			'options_title' => __( 'What the footer says', 'ner-michoel-core' ),
-			'options_sub'   => __( 'The title, the Contribute button and the Amazon Smile link, and where the footer shows. Leave a box empty to keep the site’s own words.', 'ner-michoel-core' ),
+			'options_sub'   => __( 'The title, the Contribute button, and where the footer shows. Leave a box empty to keep the site’s own words.', 'ner-michoel-core' ),
 			'repeater_sub'  => __( 'The links in the middle of the footer, in this order. Drag a link by its number to move it. Under a link’s address you can search for one of the site’s pages by name.', 'ner-michoel-core' ),
 			'fields'        => array(
 				'links'            => array(
@@ -287,23 +287,6 @@ function ner_michoel_settings_registry() {
 					'label'       => __( 'Where it goes', 'ner-michoel-core' ),
 					'placeholder' => ner_michoel_footer_resolve_url( ner_michoel_footer_default_words()['contribute_url'] ),
 					'desc'        => __( 'Leave empty to go to the site’s Contribute page.', 'ner-michoel-core' ),
-				),
-				'smile_on'         => array(
-					'type'    => 'checkbox',
-					'label'   => __( 'Show an Amazon Smile link', 'ner-michoel-core' ),
-					'section' => __( 'Amazon Smile', 'ner-michoel-core' ),
-				),
-				'smile_label'      => array(
-					'type'        => 'text',
-					'label'       => __( 'Words on the link', 'ner-michoel-core' ),
-					'maxlength'   => 40,
-					'placeholder' => ner_michoel_footer_default_words()['smile_label'],
-				),
-				'smile_url'        => array(
-					'type'        => 'text',
-					'label'       => __( 'Where it goes', 'ner-michoel-core' ),
-					'placeholder' => ner_michoel_footer_default_words()['smile_url'],
-					'desc'        => __( 'Paste the address of the Amazon Smile page you want people to land on.', 'ner-michoel-core' ),
 				),
 			),
 			'get_values'    => function () {

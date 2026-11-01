@@ -361,6 +361,22 @@ function ner_michoel_custom_admin_structure() {
 						'tip'   => __( 'One row per boy, with a heading row such as Name and Years (or First name, Last name and Years). “Download the list as a spreadsheet” gives you the current list to change in Excel and upload again.', 'ner-michoel-core' ),
 					),
 				),
+				'alumni'      => array(
+					'label'      => __( 'Alumni Sign-up', 'ner-michoel-core' ),
+					'icon'       => 'check-circle',
+					'callback'   => 'ner_michoel_render_alumni_page',
+					'capability' => 'edit_users',
+					'desc'       => __( 'Accounts for alumni only: sign-ups not in the Years List wait here for you to approve. Also where new sign-ups and changed phone / address emails go.', 'ner-michoel-core' ),
+					'keywords'   => 'alumni accounts sign up signup register approve pending members login users office phone address',
+					'help'       => array(
+						'steps' => array(
+							__( 'Upload the Years List with an Email column if you have one (Announcements > Years List). A sign-up matches by email, or by the whole name.', 'ner-michoel-core' ),
+							__( 'Tick “Accounts are for alumni only” and press Save. Put the office’s email address in the box.', 'ner-michoel-core' ),
+							__( 'When someone not in the list signs up, the office gets an email. Open this screen and press Approve (they get an email that they can log in) or Turn down (the account is removed).', 'ner-michoel-core' ),
+						),
+						'tip'   => __( 'Accounts made before you turned this on are not affected. Untick the box to let everyone sign up again.', 'ner-michoel-core' ),
+					),
+				),
 				'newslist'    => array(
 					'label'     => __( 'News & Events', 'ner-michoel-core' ),
 					'icon'      => 'newspaper',
@@ -485,6 +501,22 @@ function ner_michoel_custom_admin_structure() {
 						'tip'   => __( 'The preview under the boxes shows how the name and the second name will look at the top of the page.', 'ner-michoel-core' ),
 					),
 				),
+				'aboutpage' => array(
+					'label'      => __( 'About Page', 'ner-michoel-core' ),
+					'icon'       => 'file-text',
+					'callback'   => 'ner_michoel_render_about_page_editor',
+					'capability' => 'edit_pages',
+					'desc'       => __( 'The words, headings and pictures on the About page.', 'ner-michoel-core' ),
+					'keywords'   => 'about us page history yeshiva text edit words pictures',
+					'help'       => array(
+						'steps' => array(
+							__( 'Press “Edit the About page”. The page opens in the full editor.', 'ner-michoel-core' ),
+							__( 'Click into the text to change it. Press + to add a heading, a picture or a paragraph.', 'ner-michoel-core' ),
+							__( 'Press Update (top right) to put your changes on the site.', 'ner-michoel-core' ),
+						),
+						'tip'   => __( 'Changed something by mistake? In the editor, open the page’s Revisions to go back to an earlier version.', 'ner-michoel-core' ),
+					),
+				),
 				'live'   => array(
 					'label'         => __( 'Live Shiur / Zoom', 'ner-michoel-core' ),
 					'icon'          => 'video',
@@ -533,13 +565,13 @@ function ner_michoel_custom_admin_structure() {
 					'icon'          => 'footer',
 					'settings_type' => 'footer',
 					'capability'    => 'manage_options',
-					'desc'          => __( 'The title and links at the bottom of the site: links to the pages, Contribute and Amazon Smile.', 'ner-michoel-core' ),
-					'keywords'      => 'footer bottom links pages contribute donate donation amazon smile copyright title official',
+					'desc'          => __( 'The title and links at the bottom of the site: links to the pages and Contribute.', 'ner-michoel-core' ),
+					'keywords'      => 'footer bottom links pages contribute donate donation copyright title official',
 					'help'          => array(
 						'steps' => array(
 							__( 'Change the title or the small line at the very bottom, or leave a box empty to keep the site’s own words.', 'ner-michoel-core' ),
 							__( 'Under “Links to pages”, change a name or an address, press “Add Link” for another one, or “Remove” to take one off. Drag a link by its number to change the order.', 'ner-michoel-core' ),
-							__( 'Turn the Contribute button and the Amazon Smile link on or off and say where each one goes, then press Save.', 'ner-michoel-core' ),
+							__( 'Turn the Contribute button on or off and say where it goes, then press Save.', 'ner-michoel-core' ),
 						),
 						'tip'   => __( 'The footer shows on the home page only until you change “Show it on” to every page.', 'ner-michoel-core' ),
 					),

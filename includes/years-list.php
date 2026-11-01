@@ -142,7 +142,7 @@ function ner_michoel_years_clean_years( $text ) {
  * n = name as written, y = years as written, o = the name's words in order,
  * k = the same words sorted (so "Cohen Moshe" and "Moshe Cohen" agree), c = how many.
  */
-function ner_michoel_years_make_row( $name, $years ) {
+function ner_michoel_years_make_row( $name, $years, $email = '' ) {
 	$name   = ner_michoel_years_clean( $name, 120 );
 	$years  = ner_michoel_years_clean_years( $years );
 	$tokens = ner_michoel_years_name_tokens( $name );
@@ -151,13 +151,27 @@ function ner_michoel_years_make_row( $name, $years ) {
 	}
 	$sorted = $tokens;
 	sort( $sorted, SORT_STRING );
-	return array(
+	$row = array(
 		'n' => $name,
 		'y' => $years,
 		'o' => implode( ' ', $tokens ),
 		'k' => implode( ' ', $sorted ),
 		'c' => count( $tokens ),
 	);
+	// e = the boy's email, when the sheet has an Email column (alumni-accounts.php matches sign-ups by it).
+	$email = ner_michoel_years_clean_email( $email );
+	if ( '' !== $email ) {
+		$row['e'] = $email;
+	}
+	return $row;
+}
+
+/** A cell as an email address (lower case), or '' when it isn't one. The first address when a cell has several. */
+function ner_michoel_years_clean_email( $text ) {
+	if ( ! preg_match( '/[A-Za-z0-9._%+\'-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/', (string) $text, $m ) ) {
+		return '';
+	}
+	return strtolower( $m[0] );
 }
 
 /* ---------------- Matching ---------------- */
@@ -784,6 +798,9 @@ function ner_michoel_years_header_kind( $text ) {
 	if ( '' === $t ) {
 		return '';
 	}
+	if ( preg_match( '/\b(e ?mail|email address|e mail address)\b|אימייל|מייל/u', $t ) && ! preg_match( '/father|mother|parent|wife|husband|spouse|אבא|אמא/u', $t ) ) {
+		return 'email';
+	}
 	if ( preg_match( '/father|mother|parent|wife|husband|spouse|phone|e mail|email|address|city|state|zip|birth|dob|born|rebbi|rebbe|contact|cell|mobile|\bab\b|\bem\b|אבא|אמא|טלפון|כתובת|לידה/u', $t ) ) {
 		return '';
 	}
@@ -825,7 +842,7 @@ function ner_michoel_years_looks_like_name( $text ) {
  * (column numbers from 0, -1 for none) and width (number of columns).
  */
 function ner_michoel_years_detect( array $rows ) {
-	$map   = array( 'header' => -1, 'name' => -1, 'last' => -1, 'years' => -1, 'until' => -1, 'width' => 0 );
+	$map   = array( 'header' => -1, 'name' => -1, 'last' => -1, 'years' => -1, 'until' => -1, 'email' => -1, 'width' => 0 );
 	$width = 0;
 	foreach ( array_slice( $rows, 0, 60 ) as $row ) {
 		$width = max( $width, count( $row ) );
@@ -889,6 +906,12 @@ function ner_michoel_years_detect( array $rows ) {
 		} elseif ( isset( $by['until'] ) ) {
 			$map['years'] = $by['until'];
 		}
+		if ( isset( $by['email'] ) ) {
+			$map['email'] = $by['email'];
+		}
+	}
+	if ( $map['email'] < 0 ) {
+		$map['email'] = ner_michoel_years_guess_email_column( $rows, $map['header'] + 1 );
 	}
 
 	if ( $map['name'] < 0 || $map['years'] < 0 ) {
@@ -906,6 +929,31 @@ function ner_michoel_years_detect( array $rows ) {
 		}
 	}
 	return $map;
+}
+
+/** The column where most filled cells are email addresses, or -1. */
+function ner_michoel_years_guess_email_column( array $rows, $start ) {
+	$count = array();
+	$full  = array();
+	foreach ( array_slice( $rows, max( 0, $start ), 60 ) as $row ) {
+		foreach ( $row as $c => $cell ) {
+			$cell = trim( (string) $cell );
+			if ( '' === $cell ) {
+				continue;
+			}
+			$full[ $c ] = isset( $full[ $c ] ) ? $full[ $c ] + 1 : 1;
+			if ( '' !== ner_michoel_years_clean_email( $cell ) ) {
+				$count[ $c ] = isset( $count[ $c ] ) ? $count[ $c ] + 1 : 1;
+			}
+		}
+	}
+	ksort( $count );
+	foreach ( $count as $c => $n ) {
+		if ( $n / $full[ $c ] >= 0.5 ) {
+			return $c;
+		}
+	}
+	return -1;
 }
 
 /** Column guesses from what is in the columns (no heading to go by). */
@@ -1004,7 +1052,7 @@ function ner_michoel_years_extract( array $rows, array $map ) {
 				$years = $until;
 			}
 		}
-		$made = ner_michoel_years_make_row( $name, $years );
+		$made = ner_michoel_years_make_row( $name, $years, ( isset( $map['email'] ) && $map['email'] >= 0 ) ? $cell( $row, $map['email'] ) : '' );
 		if ( ! $made ) {
 			$out['no_years']++;
 			continue;
@@ -1053,9 +1101,20 @@ function ner_michoel_years_to_csv( array $rows ) {
 	$guard = function ( $value ) {
 		return preg_match( '/^[=+@\t\r]/', $value ) ? "'" . $value : $value;
 	};
-	fputcsv( $h, array( 'Name', 'Years' ), ',', '"', '' );
+	$emails = false;
 	foreach ( $rows as $row ) {
-		fputcsv( $h, array( $guard( $row['n'] ), $guard( $row['y'] ) ), ',', '"', '' );
+		if ( ! empty( $row['e'] ) ) {
+			$emails = true;
+			break;
+		}
+	}
+	fputcsv( $h, $emails ? array( 'Name', 'Years', 'Email' ) : array( 'Name', 'Years' ), ',', '"', '' );
+	foreach ( $rows as $row ) {
+		$line = array( $guard( $row['n'] ), $guard( $row['y'] ) );
+		if ( $emails ) {
+			$line[] = $guard( isset( $row['e'] ) ? $row['e'] : '' );
+		}
+		fputcsv( $h, $line, ',', '"', '' );
 	}
 	rewind( $h );
 	$text = stream_get_contents( $h );
@@ -1343,6 +1402,7 @@ function ner_michoel_years_review_choices( array $pending, array $source ) {
 		$map['last']   = $pick( 'c_last', $map['last'] );
 		$map['years']  = $pick( 'c_years', $map['years'] );
 		$map['until']  = $pick( 'c_until', $map['until'] );
+		$map['email']  = $pick( 'c_email', isset( $map['email'] ) ? $map['email'] : -1 );
 	}
 	return array( 'sheet' => $choice, 'mode' => $mode, 'map' => $map, 'detected' => $detected );
 }
@@ -1418,7 +1478,7 @@ function ner_michoel_handle_years_apply() {
 	$posted = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 	if ( 'apply' !== $do ) {
 		$args = array( 'nm_years_review' => $token );
-		foreach ( array( 'sheet', 'hdr', 'c_name', 'c_last', 'c_years', 'c_until', 'mode' ) as $key ) {
+		foreach ( array( 'sheet', 'hdr', 'c_name', 'c_last', 'c_years', 'c_until', 'c_email', 'mode' ) as $key ) {
 			if ( isset( $posted[ $key ] ) ) {
 				$args[ $key ] = sanitize_text_field( $posted[ $key ] );
 			}
@@ -1661,6 +1721,13 @@ function ner_michoel_render_years_review( array $pending, $token, array $list, $
 				</td>
 			</tr>
 			<tr>
+				<th scope="row"><label for="nm_years_c_email"><?php esc_html_e( 'Email (if the sheet has it)', 'ner-michoel-core' ); ?></label></th>
+				<td>
+					<?php echo ner_michoel_years_column_select( 'c_email', isset( $map['email'] ) ? $map['email'] : -1, $sheet, $map['header'], $width, __( '— no email column —', 'ner-michoel-core' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					<p class="description"><?php esc_html_e( 'Used for alumni sign-up: a person who signs up with this email is let in.', 'ner-michoel-core' ); ?></p>
+				</td>
+			</tr>
+			<tr>
 				<th scope="row"><label for="nm_years_hdr"><?php esc_html_e( 'The names start after', 'ner-michoel-core' ); ?></label></th>
 				<td>
 					<select name="hdr" id="nm_years_hdr">
@@ -1697,10 +1764,11 @@ function ner_michoel_render_years_review( array $pending, $token, array $list, $
 		<?php if ( $got['rows'] ) : ?>
 			<p class="nm-years__found"><strong><?php echo esc_html( sprintf( /* translators: %s: number */ _n( '%s name with years found.', '%s names with years found.', count( $got['rows'] ), 'ner-michoel-core' ), number_format_i18n( count( $got['rows'] ) ) ) ); ?></strong></p>
 			<table class="widefat striped nm-years__preview">
-				<thead><tr><th><?php esc_html_e( 'Name', 'ner-michoel-core' ); ?></th><th><?php esc_html_e( 'Years', 'ner-michoel-core' ); ?></th></tr></thead>
+				<?php $show_email = ! $all && isset( $map['email'] ) && $map['email'] >= 0; ?>
+				<thead><tr><th><?php esc_html_e( 'Name', 'ner-michoel-core' ); ?></th><th><?php esc_html_e( 'Years', 'ner-michoel-core' ); ?></th><?php if ( $show_email ) : ?><th><?php esc_html_e( 'Email', 'ner-michoel-core' ); ?></th><?php endif; ?></tr></thead>
 				<tbody>
 					<?php foreach ( array_slice( $got['rows'], 0, 8 ) as $row ) : ?>
-						<tr><td><span dir="auto"><?php echo esc_html( $row['n'] ); ?></span></td><td><span dir="auto"><?php echo esc_html( $row['y'] ); ?></span></td></tr>
+						<tr><td><span dir="auto"><?php echo esc_html( $row['n'] ); ?></span></td><td><span dir="auto"><?php echo esc_html( $row['y'] ); ?></span></td><?php if ( $show_email ) : ?><td><?php echo esc_html( isset( $row['e'] ) ? $row['e'] : '' ); ?></td><?php endif; ?></tr>
 					<?php endforeach; ?>
 				</tbody>
 			</table>

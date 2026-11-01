@@ -551,6 +551,13 @@ function ner_michoel_handle_account_verify( WP_REST_Request $request ) {
 	}
 
 	ner_michoel_verification_complete( $user->ID );
+
+	// Alumni only: a confirmed email that isn't in the alumni list waits for the office (alumni-accounts.php).
+	if ( function_exists( 'ner_michoel_alumni_is_blocked' ) && ner_michoel_alumni_is_blocked( $user->ID ) ) {
+		ner_michoel_alumni_tell_office_pending( $user->ID );
+		return new WP_REST_Response( array( 'success' => false, 'code' => 'alumni_pending', 'message' => ner_michoel_alumni_pending_message() ), 200 );
+	}
+
 	ner_michoel_sign_in_user( $user->ID );
 
 	return new WP_REST_Response( array( 'success' => true, 'name' => $user->display_name ), 200 );

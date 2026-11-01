@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.41
+Stable tag: 0.9.42
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,23 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.42 =
+* New: a shiur or series with no picture of its own shows its speaker's photo in place of the first letter
+  (shiur lists, cards, series and speaker pages, search, For you). Needs ner-michoel-child 0.2.76.
+* New: Control Panel > Homepage & Look > About Page. "Edit the About page" opens the page in the editor
+  (the first press copies the built-in text into it); the About page then shows what is written there.
+  Needs ner-michoel-child 0.2.76.
+* New: the library importer checks "same name already exists" per kind, so a video no longer gets
+  skipped because its audio of the same name exists (and the other way round). A one-time job puts the
+  rows that were wrongly skipped back in the queue; Library Import shows the counts. Set the importer to
+  Running to bring them in. The Missing Audio report no longer counts shiurim held on Vimeo.
+* New: Control Panel > Announcements > Alumni Sign-up. Switch (off by default): a new sign-up is checked
+  against the Years List (same email, or same whole name); with no match the account waits until the
+  office presses Approve (or Turn down). The office email (blank = the site's admin email) is told of each
+  waiting sign-up and of any change to a phone or address. The Years List reads an optional Email column.
+  The Account page's Profile tab has Phone and Address. Needs ner-michoel-child 0.2.76.
+* Change: the Amazon Smile link and its Control Panel section are removed from the footer.
 
 = 0.9.41 =
 * New: series can sit inside series. The series that came over written as "Gemara / Bava Kamma / Perek 3"
