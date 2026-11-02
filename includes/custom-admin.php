@@ -362,19 +362,19 @@ function ner_michoel_custom_admin_structure() {
 					),
 				),
 				'alumni'      => array(
-					'label'      => __( 'Alumni Sign-up', 'ner-michoel-core' ),
+					'label'      => __( 'Alumni', 'ner-michoel-core' ),
 					'icon'       => 'check-circle',
 					'callback'   => 'ner_michoel_render_alumni_page',
 					'capability' => 'edit_users',
-					'desc'       => __( 'Accounts for alumni only: sign-ups not in the Years List wait here for you to approve. Also where new sign-ups and changed phone / address emails go.', 'ner-michoel-core' ),
-					'keywords'   => 'alumni accounts sign up signup register approve pending members login users office phone address',
+					'desc'       => __( 'The Alumni section (its own page with its own search, only for alumni) and which speakers’ shiurim are in it; alumni-only sign-up, approvals, and where new sign-ups and changed phone / address emails go.', 'ner-michoel-core' ),
+					'keywords'   => 'alumni section private members only shurkin speaker accounts sign up signup register approve pending login users office phone address access',
 					'help'       => array(
 						'steps' => array(
 							__( 'Upload the Years List with an Email column if you have one (Announcements > Years List). A sign-up matches by email, or by the whole name.', 'ner-michoel-core' ),
 							__( 'Tick “Accounts are for alumni only” and press Save. Put the office’s email address in the box.', 'ner-michoel-core' ),
 							__( 'When someone not in the list signs up, the office gets an email. Open this screen and press Approve (they get an email that they can log in) or Turn down (the account is removed).', 'ner-michoel-core' ),
 						),
-						'tip'   => __( 'Accounts made before you turned this on are not affected. Untick the box to let everyone sign up again.', 'ner-michoel-core' ),
+						'tip'   => __( 'Alumni section: tick a speaker (for example Rabbi Shurkin) under “Alumni section” and press Save. Their shiurim leave the public site and show on the Alumni page, for alumni only. Untick and Save to put them back. Accounts made before you turned on alumni-only sign-up can still sign up and log in.', 'ner-michoel-core' ),
 					),
 				),
 				'newslist'    => array(

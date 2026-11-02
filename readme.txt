@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.42
+Stable tag: 0.9.43
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,13 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.43 =
+* New: the Alumni section. Control Panel > Announcements > Alumni (the tab was "Alumni Sign-up"): tick a speaker
+  under "Alumni section" and Save, and that speaker's shiurim move to their own type, off every public list, search,
+  speaker / series / topic page, feed, sitemap and the REST API. They get their own page (/alumni/) with its own
+  search, and need an alumni log in. Untick and Save puts every one back as it was. New shiurim by a ticked speaker
+  join the section by themselves. Nothing moves until a speaker is ticked. Needs ner-michoel-child 0.2.77.
 
 = 0.9.42 =
 * New: a shiur or series with no picture of its own shows its speaker's photo in place of the first letter

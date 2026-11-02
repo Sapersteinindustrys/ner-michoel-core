@@ -2,7 +2,7 @@
 /**
  * Alumni-only accounts (R' Ariel Katz's request, 2026-10-31).
  *
- * With the switch on (Control Panel > Announcements > Alumni Sign-up):
+ * With the switch on (Control Panel > Announcements > Alumni):
  *  - A new sign-up is checked against the Years List (years-list.php): the same
  *    email, or the same whole name. A match can log in as before.
  *  - No match: the account waits for the office. It can't log in until someone
@@ -269,7 +269,7 @@ function ner_michoel_handle_alumni_decide() {
 }
 add_action( 'admin_post_nm_alumni_decide', 'ner_michoel_handle_alumni_decide' );
 
-/** Control Panel > Announcements > Alumni Sign-up. */
+/** Control Panel > Announcements > Alumni. */
 function ner_michoel_render_alumni_page() {
 	$key   = 'nm_alumni_flash_' . get_current_user_id();
 	$flash = get_transient( $key );
@@ -354,6 +354,12 @@ function ner_michoel_render_alumni_page() {
 			);
 			?>
 		</p>
+
+		<?php
+		if ( function_exists( 'ner_michoel_render_alumni_section_settings' ) ) {
+			ner_michoel_render_alumni_section_settings(); // alumni-section.php
+		}
+		?>
 	</div>
 	<?php
 }

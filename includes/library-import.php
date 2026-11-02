@@ -404,7 +404,30 @@ function ner_michoel_import_existing_post( $post_type, $title, $media_type, $vim
 		);
 	}
 
-	return get_posts( $args );
+	$found = get_posts( $args );
+	if ( ! $found && post_type_exists( 'alumni_shiur' ) ) {
+		// A shiur moved into the Alumni section (alumni-section.php) still counts: it is never imported again as a public copy.
+		$args['post_type']  = 'alumni_shiur';
+		$from               = array(
+			'key'   => '_nm_alumni_from',
+			'value' => $post_type,
+		);
+		$args['meta_query'] = isset( $args['meta_query'] ) ? array( 'relation' => 'AND', $from, $args['meta_query'] ) : array( $from ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+		$found              = get_posts( $args );
+		if ( ! $found && 'video' === $media_type && '' !== (string) $vimeo_id ) {
+			$found = get_posts(
+				array(
+					'post_type'   => 'alumni_shiur',
+					'post_status' => 'any',
+					'numberposts' => 1,
+					'fields'      => 'ids',
+					'meta_key'    => '_shiur_vimeo_id', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+					'meta_value'  => (string) $vimeo_id, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+				)
+			);
+		}
+	}
+	return $found;
 }
 
 /**
