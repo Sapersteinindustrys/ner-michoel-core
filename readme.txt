@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.43
+Stable tag: 0.9.44
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,18 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.44 =
+* New: a Control Panel "Alumni" group. Alumni Directory: the alumni sheet as a table you can search, filter, sort, edit,
+  tie to an account and download. Upload Alumni Sheet (.xlsx or CSV; add and update, or replace). Sign-ups & Access,
+  Alumni Shiurim and Years List now live in the group. Sign-up looks the person up in the sheet and asks "Is this you?"
+  with partly hidden hints; the Account page has an "Alumni details" tab. Adds the table nm_alumni, made on the first
+  wp-admin page load.
+* New: Control Panel > Announcements > Mazal Tov Order (drag, Top, arrows, Save). The homepage box and /mazal-tov/ follow it;
+  a new Mazal Tov goes on top; "Back to newest first" undoes it.
+* Changed: Mazal Tov names are shown with each word capitalized (ben / bas / bat / bar stay small). Saved titles are
+  rewritten once, on the first page load by a staff member after the update.
+* Needs ner-michoel-child 0.2.78.
 
 = 0.9.43 =
 * New: the Alumni section. Control Panel > Announcements > Alumni (the tab was "Alumni Sign-up"): tick a speaker

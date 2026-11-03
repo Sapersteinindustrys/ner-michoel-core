@@ -447,8 +447,26 @@ function ner_michoel_handle_alumni_access() {
 }
 add_action( 'admin_post_nm_alumni_access', 'ner_michoel_handle_alumni_access' );
 
-/** Drawn inside the Alumni screen (ner_michoel_render_alumni_page()). */
-function ner_michoel_render_alumni_section_settings() {
+/** Control Panel > Alumni > Alumni Shiurim. */
+function ner_michoel_render_alumni_section_page() {
+	$key   = 'nm_alumni_flash_' . get_current_user_id();
+	$flash = get_transient( $key );
+	if ( $flash ) {
+		delete_transient( $key );
+	}
+	echo '<div class="wrap nm-dashboard nm-alumni">';
+	if ( is_array( $flash ) ) {
+		printf( '<div class="notice notice-%s"><p>%s</p></div>', $flash['error'] ? 'error' : 'success', esc_html( $flash['message'] ) );
+	}
+	ner_michoel_render_alumni_section_settings( 'speakers' );
+	echo '</div>';
+}
+
+/**
+ * $part 'speakers' (the Alumni Shiurim screen), 'access' (“Give an account
+ * access”, on the Sign-ups & Access screen) or 'all'.
+ */
+function ner_michoel_render_alumni_section_settings( $part = 'all' ) {
 	$post_to = admin_url( 'admin-post.php' );
 	$chosen  = ner_michoel_alumni_speakers();
 	$in      = wp_count_posts( 'alumni_shiur' );
@@ -459,6 +477,7 @@ function ner_michoel_render_alumni_section_settings() {
 		)
 	);
 	?>
+	<?php if ( 'access' !== $part ) : ?>
 	<h2><?php esc_html_e( 'Alumni section', 'ner-michoel-core' ); ?></h2>
 	<p>
 		<?php
@@ -471,6 +490,7 @@ function ner_michoel_render_alumni_section_settings() {
 	<form method="post" action="<?php echo esc_url( $post_to ); ?>" class="nm-alumni-section">
 		<?php wp_nonce_field( 'nm_alumni_section', 'nm_alumni_nonce' ); ?>
 		<input type="hidden" name="action" value="nm_alumni_section" />
+		<input type="hidden" name="nm_back" value="alumnisection" />
 		<?php ner_michoel_panel_form_field(); ?>
 		<p><strong><?php esc_html_e( 'Speakers whose shiurim are only in the Alumni section', 'ner-michoel-core' ); ?></strong><br />
 		<span class="description"><?php esc_html_e( 'Their shiurim leave the public site (lists, search, speaker and series pages) and appear on the Alumni page with its own search. New shiurim by them go there by themselves. Untick a speaker and Save to put their shiurim back on the public site.', 'ner-michoel-core' ); ?></span></p>
@@ -486,9 +506,15 @@ function ner_michoel_render_alumni_section_settings() {
 		<p><button type="submit" class="button button-primary"><?php esc_html_e( 'Save', 'ner-michoel-core' ); ?></button></p>
 	</form>
 	<?php endif; ?>
+	<?php endif; ?>
+	<?php
+	if ( 'speakers' === $part ) {
+		return;
+	}
+	?>
 
 	<h3><?php esc_html_e( 'Give an account access', 'ner-michoel-core' ); ?></h3>
-	<p class="description"><?php esc_html_e( 'Alumni whose email or name is in the Years List get in by themselves. Use this for anyone else, such as an alumnus whose email isn’t in the list.', 'ner-michoel-core' ); ?></p>
+	<p class="description"><?php esc_html_e( 'Alumni found in the alumni sheet or the Years List get in by themselves. Use this for anyone else, such as an alumnus who isn’t in either.', 'ner-michoel-core' ); ?></p>
 	<form method="post" action="<?php echo esc_url( $post_to ); ?>">
 		<?php wp_nonce_field( 'nm_alumni_access', 'nm_alumni_nonce' ); ?>
 		<input type="hidden" name="action" value="nm_alumni_access" />

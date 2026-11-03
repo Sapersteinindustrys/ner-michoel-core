@@ -43,6 +43,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function ner_michoel_admin_icon_paths() {
 	return array(
+		'users'       => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
 		'home'        => '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
 		'headphones'  => '<path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/>',
 		'file-text'   => '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>',
@@ -327,6 +328,21 @@ function ner_michoel_custom_admin_structure() {
 						'tip'   => __( 'A blocked one is not lost: open “Blocked” at the bottom and press “Bring back”, or delete it for good.', 'ner-michoel-core' ),
 					),
 				),
+				'mazaltovorder' => array(
+					'label'      => __( 'Mazal Tov Order', 'ner-michoel-core' ),
+					'icon'       => 'list',
+					'callback'   => 'ner_michoel_render_mazal_tov_order_page',
+					'capability' => 'edit_others_posts',
+					'desc'       => __( 'Choose the order the Mazal Tovs show in on the homepage and the Mazal Tov page. Without it they show newest first.', 'ner-michoel-core' ),
+					'keywords'   => 'simcha order arrange sort move top first rearrange drag mazal tov',
+					'help'       => array(
+						'steps' => array(
+							__( 'Drag a Mazal Tov up or down, or use “Top” and the arrows next to it.', 'ner-michoel-core' ),
+							__( 'Press “Save order”. The homepage and the Mazal Tov page show them in that order.', 'ner-michoel-core' ),
+							__( 'A new Mazal Tov goes on top. “Back to newest first” undoes your order.', 'ner-michoel-core' ),
+						),
+					),
+				),
 				'mazaltovpresets' => array(
 					'label'    => __( 'Mazal Tov Presets', 'ner-michoel-core' ),
 					'icon'     => 'file-text',
@@ -342,39 +358,6 @@ function ner_michoel_custom_admin_structure() {
 							__( 'Press Save. Next time you add a Mazal Tov (“Quick Mazal Tov” or “Add New Mazal Tov”), pick the preset and fill in the blanks.', 'ner-michoel-core' ),
 						),
 						'tip'   => __( 'To say what goes in a blank, put the words in curly brackets instead of underscores, like “on the birth of a baby {boy or girl}”. Announcements you already posted never change when you edit or delete a preset.', 'ner-michoel-core' ),
-					),
-				),
-				'mazaltovyears' => array(
-					'label'      => __( 'Years List', 'ner-michoel-core' ),
-					'icon'       => 'list',
-					'callback'   => 'ner_michoel_render_years_list_page',
-					'capability' => 'edit_others_posts',
-					'desc'       => __( 'The spreadsheet of the boys and the years they were in yeshiva. Type a name on a Mazal Tov and its years fill in.', 'ner-michoel-core' ),
-					'keywords'   => 'years spreadsheet excel xlsx csv upload update boys yeshiva alumni names list fill in simcha',
-					'help'       => array(
-						'steps' => array(
-							__( 'Press “Choose file” and pick your Excel spreadsheet (or a CSV), then “Upload and check”. Nothing changes yet.', 'ner-michoel-core' ),
-							__( 'Look at how the file was read: the Name and Years columns and a few rows. Change a column if it guessed wrong and press “Update the preview”.', 'ner-michoel-core' ),
-							__( 'Choose “Replace the whole list” or “Add to the list”, then press “Use this list”.', 'ner-michoel-core' ),
-							__( 'From then on, when you type a boy’s name on a Mazal Tov, his years fill in. To update the list later, upload the new spreadsheet the same way.', 'ner-michoel-core' ),
-						),
-						'tip'   => __( 'One row per boy, with a heading row such as Name and Years (or First name, Last name and Years). “Download the list as a spreadsheet” gives you the current list to change in Excel and upload again.', 'ner-michoel-core' ),
-					),
-				),
-				'alumni'      => array(
-					'label'      => __( 'Alumni', 'ner-michoel-core' ),
-					'icon'       => 'check-circle',
-					'callback'   => 'ner_michoel_render_alumni_page',
-					'capability' => 'edit_users',
-					'desc'       => __( 'The Alumni section (its own page with its own search, only for alumni) and which speakers’ shiurim are in it; alumni-only sign-up, approvals, and where new sign-ups and changed phone / address emails go.', 'ner-michoel-core' ),
-					'keywords'   => 'alumni section private members only shurkin speaker accounts sign up signup register approve pending login users office phone address access',
-					'help'       => array(
-						'steps' => array(
-							__( 'Upload the Years List with an Email column if you have one (Announcements > Years List). A sign-up matches by email, or by the whole name.', 'ner-michoel-core' ),
-							__( 'Tick “Accounts are for alumni only” and press Save. Put the office’s email address in the box.', 'ner-michoel-core' ),
-							__( 'When someone not in the list signs up, the office gets an email. Open this screen and press Approve (they get an email that they can log in) or Turn down (the account is removed).', 'ner-michoel-core' ),
-						),
-						'tip'   => __( 'Alumni section: tick a speaker (for example Rabbi Shurkin) under “Alumni section” and press Save. Their shiurim leave the public site and show on the Alumni page, for alumni only. Untick and Save to put them back. Accounts made before you turned on alumni-only sign-up can still sign up and log in.', 'ner-michoel-core' ),
 					),
 				),
 				'newslist'    => array(
@@ -424,6 +407,92 @@ function ner_michoel_custom_admin_structure() {
 							__( 'For photos, click “Add Images” and pick several at once, then drag them into order. For videos, paste one YouTube or Vimeo link per line.', 'ner-michoel-core' ),
 							__( 'Pick a cover image, set Status to Published, and press Save.', 'ner-michoel-core' ),
 						),
+					),
+				),
+			),
+		),
+		'alumnihub'     => array(
+			'label' => __( 'Alumni', 'ner-michoel-core' ),
+			'icon'  => 'users',
+			'tabs'  => array(
+				'alumnidirectory' => array(
+					'label'      => __( 'Alumni Directory', 'ner-michoel-core' ),
+					'icon'       => 'users',
+					'callback'   => 'ner_michoel_render_alumni_directory_page',
+					'capability' => 'edit_users',
+					'desc'       => __( 'Every alumnus from the alumni sheet: search, sort, filter, edit, and see who has an account and who wants emails.', 'ner-michoel-core' ),
+					'keywords'   => 'alumni directory table list excel sheet names emails addresses phones wife spouse opt in mailing download export',
+					'help'       => array(
+						'steps' => array(
+							__( 'Type in the search box to find anyone by any detail. Use the drop-downs to show only alumni with an account, or only those who want emails.', 'ner-michoel-core' ),
+							__( 'Click a heading to sort by it (again to reverse). Click a row to change it, tie it to an account, or delete it.', 'ner-michoel-core' ),
+							__( '“Download shown (CSV)” gives you the rows you see, for Excel or a mailing. Tick rows to download or delete only those.', 'ner-michoel-core' ),
+							__( '“Columns” renames columns, says what each one is, hides them from the table, or adds and removes them.', 'ner-michoel-core' ),
+						),
+						'tip'   => __( 'Alumni keep their own row up to date from their Account page (“Alumni details”). The office gets an email whenever they do, and the “Updated by alumnus” column shows when.', 'ner-michoel-core' ),
+					),
+				),
+				'alumniupload'    => array(
+					'label'      => __( 'Upload Alumni Sheet', 'ner-michoel-core' ),
+					'icon'       => 'upload',
+					'callback'   => 'ner_michoel_render_alumni_upload_page',
+					'capability' => 'edit_users',
+					'desc'       => __( 'Fill or update the Alumni Directory from an Excel sheet (or CSV).', 'ner-michoel-core' ),
+					'keywords'   => 'alumni upload excel xlsx csv sheet spreadsheet import names emails addresses',
+					'help'       => array(
+						'steps' => array(
+							__( 'Choose the Excel file and press “Upload and check”. Nothing changes yet.', 'ner-michoel-core' ),
+							__( 'Check each column: tick the ones to use, and say what each one is (First name, Last name, Wife, Email, Phone, Address...). It is guessed from the headings.', 'ner-michoel-core' ),
+							__( 'Choose “Add to the directory and update” (nothing is removed) or “Replace the directory”, then press “Use this sheet”.', 'ner-michoel-core' ),
+						),
+						'tip'   => __( 'The same alumnus is recognised by the same email, or the same first and last name, so uploading a newer sheet updates rows instead of doubling them. What alumni changed themselves on the site is kept.', 'ner-michoel-core' ),
+					),
+				),
+				'alumni'      => array(
+					'label'      => __( 'Sign-ups & Access', 'ner-michoel-core' ),
+					'icon'       => 'key',
+					'callback'   => 'ner_michoel_render_alumni_page',
+					'capability' => 'edit_users',
+					'desc'       => __( 'Alumni-only sign-up, sign-ups waiting for approval, giving an account access by hand, and where office emails go.', 'ner-michoel-core' ),
+					'keywords'   => 'alumni accounts sign up signup register approve pending login users office phone address access give',
+					'help'       => array(
+						'steps' => array(
+							__( 'Upload the alumni sheet (Alumni > Upload Alumni Sheet). When someone signs up, they are found in it by their email, or by two of their names, and asked “Is this you?”. Saying yes lets them in. The Years List is checked too.', 'ner-michoel-core' ),
+							__( 'Tick “Accounts are for alumni only” and press Save. Put the office’s email address in the box.', 'ner-michoel-core' ),
+							__( 'When someone not found signs up, the office gets an email. Open this screen and press Approve (they get an email that they can log in) or Turn down (the account is removed).', 'ner-michoel-core' ),
+						),
+						'tip'   => __( 'Accounts made before you turned on alumni-only sign-up can still log in. To let in someone who isn’t in the sheet, use “Give an account access” below.', 'ner-michoel-core' ),
+					),
+				),
+				'alumnisection'   => array(
+					'label'      => __( 'Alumni Shiurim', 'ner-michoel-core' ),
+					'icon'       => 'headphones',
+					'callback'   => 'ner_michoel_render_alumni_section_page',
+					'capability' => 'edit_users',
+					'desc'       => __( 'The Alumni section: its own page with its own search, only for alumni, and which speakers’ shiurim are in it.', 'ner-michoel-core' ),
+					'keywords'   => 'alumni section private members only shurkin speaker shiurim page',
+					'help'       => array(
+						'steps' => array(
+							__( 'Tick a speaker (for example Rabbi Shurkin) and press Save. Their shiurim leave the public site and show on the Alumni page, for alumni only.', 'ner-michoel-core' ),
+							__( 'Untick and Save to put them back on the public site.', 'ner-michoel-core' ),
+						),
+					),
+				),
+				'mazaltovyears' => array(
+					'label'      => __( 'Years List', 'ner-michoel-core' ),
+					'icon'       => 'list',
+					'callback'   => 'ner_michoel_render_years_list_page',
+					'capability' => 'edit_others_posts',
+					'desc'       => __( 'The spreadsheet of the boys and the years they were in yeshiva. Type a name on a Mazal Tov and its years fill in.', 'ner-michoel-core' ),
+					'keywords'   => 'years spreadsheet excel xlsx csv upload update boys yeshiva alumni names list fill in simcha',
+					'help'       => array(
+						'steps' => array(
+							__( 'Press “Choose file” and pick your Excel spreadsheet (or a CSV), then “Upload and check”. Nothing changes yet.', 'ner-michoel-core' ),
+							__( 'Look at how the file was read: the Name and Years columns and a few rows. Change a column if it guessed wrong and press “Update the preview”.', 'ner-michoel-core' ),
+							__( 'Choose “Replace the whole list” or “Add to the list”, then press “Use this list”.', 'ner-michoel-core' ),
+							__( 'From then on, when you type a boy’s name on a Mazal Tov, his years fill in. To update the list later, upload the new spreadsheet the same way.', 'ner-michoel-core' ),
+						),
+						'tip'   => __( 'One row per boy, with a heading row such as Name and Years (or First name, Last name and Years). “Download the list as a spreadsheet” gives you the current list to change in Excel and upload again.', 'ner-michoel-core' ),
 					),
 				),
 			),

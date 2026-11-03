@@ -1,0 +1,197 @@
+/* Control Panel > Alumni > Alumni Directory and Upload Alumni Sheet (includes/alumni-directory.php). */
+
+.nm-adir__bar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	margin: 8px 0 4px;
+}
+.nm-adir__search {
+	flex: 1 1 260px;
+	min-width: 200px;
+	padding: 6px 10px;
+}
+.nm-adir__bar select,
+.nm-adir__pager select {
+	flex: 0 1 auto;
+	width: auto;
+	max-width: 100%;
+}
+.nm-adir__spacer {
+	flex: 1 1 0;
+}
+.nm-adir__count {
+	margin: 6px 0;
+	color: #50575e;
+}
+.nm-adir__bulk {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	padding: 6px 10px;
+	margin: 0 0 8px;
+	background: #f0f6fc;
+	border: 1px solid #c5d9ed;
+	border-radius: 4px;
+}
+.nm-adir__bulk[hidden] {
+	display: none;
+}
+.nm-adir__scroll {
+	overflow-x: auto;
+	max-width: 100%;
+}
+.nm-adir__table th,
+.nm-adir__table td {
+	white-space: nowrap;
+	vertical-align: top;
+}
+.nm-adir__table td.nm-adir__addr {
+	white-space: pre-line;
+	min-width: 180px;
+}
+.nm-adir__table .nm-adir__check {
+	width: 28px;
+}
+.nm-adir__row {
+	cursor: pointer;
+}
+.nm-adir__row:hover td,
+.nm-adir__row:focus td {
+	background: #f0f6fc;
+}
+.nm-adir__sort {
+	background: none;
+	border: 0;
+	padding: 0;
+	font: inherit;
+	font-weight: 600;
+	cursor: pointer;
+	color: inherit;
+}
+.nm-adir__sort.is-on {
+	color: #2271b1;
+}
+.nm-adir__muted {
+	color: #8c8f94;
+}
+.nm-adir__pager {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	margin: 10px 0;
+}
+.nm-adir__empty {
+	padding: 24px;
+	background: #fff;
+	border: 1px dashed #c3c4c7;
+	text-align: center;
+}
+
+.nm-adir__shade {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, .3);
+	z-index: 9998;
+}
+.nm-adir__panel {
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	width: min(520px, 100vw);
+	overflow-y: auto;
+	background: #fff;
+	box-shadow: -4px 0 24px rgba(0, 0, 0, .15);
+	padding: 16px 20px 40px;
+	z-index: 9999;
+	box-sizing: border-box;
+}
+.nm-adir__shade[hidden],
+.nm-adir__panel[hidden] {
+	display: none;
+}
+.nm-adir__panel-head {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+}
+.nm-adir__panel-head h2 {
+	margin: 0;
+}
+.nm-adir__close {
+	font-size: 26px;
+	line-height: 1;
+	text-decoration: none;
+}
+.nm-adir__field {
+	display: block;
+	margin: 10px 0;
+}
+.nm-adir__field > span {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 3px;
+}
+.nm-adir__field small {
+	font-weight: 400;
+	color: #646970;
+}
+.nm-adir__field input,
+.nm-adir__field textarea {
+	width: 100%;
+	box-sizing: border-box;
+}
+.nm-adir__check-field {
+	display: block;
+	margin: 12px 0;
+}
+.nm-adir__acct {
+	margin-top: 20px;
+	padding-top: 10px;
+	border-top: 1px solid #dcdcde;
+}
+.nm-adir__danger {
+	margin-top: 24px;
+}
+.nm-adir__cols {
+	margin-left: 1.5em;
+}
+.nm-adir__cols li {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	align-items: center;
+	margin: 6px 0;
+}
+.nm-adir__cols input[type="text"] {
+	flex: 1 1 140px;
+}
+.nm-adir__show {
+	font-size: 12px;
+}
+
+/* Upload review */
+.nm-adir__review th {
+	vertical-align: top;
+	min-width: 150px;
+}
+.nm-adir__review th > * {
+	display: block;
+	margin: 2px 0;
+}
+.nm-adir__review th select,
+.nm-adir__label {
+	width: 100%;
+}
+.nm-adir__review td {
+	white-space: pre-line;
+}
+
+@media (max-width: 600px) {
+	.nm-adir__spacer {
+		display: none;
+	}
+}

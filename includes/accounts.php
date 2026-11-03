@@ -279,8 +279,12 @@ function ner_michoel_handle_account_register( WP_REST_Request $request ) {
 		}
 	}
 
-	// Alumni only (alumni-accounts.php): a sign-up that isn't in the Years List waits for the office.
-	$alumni_wait = function_exists( 'ner_michoel_alumni_on_signup' ) && ner_michoel_alumni_on_signup( $user_id, $name, $email, ! $verify );
+	// The Alumni Directory (alumni-directory.php): rows that may be this person, for "Is this you?".
+	$alumni_claim = function_exists( 'ner_michoel_alumni_dir_on_signup' ) ? ner_michoel_alumni_dir_on_signup( $user_id, $name, $email, $prefs['updates'] ) : null;
+
+	// Alumni only (alumni-accounts.php): a sign-up that isn't in the Years List waits for the office
+	// (told once they've answered "Is this you?", when they're asked).
+	$alumni_wait = function_exists( 'ner_michoel_alumni_on_signup' ) && ner_michoel_alumni_on_signup( $user_id, $name, $email, ! $verify && ! $alumni_claim );
 
 	if ( $verify ) {
 		$begin = ner_michoel_verification_begin( $user_id );
@@ -294,6 +298,7 @@ function ner_michoel_handle_account_register( WP_REST_Request $request ) {
 				'resend_in'  => $begin['wait'],
 				'expires_in' => NER_MICHOEL_VERIFY_CODE_TTL,
 				'message'    => ner_michoel_verification_message( 'signup', $begin['status'], $email ),
+				'alumni_claim' => $alumni_claim,
 			),
 			200
 		);
@@ -301,6 +306,11 @@ function ner_michoel_handle_account_register( WP_REST_Request $request ) {
 
 	update_user_meta( $user_id, 'nm_pref_updates', $prefs['updates'] );
 	update_user_meta( $user_id, 'nm_pref_new_shiur_alerts', $prefs['alerts'] );
+
+	if ( $alumni_claim ) {
+		// "Is this you?" first; the answer signs them in (account-alumni-claim).
+		return new WP_REST_Response( array( 'success' => true, 'name' => $name, 'alumni_claim' => $alumni_claim ), 200 );
+	}
 
 	if ( $alumni_wait ) {
 		return new WP_REST_Response( array( 'success' => true, 'alumni_pending' => true, 'message' => ner_michoel_alumni_pending_message() ), 200 );

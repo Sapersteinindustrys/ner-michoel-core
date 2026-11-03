@@ -151,14 +151,100 @@ function ner_michoel_get_mazal_tov_years( $post_id ) {
  * parts existed has no _mazal_tov_name; its title is the name (or a whole
  * sentence) and its years are put in brackets after it.
  */
-function ner_michoel_mazal_tov_lead( $name, $years, $relationship = '' ) {
-	$lead  = trim( trim( (string) $relationship ) . ' ' . trim( (string) $name ) );
+function ner_michoel_mazal_tov_lead( $name, $years, $relationship = '', $caps = true ) {
+	$name  = trim( (string) $name );
+	$lead  = trim( ner_michoel_mazal_tov_caps( trim( (string) $relationship ) ) . ' ' . ( $caps ? ner_michoel_mazal_tov_caps( $name ) : $name ) );
 	$years = trim( (string) $years );
 	if ( '' !== $lead && '' !== $years ) {
 		$lead .= ' (' . $years . ')';
 	}
 	return $lead;
 }
+
+/**
+ * A name as it is shown: every word starts with a capital (Yoni, 2026-11-03), so
+ * "moshe cohen" reads "Moshe Cohen" and "rabbi & mrs." reads "Rabbi & Mrs.". Only the
+ * first letter of each word (and after a hyphen or an apostrophe-less join) is raised;
+ * the rest is left as typed, so "McAllister" and "DeLeon" stay. "ben", "bas", "bat" and
+ * "bar" between two names stay small ("Moshe ben Yaakov"). Hebrew has no capitals and
+ * is unchanged.
+ */
+function ner_michoel_mazal_tov_caps( $text ) {
+	$text = (string) $text;
+	if ( '' === $text ) {
+		return '';
+	}
+	$words = preg_split( '/(\s+)/u', $text, -1, PREG_SPLIT_DELIM_CAPTURE );
+	if ( ! is_array( $words ) ) {
+		return $text;
+	}
+	$count = count( $words );
+	foreach ( $words as $i => $word ) {
+		if ( '' === trim( $word ) ) {
+			continue;
+		}
+		if ( $i > 0 && $i < $count - 1 && in_array( strtolower( $word ), array( 'ben', 'bas', 'bat', 'bar' ), true ) ) {
+			continue;
+		}
+		// Each part of a hyphenated word ("levi-cohen" -> "Levi-Cohen"), after any opening bracket or quote.
+		$words[ $i ] = preg_replace_callback(
+			'/(^|-)([^\p{L}]*)(\p{Ll})/u',
+			function ( $m ) {
+				$up = function_exists( 'mb_strtoupper' ) ? mb_strtoupper( $m[3], 'UTF-8' ) : strtoupper( $m[3] );
+				return $m[1] . $m[2] . $up;
+			},
+			$word
+		);
+	}
+	return implode( '', $words );
+}
+
+/**
+ * An old announcement keeps the whole name (or a whole sentence) in its title. A title
+ * that is only a name, up to five words with no digits and no sentence words, is
+ * capitalized; a sentence is left as it is.
+ */
+function ner_michoel_mazal_tov_caps_legacy( $title ) {
+	$title = (string) $title;
+	$plain = trim( preg_replace( '/\s+/u', ' ', $title ) );
+	if ( '' === $plain || preg_match( '/\d/', $plain ) || count( explode( ' ', $plain ) ) > 5 || preg_match( '/\b(on|the|to|of|his|her|their|a|an|birth|engagement|wedding|marriage|mazel|mazal)\b/i', $plain ) ) {
+		return $title;
+	}
+	return ner_michoel_mazal_tov_caps( $title );
+}
+
+/**
+ * Titles saved before names were capitalized are written again once (a few hundred at
+ * most), so search, feeds and the panel read the same as the pages.
+ */
+function ner_michoel_mazal_tov_caps_retitle() {
+	if ( get_option( 'nm_mazal_tov_caps_done' ) || ! is_user_logged_in() || ! current_user_can( 'edit_posts' ) ) {
+		return;
+	}
+	update_option( 'nm_mazal_tov_caps_done', 1, true );
+	$ids = get_posts(
+		array(
+			'post_type'      => 'mazal_tov',
+			'post_status'    => array( 'publish', 'draft', 'pending', 'future' ),
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+			'no_found_rows'  => true,
+		)
+	);
+	foreach ( $ids as $id ) {
+		$name = (string) get_post_meta( $id, '_mazal_tov_name', true );
+		$old  = (string) get_post_field( 'post_title', $id );
+		if ( '' === trim( $name ) ) {
+			$new = ner_michoel_mazal_tov_caps_legacy( $old );
+		} else {
+			$new = ner_michoel_mazal_tov_compose_title( $name, get_post_meta( $id, '_mazal_tov_years', true ), get_post_meta( $id, '_mazal_tov_what', true ), get_post_meta( $id, '_mazal_tov_relationship', true ) );
+		}
+		if ( $new !== $old && '' !== $new ) {
+			wp_update_post( array( 'ID' => $id, 'post_title' => $new ) );
+		}
+	}
+}
+add_action( 'init', 'ner_michoel_mazal_tov_caps_retitle', 99 ); // the first page load by anyone on the staff, panel or wp-admin
 
 /**
  * The place in a stored "what" where the person's name goes is written {name}, for
@@ -251,7 +337,7 @@ function ner_michoel_mazal_tov_parts( $post ) {
 	if ( '' === trim( $name ) ) {
 		return array(
 			'before' => '',
-			'lead'   => ner_michoel_mazal_tov_lead( get_the_title( $post ), $years, $relationship ),
+			'lead'   => ner_michoel_mazal_tov_lead( ner_michoel_mazal_tov_caps_legacy( get_the_title( $post ) ), $years, $relationship, false ),
 			'after'  => '',
 			'rest'   => '',
 		);

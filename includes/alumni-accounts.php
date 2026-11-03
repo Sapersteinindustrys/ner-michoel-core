@@ -2,7 +2,7 @@
 /**
  * Alumni-only accounts (R' Ariel Katz's request, 2026-10-31).
  *
- * With the switch on (Control Panel > Announcements > Alumni):
+ * With the switch on (Control Panel > Alumni > Sign-ups & Access):
  *  - A new sign-up is checked against the Years List (years-list.php): the same
  *    email, or the same whole name. A match can log in as before.
  *  - No match: the account waits for the office. It can't log in until someone
@@ -210,7 +210,9 @@ add_action( 'edit_user_profile', 'ner_michoel_alumni_user_profile_fields' );
 /* ------------------------------------------------------------------ */
 
 function ner_michoel_alumni_back( $args = array() ) {
-	$url = ner_michoel_panel_redirect_url( ner_michoel_custom_admin_url( 'alumni' ), 'alumni', $args );
+	// The Alumni Shiurim screen's form says to come back to it; everything else is on Sign-ups & Access.
+	$tab = isset( $_POST['nm_back'] ) && 'alumnisection' === $_POST['nm_back'] ? 'alumnisection' : 'alumni'; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- picks the redirect only.
+	$url = ner_michoel_panel_redirect_url( ner_michoel_custom_admin_url( $tab ), $tab, $args );
 	wp_safe_redirect( esc_url_raw( $url ) );
 	exit;
 }
@@ -269,7 +271,7 @@ function ner_michoel_handle_alumni_decide() {
 }
 add_action( 'admin_post_nm_alumni_decide', 'ner_michoel_handle_alumni_decide' );
 
-/** Control Panel > Announcements > Alumni. */
+/** Control Panel > Alumni > Sign-ups & Access. */
 function ner_michoel_render_alumni_page() {
 	$key   = 'nm_alumni_flash_' . get_current_user_id();
 	$flash = get_transient( $key );
@@ -333,7 +335,7 @@ function ner_michoel_render_alumni_page() {
 			<?php wp_nonce_field( 'nm_alumni_settings', 'nm_alumni_nonce' ); ?>
 			<input type="hidden" name="action" value="nm_alumni_settings" />
 			<?php ner_michoel_panel_form_field(); ?>
-			<p><label><input type="checkbox" name="alumni_only" value="1" <?php checked( ner_michoel_alumni_only() ); ?> /> <?php esc_html_e( 'Accounts are for alumni only: a sign-up not in the Years List waits for approval', 'ner-michoel-core' ); ?></label></p>
+			<p><label><input type="checkbox" name="alumni_only" value="1" <?php checked( ner_michoel_alumni_only() ); ?> /> <?php esc_html_e( 'Accounts are for alumni only: a sign-up not found in the alumni sheet or the Years List waits for approval', 'ner-michoel-core' ); ?></label></p>
 			<p>
 				<label for="nm_alumni_office"><?php esc_html_e( 'Office email (gets new sign-ups and changed contact details)', 'ner-michoel-core' ); ?></label><br />
 				<input type="email" id="nm_alumni_office" name="office_email" class="regular-text" value="<?php echo esc_attr( (string) get_option( NER_MICHOEL_ALUMNI_OFFICE_OPTION, '' ) ); ?>" placeholder="<?php echo esc_attr( get_option( 'admin_email' ) ); ?>" />
@@ -347,9 +349,10 @@ function ner_michoel_render_alumni_page() {
 			echo esc_html(
 				sprintf(
 					/* translators: 1: names in the Years List, 2: how many have an email */
-					__( 'The Years List has %1$s names, %2$s with an email. A sign-up matches when its email is in the list, or its whole name is. Accounts made before the switch was turned on are not affected.', 'ner-michoel-core' ),
+					__( 'The Alumni Directory has %3$s alumni: a sign-up is found there by its email, or by two of its names, and asked “Is this you?”. The Years List has %1$s names, %2$s with an email: a sign-up also matches when its email is in that list, or its whole name is. Accounts made before the switch was turned on are not affected.', 'ner-michoel-core' ),
 					number_format_i18n( (int) $years['count'] ),
-					number_format_i18n( $with_email )
+					number_format_i18n( $with_email ),
+					number_format_i18n( function_exists( 'ner_michoel_alumni_dir_count' ) ? ner_michoel_alumni_dir_count() : 0 )
 				)
 			);
 			?>
@@ -357,7 +360,7 @@ function ner_michoel_render_alumni_page() {
 
 		<?php
 		if ( function_exists( 'ner_michoel_render_alumni_section_settings' ) ) {
-			ner_michoel_render_alumni_section_settings(); // alumni-section.php
+			ner_michoel_render_alumni_section_settings( 'access' ); // alumni-section.php
 		}
 		?>
 	</div>
