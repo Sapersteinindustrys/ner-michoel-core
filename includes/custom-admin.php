@@ -251,6 +251,21 @@ function ner_michoel_custom_admin_structure() {
 						'tip'   => __( 'The order of shiurim inside a series comes from each shiur’s “Order” number.', 'ner-michoel-core' ),
 					),
 				),
+				'seriesorder' => array(
+					'label'      => __( 'Series Order', 'ner-michoel-core' ),
+					'icon'       => 'list',
+					'callback'   => 'ner_michoel_render_series_order_page',
+					'capability' => 'manage_categories',
+					'desc'       => __( 'The order the series show in on the Shiurim page: the rows, and the series inside each row.', 'ner-michoel-core' ),
+					'keywords'   => 'series order arrange sort move top first rearrange drag rows shiurim page',
+					'help'       => array(
+						'steps' => array(
+							__( 'Each line is a row on the Shiurim page. Drag it up or down, or use “Top” and the arrows.', 'ner-michoel-core' ),
+							__( 'Press “Series inside” on a line to order the cards in that row the same way.', 'ner-michoel-core' ),
+							__( 'Press “Save order”. “Back to the automatic order” undoes it (biggest rows first, cards by name).', 'ner-michoel-core' ),
+						),
+					),
+				),
 				'topics'     => array(
 					'label'      => __( 'Topics', 'ner-michoel-core' ),
 					'icon'       => 'tag',
@@ -272,6 +287,23 @@ function ner_michoel_custom_admin_structure() {
 			'label' => __( 'Announcements', 'ner-michoel-core' ),
 			'icon'  => 'megaphone',
 			'tabs'  => array(
+				// Kept under its old key, 'live', so old links and the dashboard's tiles still open it.
+				'live'        => array(
+					'label'         => __( 'Homepage Banner', 'ner-michoel-core' ),
+					'icon'          => 'banner',
+					'settings_type' => 'home_banner',
+					'desc'          => __( 'The banner under the welcome on the homepage (it used to be the Zoom box): your words, a button, a logo or picture, and its design. Also the box that asks alumni to log in.', 'ner-michoel-core' ),
+					'keywords'      => 'zoom live meeting link schedule stream banner announcement header homepage logo picture graphic design alumni log in invite',
+					'help'          => array(
+						'steps' => array(
+							__( 'Tick “Show the banner on the homepage”, then type a title and a few lines of text.', 'ner-michoel-core' ),
+							__( 'Choose a Design: colored, gold, a light card, your own background picture, or no design at all (just the words).', 'ner-michoel-core' ),
+							__( 'Add a logo or small picture if you like, and a button (for example “Join on Zoom” and the Zoom link).', 'ner-michoel-core' ),
+							__( 'Under “Alumni invitation”, choose whether visitors who are not signed in are asked to log in, and change its words if you like. Press Save.', 'ner-michoel-core' ),
+						),
+						'tip'   => __( 'Untick “Show the banner” to take it down; your words stay saved for next time.', 'ner-michoel-core' ),
+					),
+				),
 				'mazaltov'    => array(
 					'label'    => __( 'Mazal Tov', 'ner-michoel-core' ),
 					'icon'     => 'sparkles',
@@ -358,39 +390,6 @@ function ner_michoel_custom_admin_structure() {
 							__( 'Press Save. Next time you add a Mazal Tov (“Quick Mazal Tov” or “Add New Mazal Tov”), pick the preset and fill in the blanks.', 'ner-michoel-core' ),
 						),
 						'tip'   => __( 'To say what goes in a blank, put the words in curly brackets instead of underscores, like “on the birth of a baby {boy or girl}”. Announcements you already posted never change when you edit or delete a preset.', 'ner-michoel-core' ),
-					),
-				),
-				'newslist'    => array(
-					'label'     => __( 'News & Events', 'ner-michoel-core' ),
-					'icon'      => 'newspaper',
-					'cms_type'  => 'post_news',
-					'desc'      => __( 'News posts and event announcements shown on the News & Events page.', 'ner-michoel-core' ),
-					'keywords'  => 'news event post article announcement',
-					'help'      => array(
-						'steps' => array(
-							__( 'Click “Add New News Post” and write a title and the text.', 'ner-michoel-core' ),
-							__( 'Add a featured image to make it stand out.', 'ner-michoel-core' ),
-							__( 'Set Status to Published and press Save. It’s filed under News for you.', 'ner-michoel-core' ),
-						),
-						'tip'       => __( 'Need pictures inside the text, or headings and bold? Use the full editor instead.', 'ner-michoel-core' ),
-						'tip_link'  => array(
-							'tab'   => 'news',
-							'label' => __( 'Open the full editor', 'ner-michoel-core' ),
-						),
-					),
-				),
-				'news'        => array(
-					'label'    => __( 'Full News Editor', 'ner-michoel-core' ),
-					'icon'     => 'newspaper',
-					'callback' => 'ner_michoel_render_post_news_page',
-					'hidden'   => true,
-					'desc'     => __( 'Write a news post in WordPress’s full editor, with pictures and formatting.', 'ner-michoel-core' ),
-					'help'     => array(
-						'steps' => array(
-							__( 'Press the button below. A new post is started, already filed under News.', 'ner-michoel-core' ),
-							__( 'WordPress’s editor opens. Write the post, then press Publish.', 'ner-michoel-core' ),
-						),
-						'tip'   => __( 'For a simple post, “News & Events” → “Add New News Post” is quicker and stays in this panel.', 'ner-michoel-core' ),
 					),
 				),
 				'galleries'   => array(
@@ -535,7 +534,7 @@ function ner_michoel_custom_admin_structure() {
 							__( 'Set how many seconds each photo stays up, and choose the icon in the Mazal Tov box (a ready-made one, or your own picture).', 'ner-michoel-core' ),
 							__( 'Change the title and text of the banner at the bottom if you like, then press Save.', 'ner-michoel-core' ),
 						),
-						'tip'   => __( 'The newest shiurim, the Mazal Tov box and the galleries on the homepage fill themselves in from what you post. The Zoom banner has its own page.', 'ner-michoel-core' ),
+						'tip'   => __( 'The newest shiurim, the Mazal Tov box and the galleries on the homepage fill themselves in from what you post. The banner under the welcome (and the Zoom link) is under Announcements > Homepage Banner.', 'ner-michoel-core' ),
 					),
 				),
 				'week'   => array(
@@ -584,20 +583,6 @@ function ner_michoel_custom_admin_structure() {
 							__( 'Press Update (top right) to put your changes on the site.', 'ner-michoel-core' ),
 						),
 						'tip'   => __( 'Changed something by mistake? In the editor, open the page’s Revisions to go back to an earlier version.', 'ner-michoel-core' ),
-					),
-				),
-				'live'   => array(
-					'label'         => __( 'Live Shiur / Zoom', 'ner-michoel-core' ),
-					'icon'          => 'video',
-					'settings_type' => 'live_shiur',
-					'desc'          => __( 'The Zoom link and schedule for live shiurim, shown on the homepage and on News & Events.', 'ner-michoel-core' ),
-					'keywords'      => 'zoom live meeting link schedule stream',
-					'help'          => array(
-						'steps' => array(
-							__( 'Paste the Zoom link and the Meeting ID.', 'ner-michoel-core' ),
-							__( 'Type the schedule in plain words, like “Sundays 8:00 PM ET”.', 'ner-michoel-core' ),
-							__( 'Press Save. Clear the boxes and save to hide the Live Shiur banner.', 'ner-michoel-core' ),
-						),
 					),
 				),
 				'colors' => array(
@@ -1121,8 +1106,7 @@ function ner_michoel_render_custom_admin_overview() {
 	$messages       = ner_michoel_custom_admin_messages_this_week();
 	$missing        = ner_michoel_custom_admin_missing_audio_count();
 	$slides         = function_exists( 'ner_michoel_get_homepage_slider' ) ? count( (array) ner_michoel_get_homepage_slider() ) : 0;
-	$live           = function_exists( 'ner_michoel_get_live_shiur' ) ? ner_michoel_get_live_shiur() : array();
-	$live_set       = ! empty( $live['zoom_link'] ) || ! empty( $live['schedule'] );
+	$live_set       = function_exists( 'ner_michoel_home_banner' ) ? ner_michoel_home_banner()['on'] : false;
 
 	// New members confirm their email with a code, so if the site's email isn't
 	// going out nobody can finish signing up (account-verification.php notes it).
@@ -1136,9 +1120,8 @@ function ner_michoel_render_custom_admin_overview() {
 		array( 'tab' => 'bulk', 'args' => array(), 'icon' => 'upload', 'title' => __( 'Upload many shiurim', 'ner-michoel-core' ), 'desc' => __( 'A whole batch at once', 'ner-michoel-core' ), 'tone' => 'blue' ),
 		array( 'tab' => 'written', 'args' => array( 'new' => 1 ), 'icon' => 'file-text', 'title' => __( 'Add a written shiur', 'ner-michoel-core' ), 'desc' => __( 'Publish a PDF', 'ner-michoel-core' ), 'tone' => 'violet' ),
 		array( 'tab' => 'mazaltovadd', 'args' => array(), 'icon' => 'sparkles', 'title' => __( 'Post a Mazal Tov', 'ner-michoel-core' ), 'desc' => __( 'Share a simcha in a few boxes', 'ner-michoel-core' ), 'tone' => 'amber' ),
-		array( 'tab' => 'newslist', 'args' => array( 'new' => 1 ), 'icon' => 'newspaper', 'title' => __( 'Post news', 'ner-michoel-core' ), 'desc' => __( 'For the News & Events page', 'ner-michoel-core' ), 'tone' => 'rose' ),
 		array( 'tab' => 'hero', 'args' => array(), 'icon' => 'banner', 'title' => __( 'Edit the homepage', 'ner-michoel-core' ), 'desc' => __( 'Welcome words and pictures', 'ner-michoel-core' ), 'tone' => 'teal' ),
-		array( 'tab' => 'live', 'args' => array(), 'icon' => 'video', 'title' => __( 'Update the Zoom link', 'ner-michoel-core' ), 'desc' => __( 'Live shiur link and times', 'ner-michoel-core' ), 'tone' => 'blue' ),
+		array( 'tab' => 'live', 'args' => array(), 'icon' => 'banner', 'title' => __( 'Change the homepage banner', 'ner-michoel-core' ), 'desc' => __( 'Announcement, Zoom link, logo', 'ner-michoel-core' ), 'tone' => 'blue' ),
 		array( 'tab' => 'inquiries', 'args' => array(), 'icon' => 'inbox', 'title' => __( 'Read messages', 'ner-michoel-core' ), 'desc' => __( 'From the contact forms', 'ner-michoel-core' ), 'tone' => 'slate' ),
 	);
 
@@ -1175,7 +1158,7 @@ function ner_michoel_render_custom_admin_overview() {
 		array( 'key' => 'speaker', 'tab' => 'speakers', 'args' => array( 'new' => 1 ), 'title' => __( 'Add a speaker', 'ner-michoel-core' ), 'desc' => __( 'Shiurim are listed under their speaker.', 'ner-michoel-core' ), 'done' => $speakers > 0 ),
 		array( 'key' => 'shiur', 'tab' => 'shiurim', 'args' => array( 'new' => 1 ), 'title' => __( 'Add your first shiur', 'ner-michoel-core' ), 'desc' => __( 'Title, speaker, series, and the audio file.', 'ner-michoel-core' ), 'done' => ( $shiurim + $drafts ) > 0 ),
 		array( 'key' => 'banner', 'tab' => 'hero', 'args' => array(), 'title' => __( 'Put a picture on the homepage', 'ner-michoel-core' ), 'desc' => __( 'It rotates beside the welcome words.', 'ner-michoel-core' ), 'done' => $slides > 0 ),
-		array( 'key' => 'live', 'tab' => 'live', 'args' => array(), 'title' => __( 'Add the Live Shiur / Zoom link', 'ner-michoel-core' ), 'desc' => __( 'So people can join live.', 'ner-michoel-core' ), 'done' => $live_set ),
+		array( 'key' => 'live', 'tab' => 'live', 'args' => array(), 'title' => __( 'Set up the homepage banner', 'ner-michoel-core' ), 'desc' => __( 'An announcement or the Zoom link, under the welcome.', 'ner-michoel-core' ), 'done' => $live_set ),
 		array( 'key' => 'search', 'title' => __( 'Try the quick search', 'ner-michoel-core' ), 'desc' => __( 'Press Ctrl + K and type what you’re looking for.', 'ner-michoel-core' ), 'done' => null, 'search' => true ),
 	);
 	$checklist = array_values(
@@ -1509,7 +1492,6 @@ function ner_michoel_render_custom_admin_ui() {
 		array( 'tab' => 'speakers', 'label' => __( 'Add a new speaker', 'ner-michoel-core' ), 'icon' => 'plus', 'keywords' => 'rabbi create' ),
 		array( 'tab' => 'series', 'label' => __( 'Add a new series', 'ner-michoel-core' ), 'icon' => 'plus', 'keywords' => 'create course' ),
 		array( 'tab' => 'galleries', 'label' => __( 'Add a new gallery', 'ner-michoel-core' ), 'icon' => 'plus', 'keywords' => 'photos create album' ),
-		array( 'tab' => 'newslist', 'label' => __( 'Write a news post', 'ner-michoel-core' ), 'icon' => 'plus', 'keywords' => 'create article event' ),
 		array( 'tab' => 'mazaltov', 'label' => __( 'Add a Mazal Tov with a photo', 'ner-michoel-core' ), 'icon' => 'plus', 'keywords' => 'simcha create' ),
 		array( 'tab' => 'mazaltovpresets', 'label' => __( 'Add a Mazal Tov preset', 'ner-michoel-core' ), 'icon' => 'plus', 'keywords' => 'simcha template wording blank baby fill in' ),
 	);
@@ -1628,7 +1610,7 @@ function ner_michoel_render_custom_admin_ui() {
 								</button>
 								<div class="nm-nav__items" id="nm-nav-<?php echo esc_attr( $g_key ); ?>"<?php echo $is_current ? '' : ' hidden'; ?>>
 									<?php foreach ( $g['tabs'] as $t_key => $t ) : ?>
-										<?php $here = $t_key === $tab_key || ( 'bulkassign' === $tab_key && 'bulk' === $t_key ) || ( 'news' === $tab_key && 'newslist' === $t_key ); ?>
+										<?php $here = $t_key === $tab_key || ( 'bulkassign' === $tab_key && 'bulk' === $t_key ); ?>
 										<a class="nm-nav__link<?php echo $here ? ' is-active' : ''; ?>" href="<?php echo esc_url( ner_michoel_custom_admin_url( $t_key ) ); ?>"<?php echo $here ? ' aria-current="page"' : ''; ?>>
 											<?php echo ner_michoel_admin_icon( $t['icon'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 											<span class="nm-nav__label"><?php echo esc_html( isset( $t['nav'] ) ? $t['nav'] : $t['label'] ); ?></span>

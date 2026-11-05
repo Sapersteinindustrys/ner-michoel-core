@@ -248,6 +248,16 @@ function ner_michoel_get_active_seasons( $per_topic = 6 ) {
 
 	$defaults = ner_michoel_topics_default_seasons();
 	$today    = ner_michoel_season_today();
+	// Control Panel > This Week can bring every Yom Tov up some days early: a window counts when it
+	// holds today, or holds the day that many days from now.
+	$lead     = function_exists( 'ner_michoel_week_season_lead' ) ? ner_michoel_week_season_lead() : 0;
+	$start_of = function ( $fm, $fd, $tm, $td ) use ( $today, $lead ) {
+		$started = ner_michoel_hebrew_window_start( $fm, $fd, $tm, $td, $today );
+		if ( null === $started && $lead > 0 ) {
+			$started = ner_michoel_hebrew_window_start( $fm, $fd, $tm, $td, $today + $lead );
+		}
+		return $started;
+	};
 	$chosen   = array();
 	$used     = array();
 	foreach ( $terms as $term ) {
@@ -255,7 +265,7 @@ function ner_michoel_get_active_seasons( $per_topic = 6 ) {
 		$occasion = isset( $of[ $term->term_id ] ) ? $of[ $term->term_id ] : '';
 
 		if ( 'season' === $s['mode'] ) {
-			$started = ner_michoel_hebrew_window_start( $s['from_month'], $s['from_day'], $s['to_month'], $s['to_day'], $today );
+			$started = $start_of( $s['from_month'], $s['from_day'], $s['to_month'], $s['to_day'] );
 			if ( null === $started ) {
 				continue;
 			}
@@ -264,7 +274,7 @@ function ner_michoel_get_active_seasons( $per_topic = 6 ) {
 			$entry = array( $term, 'always', 1, 0, $occasion );
 		} elseif ( '' !== $occasion && ! isset( $set[ $occasion ] ) && ! metadata_exists( 'term', $term->term_id, 'nm_home' ) ) {
 			$window  = $defaults[ $occasion ];
-			$started = ner_michoel_hebrew_window_start( $window[0], $window[1], $window[2], $window[3], $today );
+			$started = $start_of( $window[0], $window[1], $window[2], $window[3] );
 			if ( null === $started ) {
 				continue;
 			}

@@ -22,6 +22,9 @@
  *   parsha_until / season_until: '' or YYYY-MM-DD (the last day the choice holds)
  *   region: 'diaspora' or 'israel'
  *   toggle: whether visitors get the switch
+ *   parsha_from: the first weekday the coming Shabbos's parsha shows, 'sun' (the day after
+ *                Shabbos, as before) to 'fri'; until then last Shabbos's stays up
+ *   season_lead: how many days before a Yom Tov's dates begin its box comes up (0 to 30)
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -36,7 +39,44 @@ function ner_michoel_week_settings_defaults() {
 		'season_until' => '',
 		'region'       => 'diaspora',
 		'toggle'       => true,
+		'parsha_from'  => 'sun',
+		'season_lead'  => 0,
 	);
+}
+
+/** The weekdays the parsha box can move on to the coming Shabbos, as the screen offers them. */
+function ner_michoel_week_parsha_from_options() {
+	return array(
+		'sun' => __( 'Sunday (right after Shabbos)', 'ner-michoel-core' ),
+		'mon' => __( 'Monday', 'ner-michoel-core' ),
+		'tue' => __( 'Tuesday', 'ner-michoel-core' ),
+		'wed' => __( 'Wednesday', 'ner-michoel-core' ),
+		'thu' => __( 'Thursday', 'ner-michoel-core' ),
+		'fri' => __( 'Friday', 'ner-michoel-core' ),
+	);
+}
+
+/**
+ * The Shabbos whose parsha the homepage shows today: the coming one (today, on Shabbos), or,
+ * before the weekday chosen under "Show the coming parsha from", the Shabbos that just passed.
+ *
+ * @return int A fixed day (hebrew-calendar.php).
+ */
+function ner_michoel_week_shabbos() {
+	$today   = ner_michoel_season_today();
+	$shabbos = ner_michoel_parsha_shabbos_on_or_after( $today );
+	$from    = (int) array_search( ner_michoel_week_settings()['parsha_from'], array_keys( ner_michoel_week_parsha_from_options() ), true );
+	// Days since the last Shabbos: 1 on Sunday ... 6 on Friday, 0 on Shabbos itself.
+	$since = ( 7 - ( $shabbos - $today ) ) % 7;
+	if ( $since > 0 && $since - 1 < $from ) {
+		$shabbos -= 7;
+	}
+	return $shabbos;
+}
+
+/** How many days early a Yom Tov's box comes up. */
+function ner_michoel_week_season_lead() {
+	return (int) ner_michoel_week_settings()['season_lead'];
 }
 
 /**
@@ -60,8 +100,10 @@ function ner_michoel_week_settings() {
 		}
 		$out[ $slot . '_until' ] = ( 'auto' === $out[ $slot ] ) ? '' : $until;
 	}
-	$out['region'] = ( 'israel' === $out['region'] ) ? 'israel' : 'diaspora';
-	$out['toggle'] = (bool) $out['toggle'];
+	$out['region']      = ( 'israel' === $out['region'] ) ? 'israel' : 'diaspora';
+	$out['toggle']      = (bool) $out['toggle'];
+	$out['parsha_from'] = isset( ner_michoel_week_parsha_from_options()[ (string) $out['parsha_from'] ] ) ? (string) $out['parsha_from'] : 'sun';
+	$out['season_lead'] = max( 0, min( 30, (int) $out['season_lead'] ) );
 	return $out;
 }
 
@@ -499,6 +541,20 @@ function ner_michoel_handle_week_settings_rest( WP_REST_Request $request ) {
 	}
 	if ( isset( $body['toggle'] ) ) {
 		$new['toggle'] = (bool) $body['toggle'];
+	}
+	if ( isset( $body['parsha_from'] ) ) {
+		$from = (string) $body['parsha_from'];
+		if ( ! isset( ner_michoel_week_parsha_from_options()[ $from ] ) ) {
+			return new WP_Error( 'nm_week_from', __( 'Choose a day from Sunday to Friday.', 'ner-michoel-core' ), array( 'status' => 400 ) );
+		}
+		$new['parsha_from'] = $from;
+	}
+	if ( isset( $body['season_lead'] ) ) {
+		$lead = (int) $body['season_lead'];
+		if ( $lead < 0 || $lead > 30 ) {
+			return new WP_Error( 'nm_week_lead', __( 'Type a number of days from 0 to 30.', 'ner-michoel-core' ), array( 'status' => 400 ) );
+		}
+		$new['season_lead'] = $lead;
 	}
 
 	update_option( 'nm_week_settings', array_intersect_key( $new, ner_michoel_week_settings_defaults() ) );

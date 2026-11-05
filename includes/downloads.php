@@ -49,19 +49,28 @@ function ner_michoel_stream_shiur_download( $post_id ) {
 	$file = get_attached_file( $attachment_id );
 	if ( ! $file || ! file_exists( $file ) ) {
 		// Offloaded to Bunny (bunny-storage.php removes the local copy after
-		// upload), so there's nothing to stream here. Send the browser to the
-		// CDN copy instead — it can't be renamed, but it still downloads.
-		// A visitor whose filter blocks the CDN's address asks for the file through this
-		// site instead (nm_via=site, added by assets/media-fallback.js): this server
-		// fetches it from Bunny and sends it with the friendly file name.
-		if ( isset( $_GET['nm_via'] ) && 'site' === $_GET['nm_via'] && get_post_meta( $attachment_id, '_nm_bunny_offloaded', true ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$remote_path = ner_michoel_bunny_remote_path_for_attachment( $attachment_id );
-			if ( $remote_path ) {
-				ner_michoel_relay_serve( $remote_path, array( 'filename' => ner_michoel_build_shiur_download_filename( $post_id, pathinfo( $remote_path, PATHINFO_EXTENSION ) ) ) );
-				exit;
-			}
+		// upload), so there's nothing to stream here. Sending the browser to the
+		// CDN copy made it play the file instead of saving it (a CDN answer has no
+		// "save as" header), so the file is passed on through this site with the
+		// friendly name, and the browser saves it. A download leaves two of the
+		// backup route's places free for listeners; when the route is busy or off,
+		// the browser goes to the CDN copy as before.
+		$remote      = wp_get_attachment_url( $attachment_id );
+		$remote_path = get_post_meta( $attachment_id, '_nm_bunny_offloaded', true ) && function_exists( 'ner_michoel_bunny_remote_path_for_attachment' )
+			? ner_michoel_bunny_remote_path_for_attachment( $attachment_id )
+			: '';
+		if ( $remote_path && function_exists( 'ner_michoel_relay_serve' ) && function_exists( 'ner_michoel_relay_settings' ) ) {
+			$cfg = ner_michoel_relay_settings();
+			ner_michoel_relay_serve(
+				$remote_path,
+				array(
+					'filename' => ner_michoel_build_shiur_download_filename( $post_id, pathinfo( $remote_path, PATHINFO_EXTENSION ) ),
+					'fallback' => $remote ? $remote : '',
+					'slots'    => max( 1, $cfg['max'] - 2 ),
+				)
+			);
+			exit;
 		}
-		$remote = wp_get_attachment_url( $attachment_id );
 		if ( $remote ) {
 			wp_redirect( $remote ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
 			exit;

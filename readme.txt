@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.44
+Stable tag: 0.9.45
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,18 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.45 =
+* New: Control Panel > Announcements > Homepage Banner (words, button, logo or picture, background picture, 5 designs, on/off;
+  starts from the Zoom box's words) and an alumni log-in box next to it. Replaces the Live Shiur / Zoom tab.
+* New: Control Panel > Shiurim > Series Order (drag or Top / arrows; the Shiurim page rows and the cards inside follow it;
+  "Back to the automatic order" undoes it).
+* New: Control Panel > This Week: "Show next week's parsha from" (Sunday to Friday) and "Show a Yom Tov this many days early".
+* Changed: the Download button saves the file (through the site, with the shiur's name; falls back to Bunny when the
+  backup route is off or busy). Signed-in pages are private / not cacheable. One entry per shiur (audio + video or
+  written); the search index rebuilds once by itself.
+* Removed: the News and Add News tabs and the dashboard news buttons; the old News & Events address goes to the homepage.
+* Needs ner-michoel-child 0.2.79.
 
 = 0.9.44 =
 * New: a Control Panel "Alumni" group. Alumni Directory: the alumni sheet as a table you can search, filter, sort, edit,

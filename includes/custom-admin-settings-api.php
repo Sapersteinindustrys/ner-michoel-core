@@ -203,6 +203,95 @@ function ner_michoel_settings_registry() {
 				return ner_michoel_get_live_shiur();
 			},
 		),
+		// Homepage Banner: the space under the welcome (was the Zoom box), and the alumni invitation (includes/home-banner.php).
+		'home_banner'   => array(
+			'capability'    => 'edit_posts',
+			'label'         => __( 'Homepage Banner', 'ner-michoel-core' ),
+			'rest_path'     => 'home-banner-settings',
+			'fields'        => array(
+				'on'            => array(
+					'type'    => 'checkbox',
+					'label'   => __( 'Show the banner on the homepage', 'ner-michoel-core' ),
+					'section' => __( 'The banner', 'ner-michoel-core' ),
+				),
+				'style'         => array(
+					'type'    => 'select',
+					'label'   => __( 'Design', 'ner-michoel-core' ),
+					'options' => ner_michoel_home_banner_styles(),
+					'desc'    => __( 'How the banner looks. “No design” shows just the words, with no colored box around them.', 'ner-michoel-core' ),
+				),
+				'kicker'        => array(
+					'type'        => 'text',
+					'label'       => __( 'Small line on top (optional)', 'ner-michoel-core' ),
+					'maxlength'   => 60,
+					'placeholder' => __( 'For example: Announcement', 'ner-michoel-core' ),
+				),
+				'title'         => array(
+					'type'        => 'text',
+					'label'       => __( 'Title', 'ner-michoel-core' ),
+					'maxlength'   => 120,
+					'placeholder' => __( 'For example: Chanukah Mesibah, Thursday night', 'ner-michoel-core' ),
+				),
+				'text'          => array(
+					'type'      => 'textarea',
+					'rows'      => 4,
+					'label'     => __( 'Text', 'ner-michoel-core' ),
+					'maxlength' => 600,
+					'desc'      => __( 'A few lines. Each new line shows as its own line.', 'ner-michoel-core' ),
+				),
+				'logo_id'       => array(
+					'type'  => 'image',
+					'label' => __( 'Logo or small picture (optional)', 'ner-michoel-core' ),
+					'desc'  => __( 'Shown beside the words: a logo, a flyer’s thumbnail or a photo.', 'ner-michoel-core' ),
+				),
+				'background_id' => array(
+					'type'  => 'image',
+					'label' => __( 'Background picture (optional)', 'ner-michoel-core' ),
+					'desc'  => __( 'A wide picture behind the words. Used when the Design is “The background picture”. It is darkened a little so the words stay easy to read.', 'ner-michoel-core' ),
+				),
+				'button_label'  => array(
+					'type'        => 'text',
+					'label'       => __( 'Button words (optional)', 'ner-michoel-core' ),
+					'section'     => __( 'Button', 'ner-michoel-core' ),
+					'maxlength'   => 40,
+					'placeholder' => __( 'For example: Join on Zoom', 'ner-michoel-core' ),
+				),
+				'button_url'    => array(
+					'type'        => 'text',
+					'label'       => __( 'Where the button goes', 'ner-michoel-core' ),
+					'placeholder' => 'https://…',
+					'desc'        => __( 'A Zoom link, a page of this site, or any web address. Leave the button words empty for no button.', 'ner-michoel-core' ),
+				),
+				'alumni_on'     => array(
+					'type'    => 'checkbox',
+					'label'   => __( 'Ask alumni to log in (shown to visitors who are not signed in)', 'ner-michoel-core' ),
+					'section' => __( 'Alumni invitation', 'ner-michoel-core' ),
+				),
+				'alumni_title'  => array(
+					'type'        => 'text',
+					'label'       => __( 'Title', 'ner-michoel-core' ),
+					'maxlength'   => 100,
+					'placeholder' => ner_michoel_home_banner_alumni_words()['alumni_title'],
+				),
+				'alumni_text'   => array(
+					'type'        => 'textarea',
+					'rows'        => 3,
+					'label'       => __( 'Text', 'ner-michoel-core' ),
+					'maxlength'   => 400,
+					'placeholder' => ner_michoel_home_banner_alumni_words()['alumni_text'],
+				),
+				'alumni_button' => array(
+					'type'        => 'text',
+					'label'       => __( 'Button words', 'ner-michoel-core' ),
+					'maxlength'   => 40,
+					'placeholder' => ner_michoel_home_banner_alumni_words()['alumni_button'],
+					'desc'        => __( 'Leave a box empty to keep the site’s own words. The button opens the Log In page, where they can also make an account.', 'ner-michoel-core' ),
+				),
+			),
+			'get_values'    => function () {
+				return ner_michoel_home_banner_settings_values();
+			},
+		),
 		'navigation'    => array(
 			'capability' => 'manage_options',
 			'label'      => __( 'Menu', 'ner-michoel-core' ),
@@ -318,6 +407,12 @@ function ner_michoel_settings_registry() {
 					'min'   => current_time( 'Y-m-d' ),
 					'desc'  => __( 'After this day the box goes back to the calendar by itself. Leave it empty to keep your choice until you change it. It only matters when you chose a parsha or hid the box.', 'ner-michoel-core' ),
 				),
+				'parsha_from'  => array(
+					'type'    => 'select',
+					'label'   => __( 'Show the coming Shabbos’s parsha from', 'ner-michoel-core' ),
+					'options' => ner_michoel_week_parsha_from_options(),
+					'desc'    => __( 'The first day of the week the box moves on to the coming Shabbos’s parsha. Until that day, last Shabbos’s parsha stays up. Sunday is how it always worked.', 'ner-michoel-core' ),
+				),
 				'season'       => array(
 					'type'        => 'select',
 					'label'       => __( 'The second box shows', 'ner-michoel-core' ),
@@ -334,6 +429,13 @@ function ner_michoel_settings_registry() {
 					'label' => __( 'Last day of this choice (optional)', 'ner-michoel-core' ),
 					'min'   => current_time( 'Y-m-d' ),
 					'desc'  => __( 'After this day the box goes back to the calendar by itself. Leave it empty to keep your choice until you change it.', 'ner-michoel-core' ),
+				),
+				'season_lead'  => array(
+					'type' => 'number',
+					'label' => __( 'Bring a Yom Tov’s box up this many days early', 'ner-michoel-core' ),
+					'min'  => 0,
+					'max'  => 30,
+					'desc' => __( 'By the calendar, a Yom Tov’s box comes up on the first of its dates (set on each topic under Shiurim > Topics). Put a number here to bring every Yom Tov up that many days sooner, for example 7 for a week before. 0 keeps it as it is.', 'ner-michoel-core' ),
 				),
 				'region'       => array(
 					'type'    => 'select',

@@ -192,6 +192,8 @@ function ner_michoel_shiur_index_build( $version, &$formats = null ) {
 		}
 		if ( isset( $formats[ $id ] ) ) {
 			$item['f'] = implode( '', array_keys( $formats[ $id ] ) );
+			// The shiur it is one format of (every format of it has the same x), so a list shows it once.
+			$item['x'] = (int) min( array_map( 'intval', $formats[ $id ] ) );
 		}
 
 		$json = wp_json_encode( $item, $flags );

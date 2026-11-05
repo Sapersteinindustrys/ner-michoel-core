@@ -216,11 +216,30 @@ function ner_michoel_relay_fail( $status, $message, $extra_header = '' ) {
  * zone as given by the page; $opts['filename'] makes it a download with that name.
  * Sends everything itself (status, headers, body) and returns
  * array( 'status' => int, 'bytes' => int, 'busy' => bool ); the caller ends the request.
+ *
+ * $opts['fallback']: an address to send the browser to instead (302) when the file
+ * can't be passed on (switched off, busy, Bunny failed) and nothing has been sent yet.
+ * $opts['slots']: how many of the places to use (fewer than the whole number, so
+ * downloads leave places free for the visitors listening this way).
  */
 function ner_michoel_relay_serve( $raw_path, $opts = array() ) {
-	$cfg = ner_michoel_relay_settings();
+	$cfg      = ner_michoel_relay_settings();
+	$fallback = isset( $opts['fallback'] ) ? (string) $opts['fallback'] : '';
+	$go_there = function () use ( $fallback ) {
+		if ( '' === $fallback || headers_sent() || preg_match( '/[\r\n]/', $fallback ) ) {
+			return null;
+		}
+		header( 'Location: ' . $fallback, true, 302 );
+		header( 'Cache-Control: no-store, max-age=0' );
+		return array(
+			'status' => 302,
+			'bytes'  => 0,
+			'busy'   => false,
+		);
+	};
 	if ( ! $cfg['on'] ) {
-		return ner_michoel_relay_fail( 404, 'This is not switched on.' );
+		$moved = $go_there();
+		return $moved ? $moved : ner_michoel_relay_fail( 404, 'This is not switched on.' );
 	}
 	if ( ! function_exists( 'curl_init' ) ) {
 		return ner_michoel_relay_fail( 501, 'This server cannot fetch files for you.' );
@@ -233,7 +252,12 @@ function ner_michoel_relay_serve( $raw_path, $opts = array() ) {
 	if ( '' === $path ) {
 		return ner_michoel_relay_fail( 400, 'That is not a file this site can send.' );
 	}
-	if ( ner_michoel_relay_take_slot( $cfg['max'] ) < 0 ) {
+	$slots = isset( $opts['slots'] ) ? max( 1, min( $cfg['max'], (int) $opts['slots'] ) ) : $cfg['max'];
+	if ( ner_michoel_relay_take_slot( $slots ) < 0 ) {
+		$moved = $go_there();
+		if ( $moved ) {
+			return $moved;
+		}
 		return ner_michoel_relay_fail( 503, 'Busy right now. Please try again in a moment.', 'Retry-After: 3' );
 	}
 
@@ -390,6 +414,10 @@ function ner_michoel_relay_serve( $raw_path, $opts = array() ) {
 			'bytes'  => 0,
 			'busy'   => false,
 		);
+	}
+	$moved = $go_there();
+	if ( $moved ) {
+		return $moved;
 	}
 	if ( 404 === $resp['status'] || 403 === $resp['status'] || 410 === $resp['status'] ) {
 		return ner_michoel_relay_fail( 404, 'No such file.' );

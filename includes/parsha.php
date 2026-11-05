@@ -533,6 +533,107 @@ function ner_michoel_hebrew_date_label( $fixed ) {
 }
 
 /**
+ * A number in Hebrew letters, the way dates are written: 15 is ט״ו and 16 ט״ז, a number of
+ * more than one letter has ״ before its last letter, one letter has ׳ after it. 5787 is
+ * written without the thousands, תשפ״ז.
+ */
+function ner_michoel_hebrew_numeral( $number ) {
+	$number = (int) $number % 1000;
+	if ( $number <= 0 ) {
+		return '';
+	}
+	$letters = array(
+		400 => 'ת', 300 => 'ש', 200 => 'ר', 100 => 'ק',
+		90  => 'צ', 80  => 'פ', 70  => 'ע', 60  => 'ס', 50 => 'נ', 40 => 'מ', 30 => 'ל', 20 => 'כ', 10 => 'י',
+		9   => 'ט', 8   => 'ח', 7   => 'ז', 6   => 'ו', 5  => 'ה', 4  => 'ד', 3  => 'ג', 2  => 'ב', 1  => 'א',
+	);
+	$out = array();
+	while ( $number >= 400 ) {
+		$out[]   = 'ת';
+		$number -= 400;
+	}
+	$tens = $number % 100;
+	foreach ( array( 300, 200, 100 ) as $value ) {
+		if ( $number >= $value && $number - $tens >= $value ) {
+			$out[]   = $letters[ $value ];
+			$number -= $value;
+		}
+	}
+	if ( 15 === $number || 16 === $number ) {
+		$out[] = 'ט';
+		$out[] = 15 === $number ? 'ו' : 'ז';
+	} else {
+		foreach ( array( 90, 80, 70, 60, 50, 40, 30, 20, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 ) as $value ) {
+			if ( $number >= $value ) {
+				$out[]   = $letters[ $value ];
+				$number -= $value;
+			}
+		}
+	}
+	if ( 1 === count( $out ) ) {
+		return $out[0] . '׳';
+	}
+	$last = array_pop( $out );
+	return implode( '', $out ) . '״' . $last;
+}
+
+/**
+ * A fixed day as a Hebrew date in Hebrew letters, "כ״ז חשון תשפ״ז".
+ */
+function ner_michoel_hebrew_date_hebrew( $fixed ) {
+	list( $year, $month, $day ) = ner_michoel_hebrew_from_fixed( (int) $fixed );
+	$leap  = ner_michoel_hebrew_leap_year( $year );
+	$names = array(
+		1  => 'ניסן',
+		2  => 'אייר',
+		3  => 'סיון',
+		4  => 'תמוז',
+		5  => 'אב',
+		6  => 'אלול',
+		7  => 'תשרי',
+		8  => 'חשון',
+		9  => 'כסלו',
+		10 => 'טבת',
+		11 => 'שבט',
+		12 => $leap ? 'אדר א׳' : 'אדר',
+		13 => 'אדר ב׳',
+	);
+	return ner_michoel_hebrew_numeral( $day ) . ' ' . $names[ $month ] . ' ' . ner_michoel_hebrew_numeral( $year );
+}
+
+/**
+ * The next Shabbos (from today, today included) on which a parsha is read, with its dates:
+ * shabbos (fixed day), date ("Nov 7"), hebrew ("27 Cheshvan 5787"), hebrew_he (in Hebrew
+ * letters) and this_week (true when it is this week's). Null when it is not found within a
+ * year and a bit. For the parsha's own topic page.
+ *
+ * @param int[] $numbers The parsha's numbers (a joined parsha has two; either one counts).
+ * @return array|null
+ */
+function ner_michoel_parsha_next_reading( array $numbers, $israel = null ) {
+	if ( ! $numbers ) {
+		return null;
+	}
+	if ( null === $israel ) {
+		$israel = function_exists( 'ner_michoel_week_default_israel' ) ? ner_michoel_week_default_israel() : false;
+	}
+	$week = function_exists( 'ner_michoel_week_shabbos' ) ? ner_michoel_week_shabbos() : ner_michoel_parsha_shabbos_on_or_after( ner_michoel_season_today() );
+	for ( $i = 0, $s = $week; $i < 60; $i++, $s += 7 ) {
+		$read = ner_michoel_parsha_of_shabbos( $s, (bool) $israel );
+		if ( $read && array_intersect( $numbers, $read ) ) {
+			return array(
+				'shabbos'   => $s,
+				'date'      => ner_michoel_fixed_date_label( $s ),
+				'hebrew'    => ner_michoel_hebrew_date_label( $s ),
+				'hebrew_he' => ner_michoel_hebrew_date_hebrew( $s ),
+				'this_week' => $s === $week,
+			);
+		}
+	}
+	return null;
+}
+
+/**
  * A fixed day as a date in the site's language, "Oct 31".
  */
 function ner_michoel_fixed_date_label( $fixed ) {
@@ -746,8 +847,7 @@ function ner_michoel_get_week_parsha( $per_page = 6, $israel = null ) {
 		return null;
 	}
 
-	$today   = ner_michoel_season_today();
-	$shabbos = ner_michoel_parsha_shabbos_on_or_after( $today );
+	$shabbos = ner_michoel_week_shabbos();
 	if ( is_array( $pin ) ) {
 		return ner_michoel_week_parsha_box( $pin, $shabbos, $per_page, true );
 	}
@@ -803,6 +903,7 @@ function ner_michoel_week_parsha_box( array $numbers, $shabbos, $per_page, $pinn
 		'shabbos' => $shabbos,
 		'date'    => $pinned ? '' : ner_michoel_fixed_date_label( $shabbos ),
 		'hebrew'  => $pinned ? '' : ner_michoel_hebrew_date_label( $shabbos ),
+		'hebrew_he' => $pinned ? '' : ner_michoel_hebrew_date_hebrew( $shabbos ),
 		'posts'   => $found['posts'],
 		// With a topic page to go to, the count is that page's, so "All 62 shiurim" matches what it lists.
 		'count'   => ( '' !== $link && $best > 0 ) ? $best : $found['count'],
@@ -827,7 +928,7 @@ function ner_michoel_get_week_regions( $per_page = 6 ) {
 	$israel  = ner_michoel_week_default_israel();
 	$default = $israel ? 'israel' : 'diaspora';
 
-	$shabbos = ner_michoel_parsha_shabbos_on_or_after( ner_michoel_season_today() );
+	$shabbos = ner_michoel_week_shabbos();
 	$differs = null === ner_michoel_week_parsha_pin()
 		&& ner_michoel_parsha_of_shabbos( $shabbos, false ) !== ner_michoel_parsha_of_shabbos( $shabbos, true );
 
