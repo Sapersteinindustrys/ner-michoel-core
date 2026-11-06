@@ -256,12 +256,13 @@ function ner_michoel_custom_admin_structure() {
 					'icon'       => 'list',
 					'callback'   => 'ner_michoel_render_series_order_page',
 					'capability' => 'manage_categories',
-					'desc'       => __( 'The order the series show in on the Shiurim page: the rows, and the series inside each row.', 'ner-michoel-core' ),
-					'keywords'   => 'series order arrange sort move top first rearrange drag rows shiurim page',
+					'desc'       => __( 'The series as folders: their order on the Shiurim page, and which series sits inside which.', 'ner-michoel-core' ),
+					'keywords'   => 'series order arrange sort move top first rearrange drag rows shiurim page folder folders tree inside parent nest',
 					'help'       => array(
 						'steps' => array(
 							__( 'Each line is a row on the Shiurim page. Drag it up or down, or use “Top” and the arrows.', 'ner-michoel-core' ),
-							__( 'Press “Series inside” on a line to order the cards in that row the same way.', 'ner-michoel-core' ),
+							__( 'Press “Open” on a line to see the series inside it, and order them the same way.', 'ner-michoel-core' ),
+							__( 'Press “Move into…” to put a series inside another one (or back at the top). Everything inside it, and all its shiurim, go with it.', 'ner-michoel-core' ),
 							__( 'Press “Save order”. “Back to the automatic order” undoes it (biggest rows first, cards by name).', 'ner-michoel-core' ),
 						),
 					),

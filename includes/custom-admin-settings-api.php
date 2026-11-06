@@ -209,6 +209,27 @@ function ner_michoel_settings_registry() {
 			'label'         => __( 'Homepage Banner', 'ner-michoel-core' ),
 			'rest_path'     => 'home-banner-settings',
 			'fields'        => array(
+				'zoom_on'       => array(
+					'type'    => 'checkbox',
+					'label'   => __( 'Show the Zoom line on the homepage', 'ner-michoel-core' ),
+					'section' => __( 'Zoom line', 'ner-michoel-core' ),
+					'desc'    => __( 'One small line under the welcome: the schedule, the meeting ID and a Join on Zoom button. It shows when there is a Zoom link or a schedule. These are the same details as on the Live Shiur / Zoom screen.', 'ner-michoel-core' ),
+				),
+				'zoom_link'     => array(
+					'type'        => 'text',
+					'label'       => __( 'Zoom link', 'ner-michoel-core' ),
+					'placeholder' => 'https://zoom.us/j/...',
+				),
+				'meeting_id'    => array(
+					'type'  => 'text',
+					'label' => __( 'Meeting ID', 'ner-michoel-core' ),
+				),
+				'schedule'      => array(
+					'type'        => 'textarea',
+					'rows'        => 2,
+					'label'       => __( 'When', 'ner-michoel-core' ),
+					'placeholder' => __( 'For example: Sundays 8:00 PM ET', 'ner-michoel-core' ),
+				),
 				'on'            => array(
 					'type'    => 'checkbox',
 					'label'   => __( 'Show the banner on the homepage', 'ner-michoel-core' ),
@@ -219,6 +240,12 @@ function ner_michoel_settings_registry() {
 					'label'   => __( 'Design', 'ner-michoel-core' ),
 					'options' => ner_michoel_home_banner_styles(),
 					'desc'    => __( 'How the banner looks. “No design” shows just the words, with no colored box around them.', 'ner-michoel-core' ),
+				),
+				'place'         => array(
+					'type'    => 'select',
+					'label'   => __( 'Where it shows', 'ner-michoel-core' ),
+					'options' => ner_michoel_home_banner_places(),
+					'desc'    => __( 'The popup opens once on each computer, and again only when you change the words. “Inside the footer” shows wherever the footer shows.', 'ner-michoel-core' ),
 				),
 				'kicker'        => array(
 					'type'        => 'text',
@@ -266,6 +293,12 @@ function ner_michoel_settings_registry() {
 					'type'    => 'checkbox',
 					'label'   => __( 'Ask alumni to log in (shown to visitors who are not signed in)', 'ner-michoel-core' ),
 					'section' => __( 'Alumni invitation', 'ner-michoel-core' ),
+				),
+				'alumni_place'  => array(
+					'type'    => 'select',
+					'label'   => __( 'Where it shows', 'ner-michoel-core' ),
+					'options' => ner_michoel_home_banner_places(),
+					'desc'    => __( 'Visitors who are signed in never see it.', 'ner-michoel-core' ),
 				),
 				'alumni_title'  => array(
 					'type'        => 'text',

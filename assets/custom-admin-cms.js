@@ -400,8 +400,11 @@
 					timer = setTimeout( poll, 4000 );
 				}
 			} else if ( status.pending > 0 ) {
-				html = '<strong>' + formatNumber( status.pending ) + ' series still have a whole path in their name</strong>, like “Gemara / Bava Kamma”. ' +
-					'Split them into series and sub-series, so Bava Kamma sits inside Gemara. Nothing is lost, and it can be undone. ' +
+				html = '<strong>' + formatNumber( status.pending ) + ' series still have a whole path in their name</strong>, like “Gemara / Bava Kamma” or “Gemara - Bava Basra”' +
+					( status.examples && status.examples.length ? ' (' + $.map( status.examples, function ( name ) {
+						return '“' + esc( name ) + '”';
+					} ).join( ', ' ) + ( status.pending > status.examples.length ? '…' : '' ) + ')' : '' ) + '. ' +
+					'Split them into series and sub-series, so Bava Basra sits inside Gemara, and its shiurim stay in Bava Basra. Nothing is lost, and it can be undone. ' +
 					'<button type="button" class="nm-btn nm-btn--sm nm-btn--primary nm-cms-split-go">Split them now</button>';
 			} else if ( status.can_undo ) {
 				html = 'The series are split into series and sub-series (' + formatNumber( status.changed ) + ' renamed, ' + formatNumber( status.created ) + ' bigger series added). ' +
@@ -620,6 +623,12 @@
 				if ( schema.hierarchical && ! schema.readonly ) {
 					actions += '<button type="button" class="nm-btn nm-btn--sm nm-cms-sub" data-id="' + item.id + '" title="Add a series inside this one">' + icon( 'plus' ) + '<span>Sub-series</span></button>';
 				}
+				// Move shiurim between series (includes/series-order.php): a series' own shiurim, or one shiur.
+				if ( self.type === 'series' ) {
+					actions += '<button type="button" class="nm-btn nm-btn--sm nm-cms-move-in" data-id="' + item.id + '" title="See the shiurim in this series, and move them to another series">' + icon( 'list' ) + '<span>Shiurim</span></button>';
+				} else if ( ( self.type === 'shiur' || self.type === 'written_shiur' ) && ! schema.readonly ) {
+					actions += '<button type="button" class="nm-btn nm-btn--sm nm-cms-move-one" data-id="' + item.id + '" title="Put this shiur in another series">' + icon( 'arrow-r' ) + '<span>Series</span></button>';
+				}
 				if ( item.edit_link ) {
 					actions += '<a class="nm-icon-btn nm-cms-row-icon" href="' + esc( item.edit_link ) + '" target="_blank" rel="noopener" title="See it on the site" aria-label="See it on the site">' + icon( 'external' ) + '</a>';
 				}
@@ -661,9 +670,181 @@
 		$tbody.find( '.nm-cms-sub' ).on( 'click', function () {
 			self.openForm( null, { parent: $( this ).data( 'id' ) } );
 		} );
+		$tbody.find( '.nm-cms-move-in' ).on( 'click', function () {
+			self.openMove( { series: $( this ).data( 'id' ) } );
+		} );
+		$tbody.find( '.nm-cms-move-one' ).on( 'click', function () {
+			var row = self.rows[ $( this ).data( 'id' ) ] || {};
+			self.openMove( { ids: [ $( this ).data( 'id' ) ], title: decodeName( row.title || '' ) } );
+		} );
 		$tbody.find( '.nm-cms-delete' ).on( 'click', function () {
 			self.confirmDelete( $( this ).data( 'id' ) );
 		} );
+	};
+
+	/*
+	 * Moving shiurim to another series. opts.series: list that series' own shiurim (not the ones
+	 * in the series inside it), each with a box to tick; opts.ids (and opts.title): one shiur.
+	 * The chosen ones go into the series picked at the bottom, in place of the one they were in
+	 * (POST shiur-series, includes/series-order.php).
+	 */
+	CmsApp.prototype.openMove = function ( opts ) {
+		var self = this;
+		var previousFocus = document.activeElement;
+		var $wrap = $(
+			'<div class="nm-drawer-wrap">' +
+				'<div class="nm-drawer-backdrop"></div>' +
+				'<section class="nm-drawer nm-move" role="dialog" aria-modal="true" aria-labelledby="nm-move-title">' +
+					'<header class="nm-drawer__head">' +
+						'<div class="nm-drawer__titles"><p class="nm-drawer__eyebrow"></p><h2 id="nm-move-title"></h2></div>' +
+						'<button type="button" class="nm-icon-btn nm-drawer__close" aria-label="Close">' + icon( 'x' ) + '</button>' +
+					'</header>' +
+					'<div class="nm-drawer__body"><div class="nm-cms-loading"><span class="nm-spinner" aria-hidden="true"></span>Loading…</div></div>' +
+					'<footer class="nm-drawer__foot nm-move__foot">' +
+						'<label class="nm-move__to"><span>Move to</span><select class="nm-cms-input nm-move__series"><option value="">Choose a series…</option></select></label>' +
+						'<span class="nm-drawer__buttons">' +
+							'<button type="button" class="nm-btn nm-cms-cancel">Close</button>' +
+							'<button type="button" class="nm-btn nm-btn--primary nm-move__go" disabled>' + icon( 'check' ) + '<span>Move</span></button>' +
+						'</span>' +
+					'</footer>' +
+				'</section>' +
+			'</div>'
+		);
+		var single = ! opts.series;
+		$wrap.find( '.nm-drawer__eyebrow' ).text( single ? 'Put in another series' : 'Shiurim in this series' );
+		$wrap.find( 'h2' ).text( single ? ( opts.title || 'This shiur' ) : 'Loading…' );
+		var $body = $wrap.find( '.nm-drawer__body' );
+		var $select = $wrap.find( '.nm-move__series' );
+		var $go = $wrap.find( '.nm-move__go' );
+
+		this.$root.find( '.nm-cms-modal-root' ).html( '' ).append( $wrap );
+		$( document.body ).addClass( 'nm-no-scroll' );
+		var release = ui() && ui().trapFocus ? ui().trapFocus( $wrap.find( '.nm-drawer' )[ 0 ] ) : function () {};
+		$wrap.find( '.nm-drawer__close' ).trigger( 'focus' );
+
+		var changed = false;
+		function close() {
+			release();
+			$wrap.remove();
+			$( document.body ).removeClass( 'nm-no-scroll' );
+			$( document ).off( 'keydown.nmMove' );
+			if ( changed ) {
+				self.loadList();
+			}
+			if ( previousFocus && previousFocus.focus ) {
+				previousFocus.focus();
+			}
+		}
+		$wrap.find( '.nm-drawer__close, .nm-cms-cancel, .nm-drawer-backdrop' ).on( 'click', close );
+		$( document ).on( 'keydown.nmMove', function ( e ) {
+			if ( e.key === 'Escape' ) {
+				close();
+			}
+		} );
+
+		function chosen() {
+			if ( single ) {
+				return opts.ids;
+			}
+			return $body.find( '.nm-move__tick:checked' ).map( function () {
+				return Number( this.value );
+			} ).get();
+		}
+		function update() {
+			var n = chosen().length;
+			$go.prop( 'disabled', ! n || ! $select.val() );
+			$go.find( 'span' ).text( single || n < 2 ? 'Move' : 'Move ' + formatNumber( n ) );
+		}
+		$select.on( 'change', update );
+
+		getTerms( 'series' ).then( function ( terms ) {
+			$select.append( $( '<option></option>' ).val( '0' ).text( 'No series' ) );
+			$.each( terms, function ( i, term ) {
+				if ( String( term.id ) === String( opts.series ) ) {
+					return;
+				}
+				$select.append( $( '<option></option>' ).val( term.id ).text( decodeName( term.path || term.name ) ) );
+			} );
+		} );
+
+		function rowHtml( item ) {
+			var meta = [ formatDate( item.date ) ];
+			if ( item.type === 'written_shiur' ) {
+				meta.push( 'Written' );
+			}
+			if ( item.status && item.status !== 'publish' ) {
+				meta.push( STATUS_LABELS[ item.status ] || item.status );
+			}
+			return '<li class="nm-move__row">' +
+				( single ? '' : '<input type="checkbox" class="nm-move__tick" value="' + item.id + '" id="nm-move-' + item.id + '">' ) +
+				'<label' + ( single ? '' : ' for="nm-move-' + item.id + '"' ) + '><strong>' + esc( item.title ) + '</strong><span>' + esc( meta.join( ' · ' ) ) + '</span></label>' +
+				'</li>';
+		}
+
+		function showList( result ) {
+			var html = '';
+			if ( single ) {
+				html += '<p class="nm-move__now">Now in: <strong>' + esc( result.label || 'no series' ) + '</strong></p>';
+				html += '<p class="nm-cms-muted">Pick the series to put it in, then press Move. It leaves the series it is in now.</p>';
+			} else if ( ! result.items.length ) {
+				html += '<p class="nm-cms-muted">There are no shiurim in this series itself. (The series inside it have their own: press Shiurim on one of those.)</p>';
+			} else {
+				html += '<p class="nm-cms-muted">Tick the shiurim to move, pick the series at the bottom, and press Move. They leave this series and go into that one. The shiurim in the series inside this one stay where they are.</p>';
+				html += '<label class="nm-move__all"><input type="checkbox" class="nm-move__tick-all"> Tick all ' + formatNumber( result.items.length ) + ( result.more ? ' shown' : '' ) + '</label>';
+				html += '<ul class="nm-move__list">' + $.map( result.items, rowHtml ).join( '' ) + '</ul>';
+			}
+			$body.html( html );
+			$body.find( '.nm-move__tick-all' ).on( 'change', function () {
+				$body.find( '.nm-move__tick' ).prop( 'checked', this.checked );
+				update();
+			} );
+			$body.find( '.nm-move__tick' ).on( 'change', update );
+			update();
+		}
+
+		function load() {
+			if ( single ) {
+				var row = self.rows[ opts.ids[ 0 ] ] || {};
+				showList( { label: $.map( $.isArray( row.series ) ? row.series : [], decodeName ).join( ', ' ) } );
+				return;
+			}
+			apiFetch( 'series-shiurim?series=' + encodeURIComponent( opts.series ) ).then( function ( result ) {
+				$wrap.find( 'h2' ).text( decodeName( result.series.path ) );
+				showList( result );
+			} ).catch( function ( err ) {
+				$body.html( self.errorBox( err.message ) );
+			} );
+		}
+
+		$go.on( 'click', function () {
+			var ids = chosen();
+			var to = $select.val();
+			if ( ! ids.length || '' === to ) {
+				return;
+			}
+			$go.prop( 'disabled', true );
+			apiFetch( 'shiur-series', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify( { ids: ids, series: Number( to ) } )
+			} ).then( function ( result ) {
+				changed = true;
+				forgetTerms( 'series' );
+				var where = $select.find( 'option:selected' ).text();
+				var n = result.moved.length;
+				toast( ( n === 1 ? '1 shiur' : formatNumber( n ) + ' shiurim' ) + ' moved to ' + where + '.' + ( result.skipped ? ' ' + formatNumber( result.skipped ) + ' could not be moved.' : '' ), result.skipped ? 'warning' : 'success' );
+				if ( single ) {
+					close();
+				} else {
+					load();
+				}
+			} ).catch( function ( err ) {
+				toast( err.message, 'error' );
+				update();
+			} );
+		} );
+
+		load();
 	};
 
 	CmsApp.prototype.confirmDelete = function ( id, onDone ) {

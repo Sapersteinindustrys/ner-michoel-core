@@ -10,8 +10,14 @@
  * The same screen has the alumni invitation: a box for visitors who are not signed in,
  * asking alumni to log in (or make an account) and telling them what they get.
  *
- * Stored in one option, nm_home_banner. Until it is first saved it starts from the old
- * Zoom box's details (live-shiur.php), so the homepage looks the same the day this ships.
+ * Each of the two can be placed: under the welcome on the homepage, above the footer, inside
+ * the footer, or as a popup that shows once on each computer (and again when its words change).
+ *
+ * The same screen also edits the small Zoom line on the homepage. Its link, meeting ID and
+ * schedule stay where they always were (option nm_live_shiur, live-shiur.php), so the
+ * Live Shiur / Zoom screen and this one show the same details.
+ *
+ * Stored in one option, nm_home_banner. Until it is first saved the banner is off.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -44,7 +50,25 @@ function ner_michoel_home_banner_defaults() {
 		'alumni_title'   => '',
 		'alumni_text'    => '',
 		'alumni_button'  => '',
+		'place'          => 'home',
+		'alumni_place'   => 'home',
+		'zoom_on'        => true,
 	);
+}
+
+/** Where the banner or the alumni invitation can show, as the screen offers them. */
+function ner_michoel_home_banner_places() {
+	return array(
+		'home'         => __( 'On the homepage, under the welcome', 'ner-michoel-core' ),
+		'above_footer' => __( 'On every page, just above the footer', 'ner-michoel-core' ),
+		'footer'       => __( 'Inside the footer', 'ner-michoel-core' ),
+		'popup'        => __( 'A popup, once on each computer', 'ner-michoel-core' ),
+	);
+}
+
+/** The Zoom fields this screen edits, kept in nm_live_shiur. */
+function ner_michoel_home_banner_zoom_keys() {
+	return array( 'zoom_link', 'meeting_id', 'schedule' );
 }
 
 /** The alumni invitation's own words, used when its boxes are left empty. */
@@ -57,42 +81,25 @@ function ner_michoel_home_banner_alumni_words() {
 }
 
 /**
- * The banner as saved. Before the first save: the Zoom box's details, so nothing changes on
- * the homepage until someone edits it.
+ * The banner as saved (off until the first save).
  *
  * @return array
  */
 function ner_michoel_home_banner() {
 	$defaults = ner_michoel_home_banner_defaults();
 	$saved    = get_option( 'nm_home_banner', null );
-
 	if ( ! is_array( $saved ) ) {
 		$saved = array();
-		if ( function_exists( 'ner_michoel_get_live_shiur' ) && function_exists( 'ner_michoel_live_shiur_is_set' ) && ner_michoel_live_shiur_is_set() ) {
-			$live  = ner_michoel_get_live_shiur();
-			$lines = array();
-			if ( '' !== $live['schedule'] ) {
-				$lines[] = $live['schedule'];
-			}
-			if ( '' !== $live['meeting_id'] ) {
-				/* translators: %s: a Zoom meeting ID */
-				$lines[] = sprintf( __( 'Meeting ID: %s', 'ner-michoel-core' ), $live['meeting_id'] );
-			}
-			$saved = array(
-				'on'           => true,
-				'kicker'       => __( 'Live Shiur', 'ner-michoel-core' ),
-				'title'        => __( 'Join us on Zoom', 'ner-michoel-core' ),
-				'text'         => implode( "\n", $lines ),
-				'button_label' => '' !== $live['zoom_link'] ? __( 'Join on Zoom', 'ner-michoel-core' ) : '',
-				'button_url'   => $live['zoom_link'],
-			);
-		}
 	}
 
 	$out = array_merge( $defaults, array_intersect_key( $saved, $defaults ) );
 
 	$out['on']            = (bool) $out['on'];
 	$out['alumni_on']     = (bool) $out['alumni_on'];
+	$out['zoom_on']       = (bool) $out['zoom_on'];
+	$places               = ner_michoel_home_banner_places();
+	$out['place']         = isset( $places[ $out['place'] ] ) ? $out['place'] : 'home';
+	$out['alumni_place']  = isset( $places[ $out['alumni_place'] ] ) ? $out['alumni_place'] : 'home';
 	$out['style']         = isset( ner_michoel_home_banner_styles()[ $out['style'] ] ) ? $out['style'] : 'color';
 	$out['logo_id']       = (int) $out['logo_id'];
 	$out['background_id'] = (int) $out['background_id'];
@@ -112,11 +119,13 @@ function ner_michoel_home_banner_image_url( $id, $size = 'large' ) {
 }
 
 /**
- * What the theme prints: the banner (null when it is off or has nothing to say) and the
- * alumni invitation (null when it is off). Pictures as addresses, the alumni words with the
- * site's own words in empty boxes.
+ * What the theme prints: the banner (null when it is off or has nothing to say), the
+ * alumni invitation (null when it is off) and the Zoom line (null when it is off or there is
+ * no link or schedule). Pictures as addresses, the alumni words with the site's own words in
+ * empty boxes. The banner and the invitation each carry 'place' and 'key': a short hash of
+ * the words, which the popup uses to show again when they change.
  *
- * @return array{banner: array|null, alumni: array|null}
+ * @return array{banner: array|null, alumni: array|null, zoom: array|null}
  */
 function ner_michoel_home_banner_public() {
 	$b      = ner_michoel_home_banner();
@@ -135,6 +144,8 @@ function ner_michoel_home_banner_public() {
 		if ( 'image' === $banner['style'] && '' === $banner['background'] ) {
 			$banner['style'] = 'color';
 		}
+		$banner['place'] = $b['place'];
+		$banner['key']   = substr( md5( wp_json_encode( array( $b['kicker'], $b['title'], $b['text'], $b['logo_id'], $b['button_label'], $b['button_url'] ) ) ), 0, 10 );
 	}
 
 	$alumni = null;
@@ -144,18 +155,29 @@ function ner_michoel_home_banner_public() {
 		foreach ( $words as $key => $default ) {
 			$alumni[ substr( $key, 7 ) ] = '' !== trim( $b[ $key ] ) ? $b[ $key ] : $default;
 		}
-		$alumni['url'] = home_url( '/account/' );
+		$alumni['url']   = home_url( '/account/' );
+		$alumni['place'] = $b['alumni_place'];
+		$alumni['key']   = substr( md5( wp_json_encode( array( $alumni['title'], $alumni['text'], $alumni['button'] ) ) ), 0, 10 );
+	}
+
+	$zoom = null;
+	if ( $b['zoom_on'] && function_exists( 'ner_michoel_live_shiur_is_set' ) && ner_michoel_live_shiur_is_set() ) {
+		$zoom = ner_michoel_get_live_shiur();
 	}
 
 	return array(
 		'banner' => $banner,
 		'alumni' => $alumni,
+		'zoom'   => $zoom,
 	);
 }
 
 /** What the Control Panel screen shows when it opens: the values, and each picture's address. */
 function ner_michoel_home_banner_settings_values() {
 	$values                       = ner_michoel_home_banner();
+	if ( function_exists( 'ner_michoel_get_live_shiur' ) ) {
+		$values = array_merge( $values, array_intersect_key( ner_michoel_get_live_shiur(), array_flip( ner_michoel_home_banner_zoom_keys() ) ) );
+	}
 	$values['logo_id_url']        = ner_michoel_home_banner_image_url( $values['logo_id'], 'medium' );
 	$values['background_id_url']  = ner_michoel_home_banner_image_url( $values['background_id'], 'medium' );
 	return $values;
@@ -187,7 +209,7 @@ function ner_michoel_handle_home_banner_rest( WP_REST_Request $request ) {
 
 	$new = ner_michoel_home_banner();
 
-	foreach ( array( 'on', 'alumni_on' ) as $key ) {
+	foreach ( array( 'on', 'alumni_on', 'zoom_on' ) as $key ) {
 		if ( array_key_exists( $key, $body ) ) {
 			$new[ $key ] = (bool) $body[ $key ];
 		}
@@ -198,6 +220,15 @@ function ner_michoel_handle_home_banner_rest( WP_REST_Request $request ) {
 			return new WP_Error( 'nm_banner_style', __( 'Choose one of the designs on the list.', 'ner-michoel-core' ), array( 'status' => 400 ) );
 		}
 		$new['style'] = $style;
+	}
+	foreach ( array( 'place', 'alumni_place' ) as $key ) {
+		if ( isset( $body[ $key ] ) ) {
+			$place = (string) $body[ $key ];
+			if ( ! isset( ner_michoel_home_banner_places()[ $place ] ) ) {
+				return new WP_Error( 'nm_banner_place', __( 'Choose one of the places on the list.', 'ner-michoel-core' ), array( 'status' => 400 ) );
+			}
+			$new[ $key ] = $place;
+		}
 	}
 	foreach ( array( 'kicker', 'title', 'button_label', 'alumni_title', 'alumni_button' ) as $key ) {
 		if ( isset( $body[ $key ] ) ) {
@@ -230,6 +261,16 @@ function ner_michoel_handle_home_banner_rest( WP_REST_Request $request ) {
 	}
 	if ( 'image' === $new['style'] && ! $new['background_id'] ) {
 		return new WP_Error( 'nm_banner_background', __( 'The design “The background picture” needs a background picture. Choose one, or pick another design.', 'ner-michoel-core' ), array( 'status' => 400 ) );
+	}
+
+	// The Zoom line's details live with the Live Shiur / Zoom screen's.
+	$zoom_sent = array_intersect_key( $body, array_flip( ner_michoel_home_banner_zoom_keys() ) );
+	if ( $zoom_sent && function_exists( 'ner_michoel_sanitize_live_shiur' ) ) {
+		$live = ner_michoel_sanitize_live_shiur( array_merge( ner_michoel_get_live_shiur(), $zoom_sent ) );
+		if ( isset( $zoom_sent['zoom_link'] ) && '' !== trim( (string) $zoom_sent['zoom_link'] ) && '' === $live['zoom_link'] ) {
+			return new WP_Error( 'nm_banner_zoom', __( 'The Zoom link is not a web address. Paste the whole link, starting with https://', 'ner-michoel-core' ), array( 'status' => 400 ) );
+		}
+		update_option( 'nm_live_shiur', $live );
 	}
 
 	update_option( 'nm_home_banner', array_intersect_key( $new, ner_michoel_home_banner_defaults() ) );

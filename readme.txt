@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.45
+Stable tag: 0.9.46
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,18 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.46 =
+* New: Homepage Banner screen has a "Zoom line" section (on/off, link, meeting ID, when); the details stay in the Live
+  Shiur / Zoom option. The banner no longer starts from the Zoom box's words (off until saved).
+* New: "Where it shows" for the banner and the alumni box: homepage, above the footer, inside the footer, or a popup
+  shown once on each computer.
+* New: Series Order is a folder tree (Open / Open all, Move into...), checked for loops and name clashes on Save.
+* New: move shiurim between series from Control Panel > Series (Shiurim button) and Control Panel > Shiurim (Series
+  button); route shiur-series.
+* Changed: the series split also splits names written with a spaced dash ("Gemara - Bava Basra"); it still runs only
+  from the Series screen's button, with Undo.
+* Needs ner-michoel-child 0.2.80.
 
 = 0.9.45 =
 * New: Control Panel > Announcements > Homepage Banner (words, button, logo or picture, background picture, 5 designs, on/off;

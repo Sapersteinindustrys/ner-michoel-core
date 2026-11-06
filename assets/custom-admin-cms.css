@@ -759,3 +759,16 @@ body.nm-no-scroll { overflow: hidden; }
 	.nm-settings-repeater-item__body { grid-template-columns: 1fr; }
 	.nm-settings-repeater-item { flex-wrap: wrap; }
 }
+
+/* Moving shiurim to another series (custom-admin-cms.js openMove, includes/series-order.php). */
+.nm-move__foot { flex-wrap: wrap; }
+.nm-move__to { display: flex; flex: 1 1 260px; min-width: 0; align-items: center; gap: 8px; font-weight: 600; color: var(--nm-text-2); }
+.nm-move__to select { flex: 1 1 auto; min-width: 0; }
+.nm-move__to > span { white-space: nowrap; }
+.nm-move__all { display: flex; align-items: center; gap: 8px; margin: 12px 0 6px; font-weight: 600; }
+.nm-move__list { margin: 0; padding: 0; list-style: none; border: 1px solid var(--nm-border); border-radius: 10px; overflow: hidden; }
+.nm-move__row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--nm-border); }
+.nm-move__row:first-child { border-top: 0; }
+.nm-move__row label { display: flex; flex-direction: column; gap: 2px; min-width: 0; cursor: pointer; }
+.nm-move__row label span { color: var(--nm-text-3); font-size: 12px; }
+.nm-move__now { margin: 0 0 8px; }

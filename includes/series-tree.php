@@ -58,6 +58,26 @@ function ner_michoel_series_split_name( $name ) {
 }
 
 /**
+ * The parts of an old series name for the split: written as a path with " / " (as above), or with a
+ * dash that has a space on at least one side, as many of the old names were typed: "Gemara - Bava Basra"
+ * and "Gemara- Bava Basra" are array( 'Gemara', 'Bava Basra' ). A dash inside a word or a number
+ * ("Bava Basra 2a-3b", "5785-86") does not split.
+ *
+ * @return string[]
+ */
+function ner_michoel_series_split_name_loose( $name ) {
+	$name  = html_entity_decode( (string) $name, ENT_QUOTES, 'UTF-8' );
+	$parts = array();
+	foreach ( preg_split( '#\s+/\s+|\s+[-\x{2013}\x{2014}]+\s*|\s*[-\x{2013}\x{2014}]+\s+#u', $name ) as $part ) {
+		$part = trim( (string) preg_replace( '/\s+/u', ' ', $part ) );
+		if ( '' !== $part ) {
+			$parts[] = $part;
+		}
+	}
+	return $parts;
+}
+
+/**
  * A path's parts as one key.
  *
  * @param string[] $parts Parts as split by ner_michoel_series_split_name().
@@ -484,19 +504,23 @@ function ner_michoel_series_split_save_log( array $log ) {
  * How many series still carry a path in their name and are waiting for the split. The ones it left as they are
  * on purpose (listed as skipped) are not counted: pressing the button again would not change them.
  */
-function ner_michoel_series_split_pending() {
+function ner_michoel_series_split_pending( $names = false ) {
 	$log     = ner_michoel_series_split_log();
 	$skipped = array();
 	foreach ( $log['skipped'] as $row ) {
 		$skipped[ (int) $row['id'] ] = true;
 	}
-	$n = 0;
+	$n     = 0;
+	$found = array();
 	foreach ( ner_michoel_series_all_terms() as $term ) {
-		if ( ! (int) $term->parent && ! isset( $skipped[ (int) $term->term_id ] ) && count( ner_michoel_series_split_name( $term->name ) ) > 1 ) {
+		if ( ! (int) $term->parent && ! isset( $skipped[ (int) $term->term_id ] ) && count( ner_michoel_series_split_name_loose( $term->name ) ) > 1 ) {
 			++$n;
+			if ( $names && count( $found ) < 6 ) {
+				$found[] = html_entity_decode( (string) $term->name, ENT_QUOTES, 'UTF-8' );
+			}
 		}
 	}
-	return $n;
+	return $names ? $found : $n;
 }
 
 /**
@@ -534,7 +558,7 @@ function ner_michoel_series_split_run( $seconds = 20, $retry = false ) {
 		if ( (int) $term->parent ) {
 			continue;
 		}
-		$parts = ner_michoel_series_split_name( $term->name );
+		$parts = ner_michoel_series_split_name_loose( $term->name );
 		if ( count( $parts ) > 1 ) {
 			$todo[] = array( $term, $parts );
 		}
@@ -757,6 +781,7 @@ function ner_michoel_series_split_status() {
 	$log = ner_michoel_series_split_log();
 	return array(
 		'pending'  => ner_michoel_series_split_pending(),
+		'examples' => ner_michoel_series_split_pending( true ),
 		'changed'  => count( $log['changed'] ),
 		'created'  => count( $log['created'] ),
 		'skipped'  => $log['skipped'],
