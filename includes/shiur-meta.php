@@ -100,14 +100,112 @@ add_action( 'admin_enqueue_scripts', 'ner_michoel_shiur_meta_box_assets' );
  * were never self-hosted files to begin with — see dev-notes.md).
  */
 function ner_michoel_get_shiur_media_type( $post_id ) {
+	$attachment_id = get_post_meta( $post_id, '_shiur_audio_id', true );
+	// A shiur with an audio file AND a Vimeo link is an audio shiur that also has a video
+	// (ner_michoel_get_shiur_extra_vimeo_id()). Before 2026-11-11 the Vimeo link won and the
+	// audio disappeared from the page (R' Ariel Katz, shiurim 37 and 38).
+	if ( $attachment_id && ! wp_attachment_is( 'video', $attachment_id ) ) {
+		return 'audio';
+	}
 	if ( get_post_meta( $post_id, '_shiur_vimeo_id', true ) ) {
 		return 'video-embed';
 	}
-	$attachment_id = get_post_meta( $post_id, '_shiur_audio_id', true );
 	if ( ! $attachment_id ) {
 		return 'audio';
 	}
 	return wp_attachment_is( 'video', $attachment_id ) ? 'video' : 'audio';
+}
+
+/**
+ * The Vimeo video of an audio shiur that has both (one post for the audio and its
+ * video, like the Add Shiur form: an audio file and a Vimeo link). '' when the shiur
+ * has no Vimeo link, or when the Vimeo video is the shiur itself (no audio file).
+ */
+function ner_michoel_get_shiur_extra_vimeo_id( $post_id ) {
+	if ( 'audio' !== ner_michoel_get_shiur_media_type( $post_id ) ) {
+		return '';
+	}
+	return ner_michoel_get_shiur_vimeo_id( $post_id );
+}
+
+/**
+ * A Vimeo video's number (and its private-link key, for an unlisted video) from
+ * whatever was pasted in the Vimeo box: the number itself, a vimeo.com link, a
+ * player.vimeo.com link, or Vimeo's whole embed code. "1243759820", or
+ * "1243759820/abc123def0" for an unlisted video. '' when nothing in it is a Vimeo video.
+ */
+function ner_michoel_parse_vimeo_id( $text ) {
+	$text = trim( html_entity_decode( (string) $text, ENT_QUOTES, 'UTF-8' ) );
+	if ( '' === $text ) {
+		return '';
+	}
+	if ( preg_match( '/^\d{5,12}(?:\/[0-9a-f]{6,20})?$/i', $text ) ) {
+		return strtolower( $text );
+	}
+	if ( preg_match( '#player\.vimeo\.com/video/(\d{5,12})([^\s"\'<>]*)#i', $text, $m ) || preg_match( '#vimeo\.com/(?:[^\s"\'<>]*?/)?(\d{5,12})((?:/[0-9a-f]{6,20})?[^\s"\'<>]*)#i', $text, $m ) ) {
+		$id   = $m[1];
+		$rest = $m[2];
+		if ( preg_match( '#^/([0-9a-f]{6,20})(?:[/?\#]|$)#i', $rest, $h ) || preg_match( '/[?&](?:amp;)?h=([0-9a-f]{6,20})/i', $rest, $h ) ) {
+			return $id . '/' . strtolower( $h[1] );
+		}
+		return $id;
+	}
+	return '';
+}
+
+/**
+ * The Vimeo box is cleaned whenever it is saved (the Control Panel's shiur form, the
+ * importer, wp-admin): a pasted Vimeo link or embed code is kept as the video's number,
+ * so the player address is always right. Anything else (a Zoom recording's link, say)
+ * is kept as typed, and the page shows it as a "Watch the video" link
+ * (ner_michoel_shiur_video_embed()).
+ */
+function ner_michoel_sanitize_vimeo_meta( $value ) {
+	$parsed = ner_michoel_parse_vimeo_id( $value );
+	if ( '' !== $parsed ) {
+		return $parsed;
+	}
+	$value = trim( html_entity_decode( (string) $value, ENT_QUOTES, 'UTF-8' ) );
+	if ( preg_match( '#https?://[^\s"\'<>]+#i', $value, $m ) ) {
+		return esc_url_raw( $m[0] );
+	}
+	return sanitize_text_field( $value );
+}
+add_filter( 'sanitize_post_meta__shiur_vimeo_id', 'ner_michoel_sanitize_vimeo_meta' );
+
+/**
+ * How to show a shiur's video from the Vimeo box: array( 'type' => 'vimeo', 'src' =>
+ * player address ) for a Vimeo video, array( 'type' => 'link', 'url' => ... ) for another
+ * video address (a Zoom recording), or null when the box is empty or holds neither.
+ */
+function ner_michoel_shiur_video_embed( $stored ) {
+	$stored = trim( (string) $stored );
+	if ( '' === $stored ) {
+		return null;
+	}
+	$vimeo = ner_michoel_parse_vimeo_id( $stored );
+	if ( '' !== $vimeo ) {
+		return array( 'type' => 'vimeo', 'src' => ner_michoel_vimeo_player_src( $vimeo ) );
+	}
+	if ( preg_match( '#^https?://#i', $stored ) ) {
+		return array( 'type' => 'link', 'url' => $stored );
+	}
+	return null;
+}
+
+/**
+ * The address for Vimeo's player for a stored video ("123" or "123/key").
+ */
+function ner_michoel_vimeo_player_src( $vimeo_id ) {
+	$vimeo_id = (string) $vimeo_id;
+	if ( ! preg_match( '/^(\d+)(?:\/([0-9a-f]+))?$/i', $vimeo_id, $m ) ) {
+		$m = array( '', rawurlencode( $vimeo_id ), '' );
+	}
+	$url = 'https://player.vimeo.com/video/' . $m[1] . '?title=0&byline=0&portrait=0';
+	if ( ! empty( $m[2] ) ) {
+		$url .= '&h=' . $m[2];
+	}
+	return $url;
 }
 
 /**
@@ -117,7 +215,8 @@ function ner_michoel_get_shiur_media_type( $post_id ) {
  */
 function ner_michoel_get_shiur_vimeo_id( $post_id ) {
 	$vimeo_id = get_post_meta( $post_id, '_shiur_vimeo_id', true );
-	return $vimeo_id ? sanitize_text_field( $vimeo_id ) : '';
+	// Not sanitize_text_field(): it takes the %20s out of a pasted video link. Callers escape it.
+	return $vimeo_id ? trim( wp_strip_all_tags( (string) $vimeo_id ) ) : '';
 }
 
 /**

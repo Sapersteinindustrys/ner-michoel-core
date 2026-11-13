@@ -164,3 +164,72 @@ function ner_michoel_summary_read_pdf( $attachment_id ) {
 
 	return array( 'status' => 'ok', 'bytes' => $body );
 }
+
+/* ------------------------------------------------------------------
+ * One-time redo of Hebrew summaries (R' Ariel Katz, 2026-11-10).
+ *
+ * Summaries read from Hebrew PDFs before pdf-first-line.php put Hebrew
+ * runs in reading order came out backwards ("ז"פשת" for "תשפ"ז"). Once,
+ * after this update, every Summary the batch filled ('filled') that has
+ * Hebrew in it is read again from its PDF, a few at a time in the
+ * background. A Summary typed by hand was never 'filled', so it is not
+ * touched; a PDF that can't be read now keeps the Summary it has.
+ * ------------------------------------------------------------------ */
+
+define( 'NER_MICHOEL_SUMMARY_REDO_OPTION', 'nm_summary_rtl_redo' );
+
+/** Lists the posts to read again, once (staff page load or cron), and starts the job. */
+function ner_michoel_summary_redo_start() {
+	if ( false !== get_option( NER_MICHOEL_SUMMARY_REDO_OPTION, false ) ) {
+		return;
+	}
+	global $wpdb;
+	$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		"SELECT p.ID, p.post_excerpt FROM {$wpdb->posts} p
+		INNER JOIN {$wpdb->postmeta} r ON r.post_id = p.ID AND r.meta_key = '_nm_summary_result' AND r.meta_value = 'filled'
+		WHERE p.post_type IN ('written_shiur','alumni_shiur') AND p.post_excerpt <> ''"
+	);
+	$ids = array();
+	foreach ( (array) $rows as $row ) {
+		if ( preg_match( '/[\x{0590}-\x{05FF}]/u', (string) $row->post_excerpt ) ) {
+			$ids[] = (int) $row->ID;
+		}
+	}
+	update_option( NER_MICHOEL_SUMMARY_REDO_OPTION, array( 'ids' => $ids, 'done' => 0, 'changed' => 0, 'started' => time() ), false );
+	if ( $ids && ! wp_next_scheduled( 'nm_summary_rtl_redo' ) ) {
+		wp_schedule_single_event( time() + 30, 'nm_summary_rtl_redo' );
+	}
+}
+add_action( 'admin_init', 'ner_michoel_summary_redo_start' );
+
+/** Works for up to 20 seconds, then comes back in a minute until the list is empty. */
+function ner_michoel_summary_redo_tick() {
+	$state = get_option( NER_MICHOEL_SUMMARY_REDO_OPTION );
+	if ( ! is_array( $state ) || empty( $state['ids'] ) ) {
+		return;
+	}
+	$deadline = time() + 20;
+	while ( $state['ids'] && time() < $deadline ) {
+		$post_id = (int) array_shift( $state['ids'] );
+		$pdf_id  = (int) get_post_meta( $post_id, '_written_pdf_id', true );
+		$read    = $pdf_id ? ner_michoel_summary_read_pdf( $pdf_id ) : array( 'status' => 'none' );
+		if ( 'ok' === $read['status'] ) {
+			$line = ner_michoel_pdf_first_line( $read['bytes'] );
+			if ( '' !== $line && get_post_field( 'post_excerpt', $post_id ) !== $line ) {
+				global $wpdb;
+				$wpdb->update( $wpdb->posts, array( 'post_excerpt' => $line ), array( 'ID' => $post_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+				clean_post_cache( $post_id );
+				++$state['changed'];
+			}
+		}
+		unset( $read );
+		++$state['done'];
+	}
+	update_option( NER_MICHOEL_SUMMARY_REDO_OPTION, $state, false );
+	if ( $state['ids'] ) {
+		wp_schedule_single_event( time() + 60, 'nm_summary_rtl_redo' );
+	} elseif ( $state['changed'] && function_exists( 'ner_michoel_shiur_index_schedule' ) ) {
+		ner_michoel_shiur_index_schedule(); // the written library's search carries the summaries
+	}
+}
+add_action( 'nm_summary_rtl_redo', 'ner_michoel_summary_redo_tick' );

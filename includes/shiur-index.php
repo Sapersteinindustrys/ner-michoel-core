@@ -112,6 +112,8 @@ function ner_michoel_shiur_index_build( $version, &$formats = null ) {
 	// (shiur-formats.php). Only a shiur that has its file counts as a format.
 	$kinds   = array();
 	$members = array();
+	$both    = array(); // audio shiurim that also have their video on the same post
+
 	foreach ( (array) $posts as $row ) {
 		$id     = (int) $row[0];
 		$values = isset( $meta[ $id ] ) ? $meta[ $id ] : array();
@@ -119,13 +121,23 @@ function ner_michoel_shiur_index_build( $version, &$formats = null ) {
 		if ( 'written_shiur' === $row[4] ) {
 			$kind     = 'w';
 			$has_file = ! empty( $values['_written_pdf_id'] );
-		} elseif ( ! empty( $values['_shiur_vimeo_id'] ) ) {
-			$kind     = 'v';
-			$has_file = true;
 		} else {
 			$attachment = isset( $values['_shiur_audio_id'] ) ? (int) $values['_shiur_audio_id'] : 0;
-			$kind       = ( $attachment && isset( $video_files[ $attachment ] ) ) ? 'v' : 'a';
-			$has_file   = (bool) $attachment;
+			$is_audio   = $attachment && ! isset( $video_files[ $attachment ] );
+			if ( $is_audio ) {
+				// An audio file wins over the Vimeo box: the shiur is audio, with its video too.
+				$kind     = 'a';
+				$has_file = true;
+				if ( ! empty( $values['_shiur_vimeo_id'] ) ) {
+					$both[ $id ] = true;
+				}
+			} elseif ( ! empty( $values['_shiur_vimeo_id'] ) ) {
+				$kind     = 'v';
+				$has_file = true;
+			} else {
+				$kind     = $attachment ? 'v' : 'a';
+				$has_file = (bool) $attachment;
+			}
 		}
 
 		$kinds[ $id ] = $kind;
@@ -143,6 +155,20 @@ function ner_michoel_shiur_index_build( $version, &$formats = null ) {
 	}
 	$formats = ner_michoel_shiur_formats_group( $members );
 	unset( $members );
+	// One post with audio and video is two formats of itself: Listen and Watch on its own page.
+	foreach ( array_keys( $both ) as $both_id ) {
+		$group = isset( $formats[ $both_id ] ) ? $formats[ $both_id ] : array( 'a' => $both_id );
+		if ( ! isset( $group['v'] ) ) {
+			$group['v'] = $both_id;
+		}
+		uksort(
+			$group,
+			function ( $a, $b ) {
+				return strpos( 'avw', $a ) - strpos( 'avw', $b );
+			}
+		);
+		$formats[ $both_id ] = $group;
+	}
 
 	$flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
 	$parts = array();

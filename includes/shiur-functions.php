@@ -152,8 +152,10 @@ function ner_michoel_build_track_queue( $shiurim ) {
 		$speaker_name  = ( $speaker_terms && ! is_wp_error( $speaker_terms ) ) ? $speaker_terms[0]->name : '';
 		$queue[]       = array(
 			'id'       => $shiur->ID,
-			'title'    => get_the_title( $shiur ),
-			'speaker'  => $speaker_name,
+			// Plain text for the player, which shows it as text: get_the_title() would send
+			// "Esav&#8217;s", and the player would print the "&#8217;" (R' Ariel Katz, 2026-11-08).
+			'title'    => html_entity_decode( get_the_title( $shiur ), ENT_QUOTES, 'UTF-8' ),
+			'speaker'  => html_entity_decode( $speaker_name, ENT_QUOTES, 'UTF-8' ),
 			'src'      => $audio_url,
 			'duration' => ner_michoel_get_shiur_duration( $shiur->ID ),
 			'cover'    => ner_michoel_get_shiur_art_url( $shiur, 'thumbnail' ),

@@ -3,7 +3,7 @@
  * Plugin Name:       Ner Michoel Core
  * Plugin URI:
  * Description:       Site functionality (custom post types, forms, integrations) for the Ner Michoel rebuild. Kept independent of the theme so content/data survive a future redesign.
- * Version:           0.9.46
+ * Version:           0.9.47
  * Requires at least: 6.0
  * Requires PHP:       7.4
  * Author:             Tomo
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NER_MICHOEL_CORE_VERSION', '0.9.46' );
+define( 'NER_MICHOEL_CORE_VERSION', '0.9.47' );
 define( 'NER_MICHOEL_CORE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'NER_MICHOEL_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -82,6 +82,7 @@ require_once NER_MICHOEL_CORE_PATH . 'includes/library-import.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/pdf-first-line.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/written-summary-batch.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/shiur-formats.php';
+require_once NER_MICHOEL_CORE_PATH . 'includes/audio-video-combine.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/shiur-index.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/shiur-queue.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/bunny-storage.php';
@@ -96,6 +97,7 @@ require_once NER_MICHOEL_CORE_PATH . 'includes/forms.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/updates.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/media-relay.php';
 require_once NER_MICHOEL_CORE_PATH . 'includes/media-delivery.php';
+require_once NER_MICHOEL_CORE_PATH . 'includes/app-api.php';
 
 /**
  * The News & Events page (page-templates/news-events.php in the

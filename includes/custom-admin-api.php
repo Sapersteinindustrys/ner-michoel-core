@@ -70,7 +70,7 @@ function ner_michoel_cms_registry() {
 				'series'     => array( 'type' => 'taxonomy', 'label' => __( 'Series', 'ner-michoel-core' ), 'taxonomy' => 'series', 'picker' => 'recent', 'hint' => __( 'The group it belongs to. Type to search; the ones you used most recently are at the top.', 'ner-michoel-core' ) ),
 				'topics'     => array( 'type' => 'taxonomy_multi', 'label' => __( 'Topics', 'ner-michoel-core' ), 'taxonomy' => 'topic', 'hint' => __( 'Optional. Tick any subjects that fit.', 'ner-michoel-core' ) ),
 				'audio'      => array( 'type' => 'media', 'label' => __( 'Audio / Video File', 'ner-michoel-core' ), 'meta' => '_shiur_audio_id', 'file_tags' => true, 'hint' => __( 'Upload a new file, or pick one you’ve already uploaded. The length is filled in for you. If the file has its own tags, an empty Title, Speaker and Series are filled in from them (title, artist, album); without a title tag the Title comes from the file’s name.', 'ner-michoel-core' ) ),
-				'vimeo_id'   => array( 'type' => 'text', 'label' => __( 'Vimeo ID (externally-hosted video, no file upload)', 'ner-michoel-core' ), 'meta' => '_shiur_vimeo_id', 'hint' => __( 'Only for a video kept on Vimeo: the number at the end of its link. Leave empty otherwise.', 'ner-michoel-core' ) ),
+				'vimeo_id'   => array( 'type' => 'text', 'label' => __( 'Video (Vimeo link)', 'ner-michoel-core' ), 'meta' => '_shiur_vimeo_id', 'hint' => __( 'The shiur\'s video on Vimeo: paste its link, its number, or Vimeo\'s embed code. With an audio file above, the shiur has both (Listen and Watch on one page). Another video link, such as a Zoom recording, shows as a "Watch the video" link. Leave empty when there is no video.', 'ner-michoel-core' ) ),
 				'duration'   => array( 'type' => 'readonly', 'label' => __( 'Duration (set from the file)', 'ner-michoel-core' ), 'meta' => '_shiur_duration' ),
 				'dedication' => array( 'type' => 'textarea', 'label' => __( 'Dedication (optional)', 'ner-michoel-core' ), 'meta' => '_shiur_dedication', 'rows' => 3 ),
 				'thumbnail'  => array( 'type' => 'image', 'label' => __( 'Featured Image', 'ner-michoel-core' ), 'target' => 'thumbnail' ),
@@ -906,6 +906,10 @@ function ner_michoel_cms_save_post( $id, $config, WP_REST_Request $request ) {
 			}
 		} elseif ( isset( $field['meta'] ) && ! isset( $field['target'] ) ) {
 			$sanitized = 'textarea' === $field['type'] ? sanitize_textarea_field( (string) $value ) : sanitize_text_field( (string) $value );
+			// The video box takes a Vimeo link or Vimeo's whole embed code: read before the tags are stripped.
+			if ( '_shiur_vimeo_id' === $field['meta'] && function_exists( 'ner_michoel_sanitize_vimeo_meta' ) ) {
+				$sanitized = ner_michoel_sanitize_vimeo_meta( (string) $value );
+			}
 			if ( ! empty( $field['maxlength'] ) ) {
 				$sanitized = mb_substr( $sanitized, 0, (int) $field['maxlength'] );
 			}

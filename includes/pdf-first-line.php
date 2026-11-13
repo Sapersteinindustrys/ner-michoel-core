@@ -1158,10 +1158,14 @@ function ner_michoel_pdf_top_line( $items ) {
 	usort(
 		$line,
 		function ( $a, $b ) use ( $rtl ) {
-			if ( $a['x'] === $b['x'] ) {
+			// Right to left by each run's right edge: a lone space drawn just left of a letter's
+			// start would otherwise come before that letter ("תב א" for "תבא").
+			$ka = $rtl ? max( $a['x'], $a['xend'] ) : $a['x'];
+			$kb = $rtl ? max( $b['x'], $b['xend'] ) : $b['x'];
+			if ( $ka === $kb ) {
 				return 0;
 			}
-			return ( $rtl ? $a['x'] > $b['x'] : $a['x'] < $b['x'] ) ? -1 : 1;
+			return ( $rtl ? $ka > $kb : $ka < $kb ) ? -1 : 1;
 		}
 	);
 
@@ -1179,8 +1183,15 @@ function ner_michoel_pdf_top_line( $items ) {
 				$text .= ' ';
 			}
 		}
-		$text .= $item['text'];
+		// A Hebrew line: PDF writers put each run's letters in the order they sit on the page,
+		// left to right, so a run read as stored comes out backwards ("ז"פשת" for "תשפ"ז").
+		// The runs are already taken right to left; each run is turned round here, and the
+		// numbers and English words inside the line are put back the right way round below.
+		$text .= $rtl ? ner_michoel_pdf_reverse_run( $item['text'] ) : $item['text'];
 		$prev  = $item;
+	}
+	if ( $rtl ) {
+		$text = ner_michoel_pdf_fix_ltr_inside_rtl( $text );
 	}
 
 	$text = preg_replace( '/[\x00-\x1F\x7F]+/', ' ', $text );
@@ -1192,4 +1203,35 @@ function ner_michoel_pdf_top_line( $items ) {
 	}
 
 	return $text;
+}
+
+/**
+ * One run of a Hebrew line, from page order (left to right) to reading order: the
+ * characters reversed. Brackets are not swapped: the PDF already gives the bracket
+ * as it is meant in reading order (checked on the Chayei Sarah 5787 sheet, "(ע״ר)").
+ */
+function ner_michoel_pdf_reverse_run( $text ) {
+	$chars = preg_split( '//u', (string) $text, -1, PREG_SPLIT_NO_EMPTY );
+	if ( ! is_array( $chars ) || count( $chars ) < 2 ) {
+		return (string) $text;
+	}
+	return implode( '', array_reverse( $chars ) );
+}
+
+/**
+ * After a Hebrew line was turned round, numbers and English words in it read
+ * backwards ("5787" as "7875"). Each stretch of Latin letters and digits (with the
+ * spaces and marks between them, as in "Rabbi Klein" or "29a" or "5:30") is turned
+ * back. Hebrew is not touched.
+ */
+function ner_michoel_pdf_fix_ltr_inside_rtl( $text ) {
+	$fixed = preg_replace_callback(
+		'/[A-Za-z0-9\x{00C0}-\x{024F}](?:[A-Za-z0-9\x{00C0}-\x{024F} .,:\/\-\'%]*[A-Za-z0-9\x{00C0}-\x{024F}])?/u',
+		function ( $m ) {
+			$chars = preg_split( '//u', $m[0], -1, PREG_SPLIT_NO_EMPTY );
+			return implode( '', array_reverse( $chars ) );
+		},
+		(string) $text
+	);
+	return is_string( $fixed ) ? $fixed : (string) $text;
 }

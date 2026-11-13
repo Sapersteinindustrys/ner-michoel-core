@@ -111,8 +111,42 @@ function ner_michoel_mazal_tov_review_url( $args = array() ) {
 /* ================================================================== */
 
 /**
+ * The name as the Years List spells it, when the list has exactly this name (same words in
+ * the same order, capitals aside) once or always written the same way; otherwise the typed
+ * name with a capital at the start of each word (ner_michoel_mazal_tov_caps()). "moshe cohen"
+ * becomes "Moshe Cohen", or "Moshe McAllister" when that is how the list has him.
+ */
+function ner_michoel_mazal_tov_list_spelling( $name ) {
+	$name = trim( (string) $name );
+	if ( '' === $name ) {
+		return '';
+	}
+	$typed = function_exists( 'ner_michoel_years_name_tokens' ) ? implode( ' ', ner_michoel_years_name_tokens( $name ) ) : '';
+	if ( '' !== $typed && function_exists( 'ner_michoel_years_lookup' ) ) {
+		$found = ner_michoel_years_lookup( array( $name ) );
+		$pick  = '';
+		foreach ( $found['strong'] as $item ) {
+			if ( implode( ' ', ner_michoel_years_name_tokens( $item['name'] ) ) !== $typed ) {
+				continue; // the same boy written the other way round ("Cohen, Moshe"): keep the visitor's order
+			}
+			if ( '' !== $pick && $pick !== $item['name'] ) {
+				$pick = '';
+				break;
+			}
+			$pick = trim( (string) $item['name'] );
+		}
+		if ( '' !== $pick ) {
+			return $pick;
+		}
+	}
+	return function_exists( 'ner_michoel_mazal_tov_caps' ) ? ner_michoel_mazal_tov_caps( $name ) : $name;
+}
+
+/**
  * Posts: nm_mt_name, nm_mt_what (required), nm_mt_type (a Type's id, optional),
- * nm_mt_from_name, nm_mt_from_email (required, so the admin can ask a question),
+ * nm_mt_from_name, nm_mt_from_email (optional since 2026-11-11, R' Ariel Katz: a signed-in
+ * visitor's own name and email are used when they are left empty; an email that is given
+ * must be a real address),
  * nm_mt_hp (the trap), the nonce and the bot check's fields. Sends the visitor back
  * with ?nm_mazal_tov=sent | error | verify | slow.
  */
@@ -143,6 +177,22 @@ function ner_michoel_handle_mazal_tov_share() {
 	$from_email = isset( $_POST['nm_mt_from_email'] ) ? sanitize_email( wp_unslash( $_POST['nm_mt_from_email'] ) ) : '';
 	$name       = function_exists( 'mb_substr' ) ? mb_substr( $name, 0, 120 ) : substr( $name, 0, 120 );
 
+	// Signed in (an alumnus with an account): his own name and email, when he left them empty.
+	if ( is_user_logged_in() ) {
+		$me = wp_get_current_user();
+		if ( '' === $from_name ) {
+			$from_name = sanitize_text_field( (string) $me->display_name );
+		}
+		if ( '' === $from_email && is_email( $me->user_email ) ) {
+			$from_email = sanitize_email( $me->user_email );
+		}
+	}
+	$from_name = function_exists( 'mb_substr' ) ? mb_substr( $from_name, 0, 120 ) : substr( $from_name, 0, 120 );
+
+	// The name as the Years List writes it when he is in it (capitals and all), otherwise with
+	// capitals added, so the review screen and the email show it the way the site will.
+	$name = ner_michoel_mazal_tov_list_spelling( $name );
+
 	// The wording comes from the admin's preset for the kind of simcha the visitor picked: the visitor
 	// gives the name only. The name goes in the preset's first blank (or in front of a wording with no
 	// blank), and any other blank is left for the admin to fill in on the review screen. Only a site
@@ -166,7 +216,7 @@ function ner_michoel_handle_mazal_tov_share() {
 		$free_text = $what;
 	}
 
-	if ( '' === $name || '' === $what || '' === $from_name || ! is_email( $from_email ) || ner_michoel_mazal_tov_has_blank( $name . ' ' . $free_text ) ) {
+	if ( '' === $name || '' === $what || ( '' !== $from_email && ! is_email( $from_email ) ) || ner_michoel_mazal_tov_has_blank( $name . ' ' . $free_text ) ) {
 		$back( 'error' );
 	}
 
@@ -212,8 +262,12 @@ function ner_michoel_handle_mazal_tov_share() {
 		wp_set_object_terms( $post_id, array( $type_id ), 'mazal_tov_type' );
 	}
 	update_post_meta( $post_id, '_nm_mt_submitted', 1 );
-	update_post_meta( $post_id, '_nm_mt_from_name', $from_name );
-	update_post_meta( $post_id, '_nm_mt_from_email', $from_email );
+	if ( '' !== $from_name ) {
+		update_post_meta( $post_id, '_nm_mt_from_name', $from_name );
+	}
+	if ( '' !== $from_email ) {
+		update_post_meta( $post_id, '_nm_mt_from_email', $from_email );
+	}
 
 	ner_michoel_mazal_tov_email_admin( $post_id, $from_name, $from_email );
 
@@ -236,7 +290,9 @@ function ner_michoel_mazal_tov_email_admin( $post_id, $from_name, $from_email ) 
 		__( 'How it will look:', 'ner-michoel-core' ),
 		( '' !== $type ? '[' . $type . '] ' : '' ) . $look,
 		'',
-		sprintf( /* translators: 1: name, 2: email */ __( 'Sent by: %1$s <%2$s>', 'ner-michoel-core' ), $from_name, $from_email ),
+		( '' === $from_name && '' === $from_email )
+			? __( 'Sent by: someone who did not leave a name or email.', 'ner-michoel-core' )
+			: sprintf( /* translators: 1: name, 2: email */ __( 'Sent by: %1$s <%2$s>', 'ner-michoel-core' ), '' !== $from_name ? $from_name : __( 'no name given', 'ner-michoel-core' ), '' !== $from_email ? $from_email : __( 'no email given', 'ner-michoel-core' ) ),
 		'',
 		__( 'Approve it, change it or block it here:', 'ner-michoel-core' ),
 		ner_michoel_mazal_tov_review_url(),
@@ -246,7 +302,7 @@ function ner_michoel_mazal_tov_email_admin( $post_id, $from_name, $from_email ) 
 		get_option( 'admin_email' ),
 		sprintf( /* translators: 1: site name, 2: the headline */ __( '[%1$s] Mazal Tov to review: %2$s', 'ner-michoel-core' ), get_bloginfo( 'name' ), $look ),
 		implode( "\n", $lines ),
-		array( 'Reply-To: ' . $from_name . ' <' . $from_email . '>' )
+		is_email( $from_email ) ? array( 'Reply-To: ' . str_replace( array( '"', '<', '>', "\r", "\n" ), '', $from_name ) . ' <' . $from_email . '>' ) : array()
 	);
 }
 
@@ -455,8 +511,18 @@ function ner_michoel_render_mazal_tov_review_page() {
 			// Same rules as ner_michoel_mazal_tov_compose_title() / _parts(): {name} in the words is where the name goes.
 			var NAME_RE = /\{\s*name\s*\}/i;
 			var BLANK_RE = /_{2,}|\{(?!\s*name\s*\})[^{}]{0,60}\}/i;
+			// Same as ner_michoel_mazal_tov_caps(): a capital at the start of each word (and after a hyphen), "ben" / "bas" / "bat" / "bar" between names kept small.
+			function caps( text ) {
+				var words = text.split( /(\s+)/ );
+				return words.map( function ( word, i ) {
+					if ( ! word.trim() || ( i > 0 && i < words.length - 1 && /^(ben|bas|bat|bar)$/i.test( word ) ) ) {
+						return word;
+					}
+					return word.replace( /(^|-)([^A-Za-z\u00C0-\u024F\u0590-\u05FF]*)([a-z\u00DF-\u00FF])/g, function ( m, a, b, c ) { return a + b + c.toUpperCase(); } );
+				} ).join( '' );
+			}
 			function update( form ) {
-				var lead = ( field( form, 'relationship' ) + ' ' + field( form, 'name' ) ).trim();
+				var lead = ( caps( field( form, 'relationship' ) ) + ' ' + caps( field( form, 'name' ) ) ).trim();
 				var years = field( form, 'years' );
 				if ( lead && years ) {
 					lead += ' (' + years + ')';

@@ -255,7 +255,7 @@ function ner_michoel_run_discovery_tick() {
 
 	$page = (int) get_option( 'nm_import_discovery_page', 1 );
 
-	if ( $page > NER_MICHOEL_IMPORT_TOTAL_PAGES ) {
+	if ( $page > ner_michoel_import_total_pages() ) {
 		update_option( 'nm_import_discovery_done', true );
 		return;
 	}
@@ -269,6 +269,9 @@ function ner_michoel_run_discovery_tick() {
 	);
 
 	if ( ! is_wp_error( $response ) && 200 === wp_remote_retrieve_response_code( $response ) ) {
+		if ( 1 === $page ) {
+			ner_michoel_import_note_total( wp_remote_retrieve_body( $response ) );
+		}
 		$items = ner_michoel_extract_listing_items( wp_remote_retrieve_body( $response ) );
 		ner_michoel_queue_discovered_items( $items );
 		update_option( 'nm_import_discovery_page', $page + 1 );
@@ -551,15 +554,19 @@ function ner_michoel_process_queue_row( $row ) {
 			wp_set_object_terms( $post_id, array( $speaker_id ), 'speaker' );
 		}
 	}
-	if ( $row->series && function_exists( 'ner_michoel_sample_content_get_or_create_term' ) ) {
-		$series_id = ner_michoel_sample_content_get_or_create_term( $row->series, 'series' );
+	// The series as the tree is today: a folder that was moved is found by its last part, and a video
+	// goes with its audio (ner_michoel_import_series_for_row()).
+	if ( $row->series || 'video' === $media_type ) {
+		$series_id = ner_michoel_import_series_for_row( $row );
 		if ( $series_id ) {
 			wp_set_object_terms( $post_id, array( $series_id ), 'series' );
 		}
 	}
 	// Topics from the old site's categories in the series name (topics.php).
-	if ( $row->series && function_exists( 'ner_michoel_add_topics_from_series' ) ) {
-		ner_michoel_add_topics_from_series( $post_id, $row->series );
+	// A video filed only under "Shiurim Videos" takes them from the series it was put in.
+	$topic_path = ( ! empty( $series_id ) && ner_michoel_import_is_video_bucket( $row->series ) && function_exists( 'ner_michoel_series_label' ) ) ? html_entity_decode( ner_michoel_series_label( (int) $series_id ), ENT_QUOTES, 'UTF-8' ) : $row->series;
+	if ( $topic_path && function_exists( 'ner_michoel_add_topics_from_series' ) ) {
+		ner_michoel_add_topics_from_series( $post_id, $topic_path );
 	}
 
 	if ( 'pdf' === $media_type ) {
@@ -819,7 +826,13 @@ function ner_michoel_run_new_check_tick() {
 	$added = 0;
 	$error = '';
 
-	for ( $page = 1; $page <= NER_MICHOEL_IMPORT_CHECK_PAGES; $page++ ) {
+	// Newest first. It reads on while a page still has shiurim that are not in the queue, so a run of
+	// more than 50 new ones (the importer paused for a while, a week of uploads at once) is not left
+	// with a gap. A long run carries on from its page on the next check.
+	$page     = max( 1, (int) get_option( 'nm_import_check_page', 1 ) );
+	$deadline = time() + ner_michoel_import_tick_seconds();
+	$finished = false;
+	while ( time() < $deadline ) {
 		$response = wp_remote_get(
 			ner_michoel_import_listing_url( $page ),
 			array(
@@ -833,8 +846,20 @@ function ner_michoel_run_new_check_tick() {
 			break;
 		}
 
-		$added += ner_michoel_queue_discovered_items( ner_michoel_extract_listing_items( wp_remote_retrieve_body( $response ) ) );
+		$body = wp_remote_retrieve_body( $response );
+		if ( 1 === $page ) {
+			ner_michoel_import_note_total( $body );
+		}
+		$new    = ner_michoel_queue_discovered_items( ner_michoel_extract_listing_items( $body ) );
+		$added += $new;
+		if ( ( $page >= NER_MICHOEL_IMPORT_CHECK_PAGES && 0 === $new ) || $page >= ner_michoel_import_total_pages() ) {
+			$finished = true;
+			break;
+		}
+		++$page;
+		sleep( 1 );
 	}
+	update_option( 'nm_import_check_page', $finished || $error ? 1 : $page, false );
 
 	update_option( 'nm_import_last_check', time() );
 	update_option( 'nm_import_last_check_added', $added );
@@ -954,7 +979,7 @@ function ner_michoel_register_import_control_route() {
 			'args'                => array(
 				'action' => array(
 					'required' => true,
-					'enum'     => array( 'start', 'pause', 'reset', 'status' ),
+					'enum'     => array( 'start', 'pause', 'reset', 'status', 'find_missing' ),
 				),
 			),
 		)
@@ -965,7 +990,9 @@ add_action( 'rest_api_init', 'ner_michoel_register_import_control_route' );
 function ner_michoel_handle_import_control_rest( WP_REST_Request $request ) {
 	$action = $request->get_param( 'action' );
 
-	if ( 'status' !== $action ) {
+	if ( 'find_missing' === $action ) {
+		ner_michoel_import_find_missing();
+	} elseif ( 'status' !== $action ) {
 		ner_michoel_apply_import_action( $action );
 	}
 
@@ -974,7 +1001,8 @@ function ner_michoel_handle_import_control_rest( WP_REST_Request $request ) {
 			'running'            => ner_michoel_import_is_running(),
 			'discovery_page'     => (int) get_option( 'nm_import_discovery_page', 1 ),
 			'discovery_done'     => (bool) get_option( 'nm_import_discovery_done' ),
-			'total_pages'        => (int) NER_MICHOEL_IMPORT_TOTAL_PAGES,
+			'total_pages'        => ner_michoel_import_total_pages(),
+			'find_missing'       => get_option( 'nm_import_find_missing', null ),
 			'counts'             => ner_michoel_import_counts(),
 			'last_discovery_error' => get_option( 'nm_import_last_discovery_error', '' ),
 			'summary_pending'    => ner_michoel_summary_batch_pending_count(),
@@ -1026,7 +1054,7 @@ function ner_michoel_render_library_import_page() {
 							/* translators: 1: current page, 2: total pages */
 							esc_html__( 'Page %1$d of %2$d', 'ner-michoel-core' ),
 							$disc_page,
-							(int) NER_MICHOEL_IMPORT_TOTAL_PAGES
+							ner_michoel_import_total_pages()
 						);
 					}
 					?>
@@ -1060,9 +1088,503 @@ function ner_michoel_render_library_import_page() {
 		<p class="description"><?php esc_html_e( 'Relies on WP-Cron, which fires on site visits — a real system cron hitting wp-cron.php periodically keeps this moving even with low admin traffic.', 'ner-michoel-core' ); ?></p>
 
 		<?php
+		// Find missing shiurim, and videos with their audio (below).
+		ner_michoel_render_import_tools_card();
+
 		// Clean titles for the files already in the library (includes/tidy-titles.php).
 		if ( function_exists( 'ner_michoel_render_tidy_titles_card' ) ) {
 			ner_michoel_render_tidy_titles_card();
+		}
+		?>
+	</div>
+	<?php
+}
+
+/**
+ * ============================================================
+ * 2026-11: the import against today's series tree, missing shiurim,
+ * and videos with their audio.
+ * ============================================================
+ */
+
+/**
+ * How many listing pages the old site has now. The constant was the count
+ * when the importer was written (16,756 shiurim = 671 pages). The site grows
+ * every week, and new shiurim push the oldest ones onto later pages, so the
+ * crawl reads the real count from the page ("25 of 16885 results").
+ */
+function ner_michoel_import_total_pages() {
+	return max( (int) NER_MICHOEL_IMPORT_TOTAL_PAGES, (int) get_option( 'nm_import_total_pages', 0 ) );
+}
+
+/** Notes the page count a listing page gives, if it gives one. */
+function ner_michoel_import_note_total( $html ) {
+	if ( preg_match( '/\bof\s+([\d,]+)\s+results/i', (string) $html, $m ) ) {
+		$total = (int) str_replace( ',', '', $m[1] );
+		if ( $total > 0 ) {
+			update_option( 'nm_import_total_pages', (int) ceil( $total / 25 ), false );
+		}
+	}
+}
+
+/**
+ * A series name that is only a video bucket on the old site ("Shiurim Videos",
+ * "Videos", "Rabbi Twersky Videos"): the old site filed every video there,
+ * not in the series its audio is in.
+ */
+function ner_michoel_import_is_video_bucket( $path ) {
+	$parts = function_exists( 'ner_michoel_series_split_name' ) ? ner_michoel_series_split_name( $path ) : array( trim( (string) $path ) );
+	return 1 === count( $parts ) && (bool) preg_match( '/\bvideos?$/i', trim( (string) $parts[0] ) );
+}
+
+/**
+ * A folder name that is the same in many places ("Perek 2", "Part 3", "Daf 4"):
+ * never matched by its name alone, only by its place in the tree.
+ */
+function ner_michoel_import_is_generic_series_name( $name ) {
+	return (bool) preg_match( '/^(perek|chelek|part|siman|daf|shiur|vol(ume)?|#)\s*[\w\']*\s*\d|^\d+$/i', trim( (string) $name ) );
+}
+
+/**
+ * The series a path from the old site belongs in today. In order:
+ *
+ * 1. The whole path, if it is in the tree ("Gemara / Bava Kamma / Perek 1").
+ * 2. The path's last part ("Shiur Klali"), if the folders above it were moved
+ *    or merged on the Series screens: a series with that name whose folders
+ *    above it all appear, in order, in the path. "Gemara / Chullin / Perek 1 /
+ *    Shiur Klali" goes into a top-level "Shiur Klali", or into "Gemara /
+ *    Shiur Klali", but never into "Halacha / Shiur Klali". With several, the
+ *    one with the most of the path above it wins, then the one with the most
+ *    shiurim.
+ * 3. The only series anywhere with that last name, unless the name is one
+ *    that repeats in many places ("Perek 2").
+ * 4. Otherwise the path is made, as before.
+ *
+ * @return int Term ID, or 0.
+ */
+function ner_michoel_import_series_for_path( $path ) {
+	$path = trim( (string) $path );
+	if ( '' === $path || ! function_exists( 'ner_michoel_series_find_or_create_path' ) ) {
+		return ( '' !== $path && function_exists( 'ner_michoel_sample_content_get_or_create_term' ) ) ? (int) ner_michoel_sample_content_get_or_create_term( $path, 'series' ) : 0;
+	}
+
+	$found = ner_michoel_series_find_or_create_path( $path, 0, false );
+	if ( is_array( $found ) ) {
+		return (int) $found['term_id'];
+	}
+
+	$parts = ner_michoel_series_split_name( $path );
+	if ( count( $parts ) > 1 ) {
+		$picked = ner_michoel_import_series_by_last_part( $parts );
+		if ( $picked ) {
+			return $picked;
+		}
+	}
+
+	$made = ner_michoel_series_find_or_create_path( $path, 0, true );
+	return is_wp_error( $made ) ? 0 : (int) $made['term_id'];
+}
+
+/**
+ * Step 2 and 3 above. $parts is the path, split.
+ *
+ * @param string[] $parts
+ * @return int Term ID, or 0.
+ */
+function ner_michoel_import_series_by_last_part( array $parts ) {
+	$last    = ner_michoel_series_key( end( $parts ) );
+	$above   = array_map( 'ner_michoel_series_key', array_slice( $parts, 0, -1 ) );
+	$labels  = ner_michoel_series_label_map();
+	$counts  = array();
+	$same    = array();
+	foreach ( ner_michoel_series_all_terms() as $term ) {
+		if ( ner_michoel_series_key( $term->name ) === $last ) {
+			$same[]                          = (int) $term->term_id;
+			$counts[ (int) $term->term_id ] = (int) $term->count;
+		}
+	}
+	if ( ! $same ) {
+		return 0;
+	}
+
+	$best       = 0;
+	$best_depth = -1;
+	foreach ( $same as $id ) {
+		$chain = isset( $labels[ $id ] ) ? array_map( 'ner_michoel_series_key', array_slice( ner_michoel_series_split_name( $labels[ $id ] ), 0, -1 ) ) : array();
+		// Its folders above, in order, inside the path's folders above.
+		$at = 0;
+		$ok = true;
+		foreach ( $chain as $name ) {
+			$hit = array_search( $name, array_slice( $above, $at ), true );
+			if ( false === $hit ) {
+				$ok = false;
+				break;
+			}
+			$at += (int) $hit + 1;
+		}
+		if ( ! $ok ) {
+			continue;
+		}
+		$depth = count( $chain );
+		if ( $depth > $best_depth || ( $depth === $best_depth && $counts[ $id ] > $counts[ $best ] ) ) {
+			$best       = $id;
+			$best_depth = $depth;
+		}
+	}
+	if ( $best ) {
+		return $best;
+	}
+
+	if ( 1 === count( $same ) && ! ner_michoel_import_is_generic_series_name( end( $parts ) ) ) {
+		return $same[0];
+	}
+	return 0;
+}
+
+/**
+ * The series of the audio shiur that a video is the video of: the same title
+ * (case and punctuation ignored) and the same speaker, the rule the Listen /
+ * Watch switch uses (shiur-formats.php). An audio shiur already on the site
+ * comes first, then an audio row of the import queue. 0 when there is none,
+ * or when the audio shiurim with that title are in more than one series.
+ */
+function ner_michoel_import_audio_twin_series( $title, $speaker_name ) {
+	global $wpdb;
+	if ( ! function_exists( 'ner_michoel_shiur_format_key' ) ) {
+		return 0;
+	}
+	$speaker = $speaker_name ? get_term_by( 'name', $speaker_name, 'speaker' ) : false;
+	$speaker = $speaker ? (int) $speaker->term_id : 0;
+	$key     = ner_michoel_shiur_format_key( $title, $speaker );
+	if ( '' === $key || ! $speaker ) {
+		return 0;
+	}
+
+	// Titles that start the same way, then the exact key.
+	$start = $wpdb->esc_like( mb_substr( trim( (string) $title ), 0, 12 ) ) . '%';
+	$ids   = $wpdb->get_col(
+		$wpdb->prepare(
+			"SELECT p.ID FROM {$wpdb->posts} p
+			LEFT JOIN {$wpdb->postmeta} v ON v.post_id = p.ID AND v.meta_key = '_shiur_vimeo_id'
+			WHERE p.post_type = 'shiur' AND p.post_status = 'publish' AND p.post_title LIKE %s AND ( v.meta_value IS NULL OR v.meta_value = '' )",
+			$start
+		)
+	);
+	$series = array();
+	foreach ( $ids as $id ) {
+		$speakers = wp_get_object_terms( (int) $id, 'speaker', array( 'fields' => 'ids' ) );
+		$sid      = ( ! is_wp_error( $speakers ) && $speakers ) ? (int) $speakers[0] : 0;
+		if ( ner_michoel_shiur_format_key( get_post_field( 'post_title', (int) $id ), $sid ) !== $key ) {
+			continue;
+		}
+		foreach ( (array) wp_get_object_terms( (int) $id, 'series', array( 'fields' => 'ids' ) ) as $term_id ) {
+			$series[ (int) $term_id ] = true;
+		}
+	}
+	if ( 1 === count( $series ) ) {
+		return (int) key( $series );
+	}
+	if ( $series ) {
+		return 0;
+	}
+
+	// Not on the site yet: the audio row in the queue, by the same title and speaker.
+	$table = ner_michoel_import_queue_table_name();
+	$path  = $wpdb->get_var( $wpdb->prepare( "SELECT series FROM {$table} WHERE media_type = 'audio' AND title = %s AND speaker = %s AND series <> '' ORDER BY id DESC LIMIT 1", $title, $speaker_name ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	return $path && ! ner_michoel_import_is_video_bucket( $path ) ? ner_michoel_import_series_for_path( $path ) : 0;
+}
+
+/**
+ * The series a queue row's shiur goes in: a video goes with its audio when
+ * the old site filed it only under a video bucket; everything else by its
+ * path (ner_michoel_import_series_for_path()).
+ */
+function ner_michoel_import_series_for_row( $row ) {
+	if ( 'video' === $row->media_type && ( '' === (string) $row->series || ner_michoel_import_is_video_bucket( $row->series ) ) ) {
+		$twin = ner_michoel_import_audio_twin_series( $row->title, $row->speaker );
+		if ( $twin ) {
+			return $twin;
+		}
+	}
+	return '' === (string) $row->series ? 0 : ner_michoel_import_series_for_path( $row->series );
+}
+
+/**
+ * "Find missing shiurim": reads the whole old listing again (only shiurim not
+ * yet in the queue are added) and puts back in the queue:
+ * - rows that failed three times (a download that timed out, the old site busy);
+ * - rows skipped as "already exists" when what exists is the other kind (an
+ *   audio row skipped because of a video with its title, or the reverse).
+ * Rows whose shiur was imported are left alone, so a shiur someone deleted on
+ * purpose is not brought back.
+ *
+ * @return array Counts.
+ */
+function ner_michoel_import_find_missing() {
+	global $wpdb;
+	$table   = ner_michoel_import_queue_table_name();
+	$set     = "SET status = 'discovered', attempts = 0, error_message = NULL, processed_at = NULL";
+	$vimeo   = "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_shiur_vimeo_id' AND meta_value <> ''";
+	$skipped = 'A post with this title already exists';
+
+	$failed = (int) $wpdb->query( "UPDATE {$table} {$set} WHERE status = 'failed' OR ( status = 'discovered' AND attempts >= 3 )" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	$kind   = (int) $wpdb->query( // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->prepare( "UPDATE {$table} {$set}, created_post_id = NULL WHERE status = 'skipped' AND error_message = %s AND ( ( media_type = 'audio' AND created_post_id IN ({$vimeo}) ) OR ( media_type = 'video' AND created_post_id IS NOT NULL AND created_post_id NOT IN ({$vimeo}) ) )", $skipped )
+	);
+
+	update_option( 'nm_import_discovery_page', 1 );
+	delete_option( 'nm_import_discovery_done' );
+	$result = array(
+		'failed' => $failed,
+		'kind'   => $kind,
+		'time'   => time(),
+	);
+	update_option( 'nm_import_find_missing', $result, false );
+	ner_michoel_apply_import_action( 'start' );
+	return $result;
+}
+
+/**
+ * Videos that sit in a video bucket (or in no series) while their audio is in
+ * a series: video ID => array( 'to' => series ID, 'from' => series IDs ).
+ * $within limits it to audio in that series or a series inside it (0: all).
+ *
+ * @return array
+ */
+function ner_michoel_import_video_moves( $within = 0 ) {
+	global $wpdb;
+	if ( ! function_exists( 'ner_michoel_shiur_format_key' ) ) {
+		return array();
+	}
+	$rows = $wpdb->get_results(
+		"SELECT p.ID, p.post_title, v.meta_value AS vimeo FROM {$wpdb->posts} p
+		LEFT JOIN {$wpdb->postmeta} v ON v.post_id = p.ID AND v.meta_key = '_shiur_vimeo_id'
+		WHERE p.post_type = 'shiur' AND p.post_status = 'publish'",
+		ARRAY_A
+	);
+	$terms = $wpdb->get_results(
+		"SELECT tr.object_id, tt.taxonomy, tt.term_id FROM {$wpdb->term_relationships} tr
+		INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+		WHERE tt.taxonomy IN ('speaker', 'series')",
+		ARRAY_A
+	);
+	$speaker = array();
+	$series  = array();
+	foreach ( (array) $terms as $t ) {
+		if ( 'speaker' === $t['taxonomy'] ) {
+			if ( ! isset( $speaker[ $t['object_id'] ] ) ) {
+				$speaker[ $t['object_id'] ] = (int) $t['term_id'];
+			}
+		} else {
+			$series[ $t['object_id'] ][] = (int) $t['term_id'];
+		}
+	}
+
+	$labels = function_exists( 'ner_michoel_series_label_map' ) ? ner_michoel_series_label_map() : array();
+	$bucket = function ( $ids ) use ( $labels ) {
+		foreach ( $ids as $id ) {
+			if ( ! isset( $labels[ $id ] ) || ! ner_michoel_import_is_video_bucket( html_entity_decode( $labels[ $id ], ENT_QUOTES, 'UTF-8' ) ) ) {
+				return false;
+			}
+		}
+		return true;
+	};
+
+	$audio  = array();
+	$videos = array();
+	foreach ( (array) $rows as $r ) {
+		$id  = (int) $r['ID'];
+		$key = ner_michoel_shiur_format_key( $r['post_title'], isset( $speaker[ $id ] ) ? $speaker[ $id ] : 0 );
+		if ( '' === $key || empty( $speaker[ $id ] ) ) {
+			continue;
+		}
+		$in = isset( $series[ $id ] ) ? $series[ $id ] : array();
+		if ( '' !== (string) $r['vimeo'] ) {
+			if ( $bucket( $in ) ) {
+				$videos[ $id ] = array( $key, $in );
+			}
+		} elseif ( $in && ! $bucket( $in ) ) {
+			foreach ( $in as $sid ) {
+				$audio[ $key ][ $sid ] = true;
+			}
+		}
+	}
+
+	$moves = array();
+	foreach ( $videos as $id => $video ) {
+		list( $key, $from ) = $video;
+		if ( empty( $audio[ $key ] ) || 1 !== count( $audio[ $key ] ) ) {
+			continue; // No audio, or audio in two series: left where it is.
+		}
+		$to = (int) key( $audio[ $key ] );
+		if ( $within && $to !== (int) $within && ! term_is_ancestor_of( (int) $within, $to, 'series' ) ) {
+			continue;
+		}
+		$moves[ $id ] = array(
+			'to'   => $to,
+			'from' => $from,
+		);
+	}
+	return $moves;
+}
+
+/**
+ * Moves the videos (ner_michoel_import_video_moves()) and keeps a note of
+ * where each was, for Undo. Returns how many moved.
+ */
+function ner_michoel_import_move_videos( $within = 0 ) {
+	if ( function_exists( 'set_time_limit' ) ) {
+		@set_time_limit( 300 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+	}
+	$moves = ner_michoel_import_video_moves( $within );
+	$log   = array();
+	foreach ( $moves as $id => $move ) {
+		$done = wp_set_object_terms( (int) $id, array( (int) $move['to'] ), 'series' );
+		if ( ! is_wp_error( $done ) ) {
+			$log[ (int) $id ] = array_map( 'intval', $move['from'] );
+		}
+	}
+	if ( $log ) {
+		update_option( 'nm_import_video_moves_log', array( 'time' => time(), 'moves' => $log ), false );
+	}
+	return count( $log );
+}
+
+/** Puts the last moved videos back in the series they were in. Returns how many. */
+function ner_michoel_import_undo_video_moves() {
+	$log = get_option( 'nm_import_video_moves_log' );
+	if ( ! is_array( $log ) || empty( $log['moves'] ) ) {
+		return 0;
+	}
+	if ( function_exists( 'set_time_limit' ) ) {
+		@set_time_limit( 300 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+	}
+	$n = 0;
+	foreach ( $log['moves'] as $id => $from ) {
+		if ( get_post( (int) $id ) ) {
+			wp_set_object_terms( (int) $id, array_map( 'intval', (array) $from ), 'series' );
+			++$n;
+		}
+	}
+	delete_option( 'nm_import_video_moves_log' );
+	return $n;
+}
+
+/** The buttons' handler: Find missing, Move videos, Undo. */
+function ner_michoel_handle_import_tools() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( esc_html__( 'You are not allowed to do this.', 'ner-michoel-core' ) );
+	}
+	check_admin_referer( 'nm_import_tools' );
+	$tool = isset( $_REQUEST['nm_tool'] ) ? sanitize_key( wp_unslash( $_REQUEST['nm_tool'] ) ) : '';
+	$note = '';
+	if ( 'find_missing' === $tool ) {
+		$r    = ner_michoel_import_find_missing();
+		$note = sprintf( /* translators: 1: failed rows, 2: rows of the other kind */ __( 'Looking for missing shiurim: the old site\'s whole list is being read again. %1$d failed files and %2$d skipped audio / video files went back in the queue.', 'ner-michoel-core' ), $r['failed'], $r['kind'] );
+	} elseif ( 'move_videos' === $tool ) {
+		$within = isset( $_REQUEST['nm_within'] ) ? absint( $_REQUEST['nm_within'] ) : 0;
+		$moved  = ner_michoel_import_move_videos( $within );
+		/* translators: %d: videos moved */
+		$note = sprintf( _n( '%d video was moved into its audio\'s series.', '%d videos were moved into their audio\'s series.', $moved, 'ner-michoel-core' ), $moved );
+	} elseif ( 'undo_videos' === $tool ) {
+		$note = sprintf( /* translators: %d: videos moved back */ __( '%d videos were put back where they were.', 'ner-michoel-core' ), ner_michoel_import_undo_video_moves() );
+	} elseif ( 'combine_av' === $tool && function_exists( 'ner_michoel_av_combine_run' ) ) {
+		$note = sprintf( /* translators: %d: shiurim */ __( '%d audio shiurim now have their video too. The video shiurim were set to Draft.', 'ner-michoel-core' ), ner_michoel_av_combine_run() );
+	} elseif ( 'undo_av' === $tool && function_exists( 'ner_michoel_av_combine_undo' ) ) {
+		$note = sprintf( /* translators: %d: shiurim */ __( '%d audio and video shiurim were put back as two.', 'ner-michoel-core' ), ner_michoel_av_combine_undo() );
+	}
+	if ( $note ) {
+		set_transient( 'nm_import_tools_note_' . get_current_user_id(), $note, 300 );
+	}
+	wp_safe_redirect( ner_michoel_panel_redirect_url( admin_url( 'admin.php?page=nm-library-import' ), 'library' ) );
+	exit;
+}
+add_action( 'admin_action_nm_import_tools', 'ner_michoel_handle_import_tools' );
+
+/** The card on the Library Import screen for the three tools. */
+function ner_michoel_render_import_tools_card() {
+	$note = get_transient( 'nm_import_tools_note_' . get_current_user_id() );
+	if ( $note ) {
+		delete_transient( 'nm_import_tools_note_' . get_current_user_id() );
+	}
+	$moves   = ner_michoel_import_video_moves();
+	$targets = array();
+	foreach ( $moves as $move ) {
+		$targets[ $move['to'] ] = isset( $targets[ $move['to'] ] ) ? $targets[ $move['to'] ] + 1 : 1;
+	}
+	// Group by the top folder too, so "Shiur Klali" or "Gemara" can be picked whole.
+	$labels = function_exists( 'ner_michoel_series_label_map' ) ? ner_michoel_series_label_map() : array();
+	$groups = array();
+	foreach ( $targets as $to => $n ) {
+		$term = get_term( (int) $to, 'series' );
+		$top  = $term && ! is_wp_error( $term ) ? (int) $to : 0;
+		while ( $term && ! is_wp_error( $term ) && $term->parent ) {
+			$top  = (int) $term->parent;
+			$term = get_term( $top, 'series' );
+		}
+		if ( $top ) {
+			$groups[ $top ] = ( isset( $groups[ $top ] ) ? $groups[ $top ] : 0 ) + $n;
+		}
+		// The folder itself, when it is not a top folder (e.g. a "Shiur Klali" inside Gemara).
+		if ( $top !== (int) $to ) {
+			$groups[ (int) $to ] = ( isset( $groups[ (int) $to ] ) ? $groups[ (int) $to ] : 0 ) + $n;
+		}
+	}
+	arsort( $groups );
+	$log      = get_option( 'nm_import_video_moves_log' );
+	$found    = get_option( 'nm_import_find_missing' );
+	$form_url = admin_url( 'admin.php' );
+	$hidden   = function ( $tool ) {
+		echo '<input type="hidden" name="action" value="nm_import_tools" /><input type="hidden" name="nm_tool" value="' . esc_attr( $tool ) . '" />';
+		if ( function_exists( 'ner_michoel_is_custom_admin_render' ) && ner_michoel_is_custom_admin_render() ) {
+			echo '<input type="hidden" name="nm_from_panel" value="1" />';
+		}
+		wp_nonce_field( 'nm_import_tools' );
+	};
+	?>
+	<div class="card nm-import-tools" style="max-width:700px;margin-top:24px;">
+		<?php if ( $note ) : ?>
+			<div class="notice notice-success inline"><p><?php echo esc_html( $note ); ?></p></div>
+		<?php endif; ?>
+
+		<h2><?php esc_html_e( 'Find missing shiurim', 'ner-michoel-core' ); ?></h2>
+		<p><?php esc_html_e( 'Reads the old site\'s whole list again and brings in every shiur that is not here yet. Files that failed to download, and audio or video files that were skipped because the other kind had the same title, are tried again. Shiurim that were imported and then deleted here are not brought back.', 'ner-michoel-core' ); ?></p>
+		<?php if ( is_array( $found ) ) : ?>
+			<p class="description"><?php echo esc_html( sprintf( /* translators: 1: date, 2: failed, 3: other kind */ __( 'Last run %1$s: %2$d failed and %3$d skipped files went back in the queue.', 'ner-michoel-core' ), wp_date( 'j M Y, H:i', (int) $found['time'] ), (int) $found['failed'], (int) $found['kind'] ) ); ?></p>
+		<?php endif; ?>
+		<form method="post" action="<?php echo esc_url( $form_url ); ?>">
+			<?php $hidden( 'find_missing' ); ?>
+			<button type="submit" class="button button-primary"><?php esc_html_e( 'Find missing shiurim', 'ner-michoel-core' ); ?></button>
+		</form>
+
+		<h2 style="margin-top:28px;"><?php esc_html_e( 'Videos with their audio', 'ner-michoel-core' ); ?></h2>
+		<p><?php esc_html_e( 'The old site filed every video under "Shiurim Videos", not in the series its audio is in. New videos now go in their audio\'s series by themselves. This moves the videos already here: a video goes into the series of the audio shiur with the same title and speaker. A video with no audio, or whose audio is in two series, stays where it is.', 'ner-michoel-core' ); ?></p>
+		<?php if ( $moves ) : ?>
+			<form method="post" action="<?php echo esc_url( $form_url ); ?>">
+				<?php $hidden( 'move_videos' ); ?>
+				<label for="nm-within"><?php esc_html_e( 'Which videos', 'ner-michoel-core' ); ?></label>
+				<select id="nm-within" name="nm_within">
+					<?php foreach ( $groups as $id => $n ) : ?>
+						<option value="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( sprintf( '%s (%d)', html_entity_decode( isset( $labels[ $id ] ) ? $labels[ $id ] : '', ENT_QUOTES, 'UTF-8' ), $n ) ); ?></option>
+					<?php endforeach; ?>
+					<option value="0"><?php echo esc_html( sprintf( /* translators: %d: videos */ __( 'All videos (%d)', 'ner-michoel-core' ), count( $moves ) ) ); ?></option>
+				</select>
+				<button type="submit" class="button"><?php esc_html_e( 'Move them', 'ner-michoel-core' ); ?></button>
+			</form>
+		<?php else : ?>
+			<p class="description"><?php esc_html_e( 'No video is waiting to be moved.', 'ner-michoel-core' ); ?></p>
+		<?php endif; ?>
+		<?php if ( is_array( $log ) && ! empty( $log['moves'] ) ) : ?>
+			<form method="post" action="<?php echo esc_url( $form_url ); ?>" style="margin-top:10px;">
+				<?php $hidden( 'undo_videos' ); ?>
+				<span class="description"><?php echo esc_html( sprintf( /* translators: 1: videos, 2: date */ __( '%1$d videos were moved on %2$s.', 'ner-michoel-core' ), count( $log['moves'] ), wp_date( 'j M Y, H:i', (int) $log['time'] ) ) ); ?></span>
+				<button type="submit" class="button button-link"><?php esc_html_e( 'Undo', 'ner-michoel-core' ); ?></button>
+			</form>
+		<?php endif; ?>
+
+		<?php
+		if ( function_exists( 'ner_michoel_render_av_combine_section' ) ) {
+			ner_michoel_render_av_combine_section( $form_url, $hidden );
 		}
 		?>
 	</div>

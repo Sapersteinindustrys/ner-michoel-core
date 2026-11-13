@@ -1,7 +1,7 @@
 <?php
 /**
  * Lets a visitor download a shiur's media file directly (audio or
- * video), with a friendly "{Speaker} - {Title}.ext" filename, instead
+ * video), with a friendly "{Title}.ext" filename, instead
  * of relying on the <a download> attribute — which browsers silently
  * ignore for cross-origin file URLs (e.g. if uploads ever move to a CDN) and
  * which can't rename the downloaded file away from whatever it was
@@ -84,7 +84,8 @@ function ner_michoel_stream_shiur_download( $post_id ) {
 
 	nocache_headers();
 	header( 'Content-Type: ' . ( $mime ? $mime : 'application/octet-stream' ) );
-	header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+	$ascii    = trim( preg_replace( '/[^A-Za-z0-9._ -]+/', '_', $filename ) );
+	header( 'Content-Disposition: attachment; filename="' . ( '' === $ascii ? 'download' : $ascii ) . '"; filename*=UTF-8\'\'' . rawurlencode( $filename ) );
 	header( 'Content-Length: ' . filesize( $file ) );
 	header( 'X-Robots-Tag: noindex' );
 
@@ -93,19 +94,26 @@ function ner_michoel_stream_shiur_download( $post_id ) {
 }
 
 /**
- * "{Speaker} - {Title}.ext", falling back to just the title if no
- * speaker is set. sanitize_file_name() strips filesystem-unsafe
- * characters while preserving non-Latin (e.g. Hebrew/Yiddish) names.
+ * "{Title}.ext": the shiur's title as it reads on the site (R' Ariel Katz, 2026-11-05:
+ * no speaker name in front, and no "8217" where the title has an apostrophe).
+ * Entities are turned into characters first; apostrophes and quote marks are left
+ * out ("Shimon's" -> "Shimons"); characters Windows won't allow in a file name
+ * become spaces. Hebrew and other letters stay. A title that leaves nothing gives
+ * "shiur-{id}".
  */
 function ner_michoel_build_shiur_download_filename( $post_id, $ext ) {
-	$title         = get_the_title( $post_id );
-	$speaker_terms = get_the_terms( $post_id, 'speaker' );
-	$speaker       = ( $speaker_terms && ! is_wp_error( $speaker_terms ) ) ? $speaker_terms[0]->name : '';
-
-	$name = $speaker ? $speaker . ' - ' . $title : $title;
-	$name = sanitize_file_name( $name );
-
-	return $name . '.' . $ext;
+	$name = html_entity_decode( wp_strip_all_tags( get_the_title( $post_id ) ), ENT_QUOTES, 'UTF-8' );
+	$name = str_replace( array( "'", '’', '‘', '`', '´', '"', '“', '”' ), '', $name );
+	$name = preg_replace( '~[\\\\/:*?<>|\x00-\x1F\x7F]+~u', ' ', $name );
+	$name = trim( preg_replace( '/\s+/u', ' ', (string) $name ), " .\t" );
+	if ( function_exists( 'mb_substr' ) ) {
+		$name = trim( mb_substr( $name, 0, 150, 'UTF-8' ) );
+	}
+	if ( '' === $name ) {
+		$name = 'shiur-' . (int) $post_id;
+	}
+	$ext = preg_replace( '/[^A-Za-z0-9]/', '', (string) $ext );
+	return '' === $ext ? $name : $name . '.' . strtolower( $ext );
 }
 
 /**

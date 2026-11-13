@@ -10,6 +10,12 @@
  * ask for "shiur" and "written_shiur", so they never see them. Moving back (untick
  * the speaker and Save) puts each one back as it was (same id, address, files).
  *
+ * Since 2026-11-11 a chosen speaker can be limited to some of his folders (series, with
+ * everything inside them) and / or his videos; his other shiurim stay public. With nothing
+ * ticked under him, all his shiurim are in the section, as before. An audio shiur that has
+ * its video on the same post stays public when only "videos" is ticked; its video then shows
+ * only to alumni (ner_michoel_alumni_video_hidden()).
+ *
  * Who can see it: staff, accounts the alumni sign-up matched or the office
  * approved (alumni-accounts.php), accounts the office gave access by hand, and
  * older accounts whose email or whole name is in the Years List.
@@ -26,6 +32,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'NER_MICHOEL_ALUMNI_SPEAKERS_OPTION', 'nm_alumni_speakers' );
+// Per chosen speaker, which of his shiurim are for alumni (R' Ariel Katz, 2026-11-03: Rabbi
+// Shurkin's parsha shiurim are for everyone; his Gemara shiurim and Zoom videos are for alumni).
+// array( speaker id => array( 'folders' => series ids, 'videos' => 0|1 ) ). Nothing chosen = all.
+define( 'NER_MICHOEL_ALUMNI_RULES_OPTION', 'nm_alumni_speaker_rules' );
 
 /* ------------------------------------------------------------------ */
 /* The post type and the /alumni/ address                              */
@@ -332,30 +342,192 @@ function ner_michoel_alumni_posts_of( array $speaker_ids, $types ) {
 	);
 }
 
+/** The rule of each chosen speaker: array( id => array( 'folders' => ids, 'videos' => bool ) ). */
+function ner_michoel_alumni_rules() {
+	$stored = get_option( NER_MICHOEL_ALUMNI_RULES_OPTION, array() );
+	$stored = is_array( $stored ) ? $stored : array();
+	$rules  = array();
+	foreach ( ner_michoel_alumni_speakers() as $sid ) {
+		$rule          = isset( $stored[ $sid ] ) && is_array( $stored[ $sid ] ) ? $stored[ $sid ] : array();
+		$rules[ $sid ] = array(
+			'folders' => isset( $rule['folders'] ) ? array_values( array_filter( array_map( 'absint', (array) $rule['folders'] ) ) ) : array(),
+			'videos'  => ! empty( $rule['videos'] ),
+		);
+	}
+	return $rules;
+}
+
+/** Is this post a video (a Vimeo / Zoom link or a video file, with no audio file)? */
+function ner_michoel_alumni_is_video( $post_id ) {
+	if ( 'written_shiur' === get_post_type( $post_id ) || 'written_shiur' === get_post_meta( $post_id, '_nm_alumni_from', true ) || get_post_meta( $post_id, '_written_pdf_id', true ) ) {
+		return false;
+	}
+	return function_exists( 'ner_michoel_get_shiur_media_type' ) && 'audio' !== ner_michoel_get_shiur_media_type( $post_id );
+}
+
+/** The post's series and every folder above them (term ids). */
+function ner_michoel_alumni_post_folders( $post_id ) {
+	$terms = wp_get_object_terms( $post_id, 'series', array( 'fields' => 'ids' ) );
+	if ( is_wp_error( $terms ) ) {
+		return array();
+	}
+	$all = array();
+	foreach ( $terms as $term_id ) {
+		$all[ (int) $term_id ] = true;
+		foreach ( get_ancestors( (int) $term_id, 'series', 'taxonomy' ) as $up ) {
+			$all[ (int) $up ] = true;
+		}
+	}
+	return array_keys( $all );
+}
+
+/** Does this shiur belong in the section under the current rules? */
+function ner_michoel_alumni_post_matches( $post_id, $rules = null ) {
+	$rules = null === $rules ? ner_michoel_alumni_rules() : $rules;
+	if ( ! $rules ) {
+		return false;
+	}
+	$speakers = wp_get_object_terms( $post_id, 'speaker', array( 'fields' => 'ids' ) );
+	if ( is_wp_error( $speakers ) ) {
+		return false;
+	}
+	foreach ( $speakers as $sid ) {
+		$sid = (int) $sid;
+		if ( ! isset( $rules[ $sid ] ) ) {
+			continue;
+		}
+		$rule = $rules[ $sid ];
+		if ( ! $rule['folders'] && ! $rule['videos'] ) {
+			return true; // all his shiurim
+		}
+		if ( $rule['videos'] && ner_michoel_alumni_is_video( $post_id ) ) {
+			return true;
+		}
+		if ( $rule['folders'] && array_intersect( $rule['folders'], ner_michoel_alumni_post_folders( $post_id ) ) ) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * A public audio shiur whose video is on the same post, by a speaker whose videos are for
+ * alumni: true when the person looking can't see the alumni section (so the page leaves
+ * the video out and says it is for alumni).
+ */
+function ner_michoel_alumni_video_hidden( $post_id ) {
+	$rules = ner_michoel_alumni_rules();
+	if ( ! $rules ) {
+		return false;
+	}
+	$speakers = wp_get_object_terms( $post_id, 'speaker', array( 'fields' => 'ids' ) );
+	if ( is_wp_error( $speakers ) ) {
+		return false;
+	}
+	foreach ( $speakers as $sid ) {
+		if ( isset( $rules[ (int) $sid ] ) && $rules[ (int) $sid ]['videos'] ) {
+			return ! ner_michoel_alumni_can_view_quick();
+		}
+	}
+	return false;
+}
+
+/**
+ * Moves every shiur of these speakers to where the rules say: into the section or
+ * back to the public site. Returns array( in, out ).
+ */
+function ner_michoel_alumni_apply( array $speaker_ids ) {
+	$rules = ner_michoel_alumni_rules();
+	$in    = array();
+	$out   = array();
+	foreach ( ner_michoel_alumni_posts_of( $speaker_ids, array( 'shiur', 'written_shiur', 'alumni_shiur' ) ) as $id ) {
+		$is_in = 'alumni_shiur' === get_post_type( $id );
+		$match = ner_michoel_alumni_post_matches( $id, $rules );
+		if ( $match && ! $is_in ) {
+			$in[] = $id;
+		} elseif ( ! $match && $is_in ) {
+			$out[] = $id;
+		}
+	}
+	return array( ner_michoel_alumni_move( $in, true ), ner_michoel_alumni_move( $out, false ) );
+}
+
+/**
+ * The folders a speaker's shiurim are in, for ticking: the top folders and the folders one
+ * level inside them, each with how many of his shiurim it holds (public and alumni).
+ * array( term id => array( 'label' => "Gemara / Gittin", 'count' => n, 'depth' => 0|1 ) ),
+ * in name order.
+ */
+function ner_michoel_alumni_speaker_folders( $speaker_id ) {
+	$ids    = ner_michoel_alumni_posts_of( array( (int) $speaker_id ), array( 'shiur', 'written_shiur', 'alumni_shiur' ) );
+	$counts = array();
+	foreach ( array_chunk( $ids, 500 ) as $chunk ) {
+		$terms = wp_get_object_terms( $chunk, 'series', array( 'fields' => 'all_with_object_id' ) );
+		if ( is_wp_error( $terms ) ) {
+			continue;
+		}
+		$per_post = array();
+		foreach ( $terms as $term ) {
+			$chain = array_reverse( get_ancestors( (int) $term->term_id, 'series', 'taxonomy' ) );
+			$chain[] = (int) $term->term_id;
+			foreach ( array_slice( $chain, 0, 2 ) as $depth => $folder ) {
+				$per_post[ (int) $term->object_id ][ $folder ] = $depth;
+			}
+		}
+		foreach ( $per_post as $folders ) {
+			foreach ( $folders as $folder => $depth ) {
+				if ( ! isset( $counts[ $folder ] ) ) {
+					$counts[ $folder ] = array( 'count' => 0, 'depth' => $depth );
+				}
+				++$counts[ $folder ]['count'];
+			}
+		}
+	}
+	$out = array();
+	foreach ( $counts as $folder => $row ) {
+		$label = function_exists( 'ner_michoel_series_label' ) ? ner_michoel_series_label( $folder ) : '';
+		if ( '' === $label ) {
+			$term  = get_term( $folder, 'series' );
+			$label = ( $term && ! is_wp_error( $term ) ) ? $term->name : '#' . $folder;
+		}
+		$out[ $folder ] = array(
+			'label' => html_entity_decode( $label, ENT_QUOTES, 'UTF-8' ),
+			'count' => $row['count'],
+			'depth' => $row['depth'],
+		);
+	}
+	uasort(
+		$out,
+		function ( $a, $b ) {
+			return strnatcasecmp( $a['label'], $b['label'] );
+		}
+	);
+	return $out;
+}
+
 /**
  * Sets the section's speakers: moves in the shiurim of newly chosen speakers,
  * moves back those of speakers no longer chosen, and rebuilds the search index
  * now (so the public search drops them at once). Returns array( in, out ).
  */
-function ner_michoel_alumni_set_speakers( array $speaker_ids ) {
+function ner_michoel_alumni_set_speakers( array $speaker_ids, $rules = null ) {
 	$speaker_ids = array_values( array_unique( array_filter( array_map( 'absint', $speaker_ids ) ) ) );
 	$before      = ner_michoel_alumni_speakers();
 	update_option( NER_MICHOEL_ALUMNI_SPEAKERS_OPTION, $speaker_ids, false );
-
-	$in  = ner_michoel_alumni_move( ner_michoel_alumni_posts_of( $speaker_ids, array( 'shiur', 'written_shiur' ) ), true );
-	$out = 0;
-	$gone = array_diff( $before, $speaker_ids );
-	if ( $gone ) {
-		// Back out only what no chosen speaker still holds.
-		$keep = array_flip( ner_michoel_alumni_posts_of( $speaker_ids, 'alumni_shiur' ) );
-		$back = array();
-		foreach ( ner_michoel_alumni_posts_of( $gone, 'alumni_shiur' ) as $id ) {
-			if ( ! isset( $keep[ $id ] ) ) {
-				$back[] = $id;
-			}
+	if ( is_array( $rules ) ) {
+		$clean = array();
+		foreach ( $speaker_ids as $sid ) {
+			$rule          = isset( $rules[ $sid ] ) && is_array( $rules[ $sid ] ) ? $rules[ $sid ] : array();
+			$clean[ $sid ] = array(
+				'folders' => isset( $rule['folders'] ) ? array_values( array_unique( array_filter( array_map( 'absint', (array) $rule['folders'] ) ) ) ) : array(),
+				'videos'  => empty( $rule['videos'] ) ? 0 : 1,
+			);
 		}
-		$out = ner_michoel_alumni_move( $back, false );
+		update_option( NER_MICHOEL_ALUMNI_RULES_OPTION, $clean, false );
 	}
+
+	// Every shiur of a speaker chosen now or before goes where the rules say.
+	list( $in, $out ) = ner_michoel_alumni_apply( array_values( array_unique( array_merge( $speaker_ids, $before ) ) ) );
 	if ( ( $in || $out ) && function_exists( 'ner_michoel_shiur_index_rebuild' ) ) {
 		ner_michoel_shiur_index_rebuild();
 	}
@@ -368,19 +540,16 @@ function ner_michoel_alumni_set_speakers( array $speaker_ids ) {
  * the speaker, before the search index rebuilds.
  */
 function ner_michoel_alumni_watch_terms( $object_id, $terms, $tt_ids, $taxonomy ) {
-	if ( 'speaker' !== $taxonomy || ! in_array( get_post_type( $object_id ), array( 'shiur', 'written_shiur' ), true ) ) {
+	if ( ! in_array( $taxonomy, array( 'speaker', 'series' ), true ) || ! in_array( get_post_type( $object_id ), array( 'shiur', 'written_shiur', 'alumni_shiur' ), true ) ) {
 		return;
 	}
-	$chosen = ner_michoel_alumni_speakers();
-	if ( ! $chosen ) {
+	if ( ! ner_michoel_alumni_speakers() ) {
 		return;
 	}
-	$now = wp_get_object_terms( $object_id, 'speaker', array( 'fields' => 'ids' ) );
-	if ( ! is_wp_error( $now ) && array_intersect( array_map( 'intval', $now ), $chosen ) ) {
-		$GLOBALS['nm_alumni_pending_moves'][ (int) $object_id ] = true;
-		if ( ! has_action( 'shutdown', 'ner_michoel_alumni_finish_moves' ) ) {
-			add_action( 'shutdown', 'ner_michoel_alumni_finish_moves', 0 );
-		}
+	// Checked at the end of the request, when its speaker, series and files are all saved.
+	$GLOBALS['nm_alumni_pending_moves'][ (int) $object_id ] = true;
+	if ( ! has_action( 'shutdown', 'ner_michoel_alumni_finish_moves' ) ) {
+		add_action( 'shutdown', 'ner_michoel_alumni_finish_moves', 0 );
 	}
 }
 add_action( 'set_object_terms', 'ner_michoel_alumni_watch_terms', 20, 4 );
@@ -388,7 +557,20 @@ add_action( 'set_object_terms', 'ner_michoel_alumni_watch_terms', 20, 4 );
 function ner_michoel_alumni_finish_moves() {
 	$ids = empty( $GLOBALS['nm_alumni_pending_moves'] ) ? array() : array_keys( $GLOBALS['nm_alumni_pending_moves'] );
 	$GLOBALS['nm_alumni_pending_moves'] = array();
-	if ( $ids && ner_michoel_alumni_move( $ids, true ) && function_exists( 'ner_michoel_shiur_index_schedule' ) ) {
+	$rules = ner_michoel_alumni_rules();
+	$in    = array();
+	$out   = array();
+	foreach ( $ids as $id ) {
+		$is_in = 'alumni_shiur' === get_post_type( $id );
+		$match = ner_michoel_alumni_post_matches( $id, $rules );
+		if ( $match && ! $is_in ) {
+			$in[] = $id;
+		} elseif ( ! $match && $is_in ) {
+			$out[] = $id;
+		}
+	}
+	$moved = ner_michoel_alumni_move( $in, true ) + ner_michoel_alumni_move( $out, false );
+	if ( $moved && function_exists( 'ner_michoel_shiur_index_schedule' ) ) {
 		ner_michoel_shiur_index_schedule();
 	}
 }
@@ -403,7 +585,21 @@ function ner_michoel_handle_alumni_section() {
 	}
 	check_admin_referer( 'nm_alumni_section', 'nm_alumni_nonce' );
 	$chosen = isset( $_POST['speakers'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['speakers'] ) ) : array();
-	list( $in, $out ) = ner_michoel_alumni_set_speakers( $chosen );
+	$rules  = array();
+	$posted = isset( $_POST['folders'] ) && is_array( $_POST['folders'] ) ? wp_unslash( $_POST['folders'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- absint below.
+	$videos = isset( $_POST['videos'] ) && is_array( $_POST['videos'] ) ? wp_unslash( $_POST['videos'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- read as flags.
+	$known  = get_option( NER_MICHOEL_ALUMNI_RULES_OPTION, array() );
+	foreach ( $chosen as $sid ) {
+		if ( isset( $_POST['rule_shown'][ $sid ] ) ) { // the speaker's choices were on the form
+			$rules[ $sid ] = array(
+				'folders' => isset( $posted[ $sid ] ) ? array_map( 'absint', (array) $posted[ $sid ] ) : array(),
+				'videos'  => ! empty( $videos[ $sid ] ),
+			);
+		} elseif ( is_array( $known ) && isset( $known[ $sid ] ) ) {
+			$rules[ $sid ] = $known[ $sid ];
+		}
+	}
+	list( $in, $out ) = ner_michoel_alumni_set_speakers( $chosen, $rules );
 	ner_michoel_alumni_flash(
 		sprintf(
 			/* translators: 1: moved in, 2: moved back */
@@ -493,7 +689,7 @@ function ner_michoel_render_alumni_section_settings( $part = 'all' ) {
 		<input type="hidden" name="nm_back" value="alumnisection" />
 		<?php ner_michoel_panel_form_field(); ?>
 		<p><strong><?php esc_html_e( 'Speakers whose shiurim are only in the Alumni section', 'ner-michoel-core' ); ?></strong><br />
-		<span class="description"><?php esc_html_e( 'Their shiurim leave the public site (lists, search, speaker and series pages) and appear on the Alumni page with its own search. New shiurim by them go there by themselves. Untick a speaker and Save to put their shiurim back on the public site.', 'ner-michoel-core' ); ?></span></p>
+		<span class="description"><?php esc_html_e( 'Their shiurim leave the public site (lists, search, speaker and series pages) and appear on the Alumni page with its own search. New shiurim by them go there by themselves. Untick a speaker and Save to put their shiurim back on the public site. After Save, you can choose below which of a speaker\'s shiurim are for alumni.', 'ner-michoel-core' ); ?></span></p>
 		<div style="max-height:260px;overflow:auto;border:1px solid #dcdcde;padding:8px 12px;max-width:520px">
 			<?php
 			$speakers = get_terms( array( 'taxonomy' => 'speaker', 'hide_empty' => false, 'orderby' => 'name' ) );
@@ -503,6 +699,31 @@ function ner_michoel_render_alumni_section_settings( $part = 'all' ) {
 				<label style="display:block;margin:2px 0"><input type="checkbox" name="speakers[]" value="<?php echo (int) $term->term_id; ?>" <?php checked( $is_on ); ?> /> <span dir="auto"><?php echo esc_html( $term->name ); ?></span> <span class="description">(<?php echo esc_html( $is_on ? __( 'in the Alumni section', 'ner-michoel-core' ) : sprintf( /* translators: %s: number */ __( '%s public', 'ner-michoel-core' ), number_format_i18n( (int) $term->count ) ) ); ?>)</span></label>
 			<?php endforeach; ?>
 		</div>
+		<?php
+		$rules = ner_michoel_alumni_rules();
+		foreach ( $chosen as $sid ) :
+			$term = get_term( $sid, 'speaker' );
+			if ( ! $term || is_wp_error( $term ) ) {
+				continue;
+			}
+			$rule    = isset( $rules[ $sid ] ) ? $rules[ $sid ] : array( 'folders' => array(), 'videos' => false );
+			$folders = ner_michoel_alumni_speaker_folders( $sid );
+			?>
+			<fieldset style="margin-top:14px;max-width:620px;border:1px solid #dcdcde;padding:8px 12px">
+				<legend><strong><?php echo esc_html( sprintf( /* translators: %s: speaker */ __( 'Which of %s\'s shiurim are for alumni?', 'ner-michoel-core' ), $term->name ) ); ?></strong></legend>
+				<input type="hidden" name="rule_shown[<?php echo (int) $sid; ?>]" value="1" />
+				<p class="description" style="margin-top:0"><?php esc_html_e( 'Tick the folders (everything inside a folder goes with it) and / or his videos. The rest of his shiurim stay on the public site. Nothing ticked: all his shiurim are for alumni.', 'ner-michoel-core' ); ?></p>
+				<label style="display:block;margin:2px 0 8px"><input type="checkbox" name="videos[<?php echo (int) $sid; ?>]" value="1" <?php checked( $rule['videos'] ); ?> /> <?php esc_html_e( 'His videos (Vimeo or Zoom recordings, video files). An audio shiur with its video stays public; only its video is for alumni.', 'ner-michoel-core' ); ?></label>
+				<div style="max-height:260px;overflow:auto">
+					<?php foreach ( $folders as $fid => $info ) : ?>
+						<label style="display:block;margin:2px 0<?php echo $info['depth'] ? ';padding-left:22px' : ''; ?>"><input type="checkbox" name="folders[<?php echo (int) $sid; ?>][]" value="<?php echo (int) $fid; ?>" <?php checked( in_array( (int) $fid, $rule['folders'], true ) ); ?> /> <span dir="auto"><?php echo esc_html( $info['label'] ); ?></span> <span class="description">(<?php echo esc_html( number_format_i18n( $info['count'] ) ); ?>)</span></label>
+					<?php endforeach; ?>
+					<?php if ( ! $folders ) : ?>
+						<p class="description"><?php esc_html_e( 'His shiurim are in no folder.', 'ner-michoel-core' ); ?></p>
+					<?php endif; ?>
+				</div>
+			</fieldset>
+		<?php endforeach; ?>
 		<p><button type="submit" class="button button-primary"><?php esc_html_e( 'Save', 'ner-michoel-core' ); ?></button></p>
 	</form>
 	<?php endif; ?>

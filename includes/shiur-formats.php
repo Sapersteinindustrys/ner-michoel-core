@@ -33,7 +33,8 @@ define( 'NER_MICHOEL_SHIUR_FORMATS_OPTION', 'nm_shiur_formats' );
 // Which version of the matching rule saved the option. A change to the rule
 // (this number) schedules one rebuild, so a deploy needs no manual step.
 // 2: the index also carries each shiur's group (x), so the search lists a shiur once.
-define( 'NER_MICHOEL_SHIUR_FORMATS_RULE', '2' );
+// 3: one post with an audio file and a Vimeo link is audio + video (2026-11-11).
+define( 'NER_MICHOEL_SHIUR_FORMATS_RULE', '3' );
 define( 'NER_MICHOEL_SHIUR_FORMATS_RULE_OPTION', 'nm_shiur_formats_rule' );
 
 /**

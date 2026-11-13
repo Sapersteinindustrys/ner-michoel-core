@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.46
+Stable tag: 0.9.47
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,14 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.47 =
+* Library Import: imports follow today's series tree (moved folders found by their last part), videos go with their
+  audio, "Find missing shiurim" and "Videos with their audio" tools, page count read from the old site.
+* App API routes (ner-michoel/v1/app/...) for the planned phone app.
+* Mazal Tov share: name/email optional, fresh form after thanks, names spelled as in the Years List.
+* Player titles without "&#8217;"; Hebrew summaries in the right order; audio kept when a Vimeo/Zoom link is added;
+  "Audio and video as one shiur" button; download names = title; Alumni Shiurim rules per speaker folder.
 
 = 0.9.46 =
 * New: Homepage Banner screen has a "Zoom line" section (on/off, link, meeting ID, when); the details stay in the Live
