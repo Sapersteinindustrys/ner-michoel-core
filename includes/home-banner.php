@@ -13,7 +13,9 @@
  * Each of the two can be placed: under the welcome on the homepage, above the footer, inside
  * the footer, or as a popup that shows once on each computer (and again when its words change).
  *
- * The same screen also edits the small Zoom line on the homepage. Its link, meeting ID and
+ * The same screen also edits the Zoom line: a strip right under the site's header on every
+ * page (the usual place), under the header on the homepage only, or on the homepage under the
+ * welcome, with less or no space above and below it if wanted (Yoni, 2026-11-14). Its link, meeting ID and
  * schedule stay where they always were (option nm_live_shiur, live-shiur.php), so the
  * Live Shiur / Zoom screen and this one show the same details.
  *
@@ -53,6 +55,27 @@ function ner_michoel_home_banner_defaults() {
 		'place'          => 'home',
 		'alumni_place'   => 'home',
 		'zoom_on'        => true,
+		'zoom_place'     => 'header',
+		'zoom_space_top' => 'normal',
+		'zoom_space_bot' => 'normal',
+	);
+}
+
+/** Where the Zoom line can show, as the screen offers them. */
+function ner_michoel_home_banner_zoom_places() {
+	return array(
+		'header'      => __( 'On every page, right under the header (a banner strip)', 'ner-michoel-core' ),
+		'home_header' => __( 'On the homepage only, right under the header', 'ner-michoel-core' ),
+		'home'        => __( 'On the homepage, under the first card (the welcome)', 'ner-michoel-core' ),
+	);
+}
+
+/** How much space the Zoom line keeps above and below it. */
+function ner_michoel_home_banner_spacings() {
+	return array(
+		'normal' => __( 'Normal', 'ner-michoel-core' ),
+		'small'  => __( 'Less', 'ner-michoel-core' ),
+		'none'   => __( 'None (touching)', 'ner-michoel-core' ),
 	);
 }
 
@@ -97,6 +120,10 @@ function ner_michoel_home_banner() {
 	$out['on']            = (bool) $out['on'];
 	$out['alumni_on']     = (bool) $out['alumni_on'];
 	$out['zoom_on']       = (bool) $out['zoom_on'];
+	$out['zoom_place']    = isset( ner_michoel_home_banner_zoom_places()[ $out['zoom_place'] ] ) ? $out['zoom_place'] : 'header';
+	foreach ( array( 'zoom_space_top', 'zoom_space_bot' ) as $key ) {
+		$out[ $key ] = isset( ner_michoel_home_banner_spacings()[ $out[ $key ] ] ) ? $out[ $key ] : 'normal';
+	}
 	$places               = ner_michoel_home_banner_places();
 	$out['place']         = isset( $places[ $out['place'] ] ) ? $out['place'] : 'home';
 	$out['alumni_place']  = isset( $places[ $out['alumni_place'] ] ) ? $out['alumni_place'] : 'home';
@@ -162,7 +189,10 @@ function ner_michoel_home_banner_public() {
 
 	$zoom = null;
 	if ( $b['zoom_on'] && function_exists( 'ner_michoel_live_shiur_is_set' ) && ner_michoel_live_shiur_is_set() ) {
-		$zoom = ner_michoel_get_live_shiur();
+		$zoom              = ner_michoel_get_live_shiur();
+		$zoom['place']     = $b['zoom_place'];
+		$zoom['space_top'] = $b['zoom_space_top'];
+		$zoom['space_bot'] = $b['zoom_space_bot'];
 	}
 
 	return array(
@@ -212,6 +242,22 @@ function ner_michoel_handle_home_banner_rest( WP_REST_Request $request ) {
 	foreach ( array( 'on', 'alumni_on', 'zoom_on' ) as $key ) {
 		if ( array_key_exists( $key, $body ) ) {
 			$new[ $key ] = (bool) $body[ $key ];
+		}
+	}
+	if ( isset( $body['zoom_place'] ) ) {
+		$zoom_place = (string) $body['zoom_place'];
+		if ( ! isset( ner_michoel_home_banner_zoom_places()[ $zoom_place ] ) ) {
+			return new WP_Error( 'nm_banner_place', __( 'Choose one of the places on the list.', 'ner-michoel-core' ), array( 'status' => 400 ) );
+		}
+		$new['zoom_place'] = $zoom_place;
+	}
+	foreach ( array( 'zoom_space_top', 'zoom_space_bot' ) as $key ) {
+		if ( isset( $body[ $key ] ) ) {
+			$space = (string) $body[ $key ];
+			if ( ! isset( ner_michoel_home_banner_spacings()[ $space ] ) ) {
+				return new WP_Error( 'nm_banner_space', __( 'Choose one of the spacings on the list.', 'ner-michoel-core' ), array( 'status' => 400 ) );
+			}
+			$new[ $key ] = $space;
 		}
 	}
 	if ( isset( $body['style'] ) ) {

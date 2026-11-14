@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.48
+Stable tag: 0.9.49
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,10 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.49 =
+* New: Zoom line settings on Control Panel > Home banner: where it shows (every page under the header = default,
+  homepage under the header, homepage under the first card) and space above / below (Normal / Less / None).
 
 = 0.9.48 =
 * New: Library Import follows your changes: new shiurim go where that old-site folder's shiurim were moved on this site,

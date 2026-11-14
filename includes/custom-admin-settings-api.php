@@ -211,9 +211,26 @@ function ner_michoel_settings_registry() {
 			'fields'        => array(
 				'zoom_on'       => array(
 					'type'    => 'checkbox',
-					'label'   => __( 'Show the Zoom line on the homepage', 'ner-michoel-core' ),
+					'label'   => __( 'Show the Zoom line', 'ner-michoel-core' ),
 					'section' => __( 'Zoom line', 'ner-michoel-core' ),
-					'desc'    => __( 'One small line under the welcome: the schedule, the meeting ID and a Join on Zoom button. It shows when there is a Zoom link or a schedule. These are the same details as on the Live Shiur / Zoom screen.', 'ner-michoel-core' ),
+					'desc'    => __( 'One strip with the schedule, the meeting ID and a Join on Zoom button. It shows when there is a Zoom link or a schedule. These are the same details as on the Live Shiur / Zoom screen.', 'ner-michoel-core' ),
+				),
+				'zoom_place'     => array(
+					'type'    => 'select',
+					'label'   => __( 'Where the Zoom line shows', 'ner-michoel-core' ),
+					'options' => ner_michoel_home_banner_zoom_places(),
+					'desc'    => __( 'Usually right under the header, like a banner across the top of every page. Or only on the homepage, or on the homepage under the first card.', 'ner-michoel-core' ),
+				),
+				'zoom_space_top' => array(
+					'type'    => 'select',
+					'label'   => __( 'Space above the Zoom line', 'ner-michoel-core' ),
+					'options' => ner_michoel_home_banner_spacings(),
+				),
+				'zoom_space_bot' => array(
+					'type'    => 'select',
+					'label'   => __( 'Space below the Zoom line', 'ner-michoel-core' ),
+					'options' => ner_michoel_home_banner_spacings(),
+					'desc'    => __( 'Less space brings the strip closer to the header or card above it and the card below it.', 'ner-michoel-core' ),
 				),
 				'zoom_link'     => array(
 					'type'        => 'text',
