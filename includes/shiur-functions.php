@@ -10,13 +10,26 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * A list of shiurim's query, made right for the person looking: for someone who can see the
+ * alumni section it also reads the alumni shiurim (audio and video), which then show among the
+ * others with an "Alumni only" tag (2026-11-13). Everyone else gets shiurim only, as before.
+ */
+function ner_michoel_shiur_list_args( $args ) {
+	$args['post_type'] = function_exists( 'ner_michoel_alumni_list_types' ) ? ner_michoel_alumni_list_types() : 'shiur';
+	if ( is_array( $args['post_type'] ) && count( $args['post_type'] ) > 1 && function_exists( 'ner_michoel_alumni_list_meta_query' ) ) {
+		$args['meta_query'] = ner_michoel_alumni_list_meta_query(); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_query_meta_query
+	}
+	return $args;
+}
+
+/**
  * All shiurim in a series, in Order (page-attributes) then date.
  *
  * @return WP_Post[]
  */
 function ner_michoel_get_series_shiurim( $term_id ) {
 	return get_posts(
-		array(
+		ner_michoel_shiur_list_args( array(
 			'post_type'      => 'shiur',
 			'posts_per_page' => -1,
 			'orderby'        => array( 'menu_order' => 'ASC', 'date' => 'ASC' ),
@@ -30,7 +43,7 @@ function ner_michoel_get_series_shiurim( $term_id ) {
 					'include_children' => false,
 				),
 			),
-		)
+		) )
 	);
 }
 
@@ -58,7 +71,7 @@ function ner_michoel_get_recent_shiurim( $limit = 24 ) {
  */
 function ner_michoel_get_speaker_shiurim( $term_id ) {
 	return get_posts(
-		array(
+		ner_michoel_shiur_list_args( array(
 			'post_type'      => 'shiur',
 			'posts_per_page' => -1,
 			'orderby'        => 'date',
@@ -70,7 +83,7 @@ function ner_michoel_get_speaker_shiurim( $term_id ) {
 					'terms'    => $term_id,
 				),
 			),
-		)
+		) )
 	);
 }
 

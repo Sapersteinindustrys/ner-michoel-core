@@ -34,7 +34,8 @@ define( 'NER_MICHOEL_SHIUR_FORMATS_OPTION', 'nm_shiur_formats' );
 // (this number) schedules one rebuild, so a deploy needs no manual step.
 // 2: the index also carries each shiur's group (x), so the search lists a shiur once.
 // 3: one post with an audio file and a Vimeo link is audio + video (2026-11-11).
-define( 'NER_MICHOEL_SHIUR_FORMATS_RULE', '3' );
+// 4: the index also carries each shiur's formats by id (o) and the speaker / series addresses (2026-11-13).
+define( 'NER_MICHOEL_SHIUR_FORMATS_RULE', '4' );
 define( 'NER_MICHOEL_SHIUR_FORMATS_RULE_OPTION', 'nm_shiur_formats_rule' );
 
 /**

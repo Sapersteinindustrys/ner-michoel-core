@@ -549,7 +549,8 @@ function ner_michoel_process_queue_row( $row ) {
 		update_post_meta( $post_id, '_shiur_duration', sanitize_text_field( $row->duration ) );
 	}
 	if ( $row->speaker && function_exists( 'ner_michoel_sample_content_get_or_create_term' ) ) {
-		$speaker_id = ner_michoel_sample_content_get_or_create_term( $row->speaker, 'speaker' );
+		// A speaker renamed or merged on this site is followed (ner_michoel_import_learned_moves()).
+		$speaker_id = ner_michoel_import_speaker_for_name( $row->speaker );
 		if ( $speaker_id ) {
 			wp_set_object_terms( $post_id, array( $speaker_id ), 'speaker' );
 		}
@@ -1003,6 +1004,7 @@ function ner_michoel_handle_import_control_rest( WP_REST_Request $request ) {
 			'discovery_done'     => (bool) get_option( 'nm_import_discovery_done' ),
 			'total_pages'        => ner_michoel_import_total_pages(),
 			'find_missing'       => get_option( 'nm_import_find_missing', null ),
+			'learned_changes'    => count( ner_michoel_import_learned_changes() ),
 			'counts'             => ner_michoel_import_counts(),
 			'last_discovery_error' => get_option( 'nm_import_last_discovery_error', '' ),
 			'summary_pending'    => ner_michoel_summary_batch_pending_count(),
@@ -1168,6 +1170,12 @@ function ner_michoel_import_series_for_path( $path ) {
 		return ( '' !== $path && function_exists( 'ner_michoel_sample_content_get_or_create_term' ) ) ? (int) ner_michoel_sample_content_get_or_create_term( $path, 'series' ) : 0;
 	}
 
+	// Where this site moved the shiurim that came from this folder before.
+	$learned = ner_michoel_import_learned_series( $path );
+	if ( $learned ) {
+		return $learned;
+	}
+
 	$found = ner_michoel_series_find_or_create_path( $path, 0, false );
 	if ( is_array( $found ) ) {
 		return (int) $found['term_id'];
@@ -1253,8 +1261,7 @@ function ner_michoel_import_audio_twin_series( $title, $speaker_name ) {
 	if ( ! function_exists( 'ner_michoel_shiur_format_key' ) ) {
 		return 0;
 	}
-	$speaker = $speaker_name ? get_term_by( 'name', $speaker_name, 'speaker' ) : false;
-	$speaker = $speaker ? (int) $speaker->term_id : 0;
+	$speaker = $speaker_name ? ner_michoel_import_speaker_for_name( $speaker_name, false ) : 0;
 	$key     = ner_michoel_shiur_format_key( $title, $speaker );
 	if ( '' === $key || ! $speaker ) {
 		return 0;
@@ -1307,6 +1314,150 @@ function ner_michoel_import_series_for_row( $row ) {
 		}
 	}
 	return '' === (string) $row->series ? 0 : ner_michoel_import_series_for_path( $row->series );
+}
+
+/**
+ * What this site did with the shiurim it already imported, learned from the
+ * import queue: each imported row keeps the old site's folder (series) and
+ * speaker, and the post it became. Where those posts are now shows how the
+ * library was reorganized (folders moved, merged, split off, renamed; speakers
+ * renamed or merged), and new shiurim from the same old folder or speaker go
+ * the same way.
+ *
+ * A folder or speaker counts as moved when at least 60% of its imported
+ * shiurim (published or private) are now in one place. "...Videos" buckets are
+ * left out: a video goes with its audio (ner_michoel_import_series_for_row()).
+ * Rebuilt at most once an hour (and on demand), so a change made today is
+ * followed by the next import without anyone doing anything.
+ *
+ * @param bool $rebuild Build it now.
+ * @return array { series: path => term_id, speaker: name => term_id, time, rows }
+ */
+function ner_michoel_import_learned_moves( $rebuild = false ) {
+	static $cache = null;
+	if ( null !== $cache && ! $rebuild ) {
+		return $cache;
+	}
+	$saved = get_option( 'nm_import_learned_moves' );
+	if ( ! $rebuild && is_array( $saved ) && isset( $saved['time'] ) && ( time() - (int) $saved['time'] ) < HOUR_IN_SECONDS ) {
+		$cache = $saved;
+		return $cache;
+	}
+
+	global $wpdb;
+	$table = ner_michoel_import_queue_table_name();
+	$rows  = $wpdb->get_results(
+		"SELECT q.series, q.speaker, q.created_post_id, tt.taxonomy, tt.term_id
+		FROM {$table} q
+		INNER JOIN {$wpdb->posts} p ON p.ID = q.created_post_id AND p.post_status IN ('publish', 'private')
+		INNER JOIN {$wpdb->term_relationships} tr ON tr.object_id = p.ID
+		INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id AND tt.taxonomy IN ('series', 'speaker')
+		WHERE q.status = 'imported' AND q.created_post_id > 0", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		ARRAY_N
+	);
+
+	// Votes: old folder / old speaker => current term => posts.
+	$votes = array( 'series' => array(), 'speaker' => array() );
+	$posts = array( 'series' => array(), 'speaker' => array() );
+	foreach ( (array) $rows as $r ) {
+		list( $series, $speaker, $post_id, $taxonomy, $term_id ) = $r;
+		$from = 'series' === $taxonomy ? trim( (string) $series ) : trim( (string) $speaker );
+		if ( '' === $from || ( 'series' === $taxonomy && ner_michoel_import_is_video_bucket( $from ) ) ) {
+			continue;
+		}
+		$votes[ $taxonomy ][ $from ][ (int) $term_id ] = ( isset( $votes[ $taxonomy ][ $from ][ (int) $term_id ] ) ? $votes[ $taxonomy ][ $from ][ (int) $term_id ] : 0 ) + 1;
+		$posts[ $taxonomy ][ $from ][ (int) $post_id ]  = true;
+	}
+
+	$map = array( 'series' => array(), 'speaker' => array(), 'time' => time(), 'rows' => count( (array) $rows ) );
+	foreach ( array( 'series', 'speaker' ) as $taxonomy ) {
+		foreach ( $votes[ $taxonomy ] as $from => $terms ) {
+			arsort( $terms );
+			$total = count( $posts[ $taxonomy ][ $from ] );
+			$top   = (int) key( $terms );
+			if ( $total && current( $terms ) / $total >= 0.6 ) {
+				$map[ $taxonomy ][ $from ] = $top;
+			}
+		}
+	}
+
+	update_option( 'nm_import_learned_moves', $map, false );
+	$cache = $map;
+	return $cache;
+}
+
+/**
+ * The series that the shiurim from this old-site folder are in now, or 0
+ * when nothing from it was imported or they are spread over several series.
+ */
+function ner_michoel_import_learned_series( $path ) {
+	$path = trim( (string) $path );
+	if ( '' === $path || ner_michoel_import_is_video_bucket( $path ) ) {
+		return 0;
+	}
+	$map = ner_michoel_import_learned_moves();
+	$id  = isset( $map['series'][ $path ] ) ? (int) $map['series'][ $path ] : 0;
+	if ( ! $id ) {
+		return 0;
+	}
+	$term = get_term( $id, 'series' );
+	return ( $term && ! is_wp_error( $term ) ) ? $id : 0;
+}
+
+/**
+ * The speaker term for an old-site speaker name: where that speaker's imported
+ * shiurim are now (a renamed or merged speaker), else the term with that name
+ * (made when $create).
+ *
+ * @return int Term ID, or 0.
+ */
+function ner_michoel_import_speaker_for_name( $name, $create = true ) {
+	$name = trim( (string) $name );
+	if ( '' === $name ) {
+		return 0;
+	}
+	$map = ner_michoel_import_learned_moves();
+	if ( ! empty( $map['speaker'][ $name ] ) ) {
+		$term = get_term( (int) $map['speaker'][ $name ], 'speaker' );
+		if ( $term && ! is_wp_error( $term ) ) {
+			return (int) $term->term_id;
+		}
+	}
+	if ( $create && function_exists( 'ner_michoel_sample_content_get_or_create_term' ) ) {
+		return (int) ner_michoel_sample_content_get_or_create_term( $name, 'speaker' );
+	}
+	$term = get_term_by( 'name', $name, 'speaker' );
+	return $term ? (int) $term->term_id : 0;
+}
+
+/**
+ * The learned moves that send shiurim somewhere other than the folder or
+ * speaker of the same name, for the Library Import screen.
+ *
+ * @return array[] { kind, from, to }
+ */
+function ner_michoel_import_learned_changes() {
+	$map    = ner_michoel_import_learned_moves();
+	$labels = function_exists( 'ner_michoel_series_label_map' ) ? ner_michoel_series_label_map() : array();
+	$out    = array();
+	foreach ( $map['series'] as $from => $id ) {
+		$to = isset( $labels[ $id ] ) ? html_entity_decode( $labels[ $id ], ENT_QUOTES, 'UTF-8' ) : '';
+		if ( '' !== $to && ner_michoel_import_series_key_path( $to ) !== ner_michoel_import_series_key_path( $from ) ) {
+			$out[] = array( 'kind' => 'series', 'from' => $from, 'to' => $to );
+		}
+	}
+	foreach ( $map['speaker'] as $from => $id ) {
+		$term = get_term( (int) $id, 'speaker' );
+		if ( $term && ! is_wp_error( $term ) && strtolower( trim( html_entity_decode( $term->name, ENT_QUOTES, 'UTF-8' ) ) ) !== strtolower( $from ) ) {
+			$out[] = array( 'kind' => 'speaker', 'from' => $from, 'to' => html_entity_decode( $term->name, ENT_QUOTES, 'UTF-8' ) );
+		}
+	}
+	return $out;
+}
+
+/** A series path compared part by part without case or punctuation. */
+function ner_michoel_import_series_key_path( $path ) {
+	return implode( '/', array_map( 'ner_michoel_series_key', ner_michoel_series_split_name( (string) $path ) ) );
 }
 
 /**
@@ -1486,6 +1637,9 @@ function ner_michoel_handle_import_tools() {
 		$moved  = ner_michoel_import_move_videos( $within );
 		/* translators: %d: videos moved */
 		$note = sprintf( _n( '%d video was moved into its audio\'s series.', '%d videos were moved into their audio\'s series.', $moved, 'ner-michoel-core' ), $moved );
+	} elseif ( 'relearn' === $tool ) {
+		$map  = ner_michoel_import_learned_moves( true );
+		$note = sprintf( /* translators: 1: folders, 2: speakers */ __( 'Learned again from the shiurim already imported: %1$d old folders and %2$d old speakers have a place on this site.', 'ner-michoel-core' ), count( $map['series'] ), count( $map['speaker'] ) );
 	} elseif ( 'undo_videos' === $tool ) {
 		$note = sprintf( /* translators: %d: videos moved back */ __( '%d videos were put back where they were.', 'ner-michoel-core' ), ner_michoel_import_undo_video_moves() );
 	} elseif ( 'combine_av' === $tool && function_exists( 'ner_michoel_av_combine_run' ) ) {
@@ -1581,6 +1735,29 @@ function ner_michoel_render_import_tools_card() {
 				<button type="submit" class="button button-link"><?php esc_html_e( 'Undo', 'ner-michoel-core' ); ?></button>
 			</form>
 		<?php endif; ?>
+
+		<?php $changes = ner_michoel_import_learned_changes(); ?>
+		<h2 style="margin-top:28px;"><?php esc_html_e( 'Following your changes', 'ner-michoel-core' ); ?></h2>
+		<p><?php esc_html_e( 'New shiurim go where you put the shiurim that came before them: if the shiurim from an old-site folder were moved to another series (or most of them, 60% or more), new ones from that folder go there too. The same for a speaker you renamed or merged. This is learned again by itself every hour, so a change you make today is followed from the next import.', 'ner-michoel-core' ); ?></p>
+		<?php if ( $changes ) : ?>
+			<details>
+				<summary><?php echo esc_html( sprintf( /* translators: %d: changes */ _n( '%d change is followed', '%d changes are followed', count( $changes ), 'ner-michoel-core' ), count( $changes ) ) ); ?></summary>
+				<table class="widefat striped" style="margin-top:8px;max-width:900px;">
+					<thead><tr><th><?php esc_html_e( 'On the old site', 'ner-michoel-core' ); ?></th><th><?php esc_html_e( 'Goes to', 'ner-michoel-core' ); ?></th></tr></thead>
+					<tbody>
+					<?php foreach ( array_slice( $changes, 0, 300 ) as $c ) : ?>
+						<tr><td><?php echo esc_html( ( 'speaker' === $c['kind'] ? __( 'Speaker: ', 'ner-michoel-core' ) : '' ) . $c['from'] ); ?></td><td><?php echo esc_html( $c['to'] ); ?></td></tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</details>
+		<?php else : ?>
+			<p class="description"><?php esc_html_e( 'Nothing was moved yet: new shiurim go into the folder of the same name.', 'ner-michoel-core' ); ?></p>
+		<?php endif; ?>
+		<form method="post" action="<?php echo esc_url( $form_url ); ?>" style="margin-top:10px;">
+			<?php $hidden( 'relearn' ); ?>
+			<button type="submit" class="button"><?php esc_html_e( 'Learn again now', 'ner-michoel-core' ); ?></button>
+		</form>
 
 		<?php
 		if ( function_exists( 'ner_michoel_render_av_combine_section' ) ) {

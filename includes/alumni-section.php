@@ -31,6 +31,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// A shiur ticked "Alumni only" on its edit screen (2026-11-13): in the section whatever its speaker.
+define( 'NER_MICHOEL_ALUMNI_ONLY_META', '_nm_alumni_only' );
 define( 'NER_MICHOEL_ALUMNI_SPEAKERS_OPTION', 'nm_alumni_speakers' );
 // Per chosen speaker, which of his shiurim are for alumni (R' Ariel Katz, 2026-11-03: Rabbi
 // Shurkin's parsha shiurim are for everyone; his Gemara shiurim and Zoom videos are for alumni).
@@ -383,6 +385,10 @@ function ner_michoel_alumni_post_folders( $post_id ) {
 
 /** Does this shiur belong in the section under the current rules? */
 function ner_michoel_alumni_post_matches( $post_id, $rules = null ) {
+	// Ticked "Alumni only" on its own edit screen (2026-11-13), whatever the speaker rules say.
+	if ( get_post_meta( $post_id, NER_MICHOEL_ALUMNI_ONLY_META, true ) ) {
+		return true;
+	}
 	$rules = null === $rules ? ner_michoel_alumni_rules() : $rules;
 	if ( ! $rules ) {
 		return false;
@@ -553,6 +559,50 @@ function ner_michoel_alumni_watch_terms( $object_id, $terms, $tt_ids, $taxonomy 
 	}
 }
 add_action( 'set_object_terms', 'ner_michoel_alumni_watch_terms', 20, 4 );
+
+/**
+ * "Alumni only" ticked or unticked on one shiur (the Control Panel's shiur and written shiur
+ * forms, 2026-11-13): the shiur moves into the section or back out at the end of the request,
+ * the same way a speaker's change does.
+ */
+function ner_michoel_alumni_watch_tick( $meta_id, $object_id, $meta_key ) {
+	if ( NER_MICHOEL_ALUMNI_ONLY_META !== $meta_key || ! in_array( get_post_type( $object_id ), array( 'shiur', 'written_shiur', 'alumni_shiur' ), true ) ) {
+		return;
+	}
+	$GLOBALS['nm_alumni_pending_moves'][ (int) $object_id ] = true;
+	if ( ! has_action( 'shutdown', 'ner_michoel_alumni_finish_moves' ) ) {
+		add_action( 'shutdown', 'ner_michoel_alumni_finish_moves', 0 );
+	}
+}
+add_action( 'added_post_meta', 'ner_michoel_alumni_watch_tick', 10, 3 );
+add_action( 'updated_post_meta', 'ner_michoel_alumni_watch_tick', 10, 3 );
+add_action( 'deleted_post_meta', 'ner_michoel_alumni_watch_tick', 10, 3 );
+
+/**
+ * The post types a public list of shiurim reads for the person looking: shiurim, plus the
+ * alumni shiurim (audio and video, not the written ones) for someone who can see the alumni
+ * section, which show among the others with an "Alumni only" tag (2026-11-13). Use with
+ * ner_michoel_alumni_list_meta_query().
+ */
+function ner_michoel_alumni_list_types() {
+	return ner_michoel_alumni_can_view_quick() ? array( 'shiur', 'alumni_shiur' ) : array( 'shiur' );
+}
+
+/** Leaves the alumni section's written shiurim out of a list of audio / video shiurim. */
+function ner_michoel_alumni_list_meta_query() {
+	return array(
+		'relation' => 'OR',
+		array(
+			'key'     => '_nm_alumni_from',
+			'compare' => 'NOT EXISTS',
+		),
+		array(
+			'key'     => '_nm_alumni_from',
+			'value'   => 'written_shiur',
+			'compare' => '!=',
+		),
+	);
+}
 
 function ner_michoel_alumni_finish_moves() {
 	$ids = empty( $GLOBALS['nm_alumni_pending_moves'] ) ? array() : array_keys( $GLOBALS['nm_alumni_pending_moves'] );

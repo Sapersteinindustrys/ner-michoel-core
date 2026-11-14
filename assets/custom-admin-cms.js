@@ -210,6 +210,9 @@
 				return renderMediaField( field.kind === 'pdf' ? 'pdf' : 'media', value, field );
 			case 'media_multi':
 				return renderMediaMultiField( value );
+			case 'checkbox':
+				// A tick box (Alumni only): saved as '1' when ticked, cleared when not.
+				return '<label class="nm-cms-check"><input type="checkbox"' + idAttr + ' class="nm-cms-input" value="1"' + ( value === '1' || value === 1 || value === true ? ' checked' : '' ) + '> <span>' + esc( field.check_label || 'Yes' ) + '</span></label>';
 			case 'readonly':
 				return '<div class="nm-cms-readonly-text">' + ( value ? esc( value ) : '<span class="nm-cms-muted">—</span>' ) + '</div>';
 			case 'readonly_textarea':
@@ -1712,6 +1715,9 @@
 						ids.push( $( this ).data( 'id' ) );
 					} );
 					data[ key ] = ids;
+					break;
+				case 'checkbox':
+					data[ key ] = $field.find( 'input[type="checkbox"]' ).is( ':checked' ) ? '1' : '';
 					break;
 				case 'readonly':
 				case 'readonly_textarea':

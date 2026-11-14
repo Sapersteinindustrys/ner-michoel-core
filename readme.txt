@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.47
+Stable tag: 0.9.48
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,14 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.48 =
+* New: Library Import follows your changes: new shiurim go where that old-site folder's shiurim were moved on this site,
+  and renamed / merged speakers are followed (learned hourly; "Following your changes" list with "Learn again now").
+* New: Alumni only tick on each shiur / written shiur form (moves it to alumni shiurim; untick makes it public again).
+* Changed: downloads keep the stored file name; search index items carry each format's post and speaker / series
+  links (the index rebuilds once by itself).
+* Needs ner-michoel-child 0.2.82.
 
 = 0.9.47 =
 * Library Import: imports follow today's series tree (moved folders found by their last part), videos go with their

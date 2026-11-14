@@ -1,7 +1,7 @@
 <?php
 /**
  * Lets a visitor download a shiur's media file directly (audio or
- * video), with a friendly "{Title}.ext" filename, instead
+ * video), under the file's own stored name, instead
  * of relying on the <a download> attribute — which browsers silently
  * ignore for cross-origin file URLs (e.g. if uploads ever move to a CDN) and
  * which can't rename the downloaded file away from whatever it was
@@ -64,7 +64,7 @@ function ner_michoel_stream_shiur_download( $post_id ) {
 			ner_michoel_relay_serve(
 				$remote_path,
 				array(
-					'filename' => ner_michoel_build_shiur_download_filename( $post_id, pathinfo( $remote_path, PATHINFO_EXTENSION ) ),
+					'filename' => ner_michoel_shiur_download_filename( $post_id, $attachment_id, $remote_path ),
 					'fallback' => $remote ? $remote : '',
 					'slots'    => max( 1, $cfg['max'] - 2 ),
 				)
@@ -80,7 +80,7 @@ function ner_michoel_stream_shiur_download( $post_id ) {
 
 	$mime     = get_post_mime_type( $attachment_id );
 	$ext      = pathinfo( $file, PATHINFO_EXTENSION );
-	$filename = ner_michoel_build_shiur_download_filename( $post_id, $ext );
+	$filename = ner_michoel_shiur_download_filename( $post_id, $attachment_id, $file );
 
 	nocache_headers();
 	header( 'Content-Type: ' . ( $mime ? $mime : 'application/octet-stream' ) );
@@ -91,6 +91,34 @@ function ner_michoel_stream_shiur_download( $post_id ) {
 
 	readfile( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_readfile
 	exit;
+}
+
+/**
+ * The name a download is saved under: the file's own name as it is stored (the old
+ * site's name, e.g. "040 Bava Kamma 29a.mp3"), so downloaded files keep the names and
+ * the order they always had (Yoni, 2026-11-13). The website shows the clean title;
+ * only the saved file keeps its old name. Two shiurim with the same file name simply
+ * download under the same name. When no stored name can be read, the title is used
+ * (ner_michoel_build_shiur_download_filename()).
+ *
+ * @param int    $post_id       The shiur.
+ * @param int    $attachment_id Its file.
+ * @param string $path          The stored file's path (local or on Bunny), if known.
+ */
+function ner_michoel_shiur_download_filename( $post_id, $attachment_id, $path = '' ) {
+	$stored = (string) get_post_meta( $attachment_id, '_wp_attached_file', true );
+	$name   = '' !== $stored ? $stored : (string) $path;
+	if ( '' === $name ) {
+		$url  = wp_get_attachment_url( $attachment_id );
+		$name = $url ? (string) wp_parse_url( $url, PHP_URL_PATH ) : '';
+	}
+	$name = rawurldecode( wp_basename( $name ) );
+	$name = trim( preg_replace( '~[\\\\/:*?"<>|\x00-\x1F\x7F]+~u', ' ', $name ), " .\t" );
+	if ( '' === $name || '' === pathinfo( $name, PATHINFO_EXTENSION ) ) {
+		$ext = pathinfo( '' !== $path ? $path : $name, PATHINFO_EXTENSION );
+		return ner_michoel_build_shiur_download_filename( $post_id, $ext );
+	}
+	return $name;
 }
 
 /**

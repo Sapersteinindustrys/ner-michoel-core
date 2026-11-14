@@ -220,6 +220,8 @@ function ner_michoel_shiur_index_build( $version, &$formats = null ) {
 			$item['f'] = implode( '', array_keys( $formats[ $id ] ) );
 			// The shiur it is one format of (every format of it has the same x), so a list shows it once.
 			$item['x'] = (int) min( array_map( 'intval', $formats[ $id ] ) );
+			// Each format's post, so a row can play the audio, open the video or the written shiur (2026-11-13).
+			$item['o'] = array_map( 'intval', $formats[ $id ] );
 		}
 
 		$json = wp_json_encode( $item, $flags );
@@ -256,7 +258,20 @@ function ner_michoel_shiur_index_build( $version, &$formats = null ) {
 		$lists[ $taxonomy ] = wp_json_encode( (object) $list, $flags );
 	}
 
-	return '{"v":' . (int) $version . ',"speakers":' . $lists['speaker'] . ',"series":' . $lists['series'] . ',"topics":' . $lists['topic'] . ',"items":[' . implode( ',', $parts ) . ']}';
+	// The speaker and series pages' addresses, so a row's speaker and series are links (2026-11-13).
+	$links = array();
+	foreach ( array( 'speaker', 'series' ) as $taxonomy ) {
+		$list = array();
+		foreach ( array_keys( $used[ $taxonomy ] ) as $term_id ) {
+			$url = get_term_link( (int) $term_id, $taxonomy );
+			if ( ! is_wp_error( $url ) ) {
+				$list[ $term_id ] = wp_make_link_relative( $url );
+			}
+		}
+		$links[ $taxonomy ] = wp_json_encode( (object) $list, $flags );
+	}
+
+	return '{"v":' . (int) $version . ',"speakers":' . $lists['speaker'] . ',"series":' . $lists['series'] . ',"topics":' . $lists['topic'] . ',"speakerLinks":' . $links['speaker'] . ',"seriesLinks":' . $links['series'] . ',"items":[' . implode( ',', $parts ) . ']}';
 }
 
 /**

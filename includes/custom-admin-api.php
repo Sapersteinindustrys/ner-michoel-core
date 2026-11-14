@@ -74,6 +74,7 @@ function ner_michoel_cms_registry() {
 				'duration'   => array( 'type' => 'readonly', 'label' => __( 'Duration (set from the file)', 'ner-michoel-core' ), 'meta' => '_shiur_duration' ),
 				'dedication' => array( 'type' => 'textarea', 'label' => __( 'Dedication (optional)', 'ner-michoel-core' ), 'meta' => '_shiur_dedication', 'rows' => 3 ),
 				'thumbnail'  => array( 'type' => 'image', 'label' => __( 'Featured Image', 'ner-michoel-core' ), 'target' => 'thumbnail' ),
+				'alumni_only' => array( 'type' => 'checkbox', 'label' => __( 'Alumni only', 'ner-michoel-core' ), 'meta' => '_nm_alumni_only', 'check_label' => __( 'Show this only to alumni', 'ner-michoel-core' ), 'hint' => __( 'Tick to put this shiur in the alumni section: only signed-in alumni can see it, and they see it with an "Alumni only" tag. Untick to make it public again.', 'ner-michoel-core' ) ),
 				'menu_order' => array( 'type' => 'number', 'label' => __( 'Order (within series)', 'ner-michoel-core' ), 'target' => 'menu_order', 'hint' => __( 'Lower numbers play first inside the series. Leave at 0 if the order doesn’t matter.', 'ner-michoel-core' ) ),
 				'status'     => array( 'type' => 'select', 'label' => __( 'Status', 'ner-michoel-core' ), 'target' => 'status', 'options' => $status_options ),
 			),
@@ -102,6 +103,7 @@ function ner_michoel_cms_registry() {
 				'topics'    => array( 'type' => 'taxonomy_multi', 'label' => __( 'Topics', 'ner-michoel-core' ), 'taxonomy' => 'topic' ),
 				'pdf'       => array( 'type' => 'media', 'kind' => 'pdf', 'label' => __( 'PDF File', 'ner-michoel-core' ), 'meta' => '_written_pdf_id', 'hint' => __( 'Choosing a PDF fills in an empty Title from the file’s name and an empty Summary from its first line.', 'ner-michoel-core' ) ),
 				'thumbnail' => array( 'type' => 'image', 'label' => __( 'Cover Image (optional)', 'ner-michoel-core' ), 'target' => 'thumbnail' ),
+				'alumni_only' => array( 'type' => 'checkbox', 'label' => __( 'Alumni only', 'ner-michoel-core' ), 'meta' => '_nm_alumni_only', 'check_label' => __( 'Show this only to alumni', 'ner-michoel-core' ), 'hint' => __( 'Tick to put this shiur in the alumni section: only signed-in alumni can see it, and they see it with an "Alumni only" tag. Untick to make it public again.', 'ner-michoel-core' ) ),
 				'status'    => array( 'type' => 'select', 'label' => __( 'Status', 'ner-michoel-core' ), 'target' => 'status', 'options' => $status_options ),
 			),
 		),
@@ -513,9 +515,25 @@ function ner_michoel_cms_list_posts( $config, WP_REST_Request $request ) {
 		}
 	}
 
+	// A shiur or written shiur that is in the alumni section stays in its own list here (2026-11-13).
+	if ( in_array( $config['post_type'], array( 'shiur', 'written_shiur' ), true ) && post_type_exists( 'alumni_shiur' ) ) {
+		$args['post_type']  = array( $config['post_type'], 'alumni_shiur' );
+		$args['meta_query'] = array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+			'relation' => 'OR',
+			array(
+				'key'     => '_nm_alumni_from',
+				'compare' => 'NOT EXISTS',
+			),
+			array(
+				'key'   => '_nm_alumni_from',
+				'value' => $config['post_type'],
+			),
+		);
+	}
+
 	if ( 'shiur' === $config['post_type'] ) {
 		if ( '1' === (string) $request->get_param( 'missing_audio' ) ) {
-			$args['meta_query'] = ner_michoel_missing_audio_meta_query(); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+			$args['meta_query'] = empty( $args['meta_query'] ) ? ner_michoel_missing_audio_meta_query() : array( 'relation' => 'AND', $args['meta_query'], ner_michoel_missing_audio_meta_query() ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 		}
 		if ( 'plays' === $request->get_param( 'orderby' ) ) {
 			$args['meta_key'] = '_shiur_play_count'; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
@@ -754,7 +772,7 @@ function ner_michoel_cms_route_get( WP_REST_Request $request ) {
 	}
 
 	$post = get_post( $id );
-	if ( ! $post || $post->post_type !== $config['post_type'] ) {
+	if ( ! $post || ! ner_michoel_cms_post_fits( $post, $config ) ) {
 		return new WP_Error( 'nm_cms_not_found', __( 'Not found.', 'ner-michoel-core' ), array( 'status' => 404 ) );
 	}
 	return new WP_REST_Response( ner_michoel_cms_format_post_full( $post, $config ), 200 );
@@ -782,6 +800,17 @@ function ner_michoel_cms_route_update( WP_REST_Request $request ) {
 		: ner_michoel_cms_save_post( $id, $config, $request );
 }
 
+/**
+ * Is this post one of this list's? A shiur or written shiur that is in the alumni section
+ * (post type alumni_shiur, moved from this type) still is (2026-11-13).
+ */
+function ner_michoel_cms_post_fits( $post, $config ) {
+	if ( $post->post_type === $config['post_type'] ) {
+		return true;
+	}
+	return 'alumni_shiur' === $post->post_type && get_post_meta( $post->ID, '_nm_alumni_from', true ) === $config['post_type'];
+}
+
 function ner_michoel_cms_save_post( $id, $config, WP_REST_Request $request ) {
 	$body = $request->get_json_params();
 	if ( ! is_array( $body ) ) {
@@ -791,6 +820,12 @@ function ner_michoel_cms_save_post( $id, $config, WP_REST_Request $request ) {
 	$postarr = array( 'post_type' => $config['post_type'] );
 	if ( $id ) {
 		$postarr['ID'] = $id;
+		$existing      = get_post( $id );
+		if ( ! $existing || ! ner_michoel_cms_post_fits( $existing, $config ) ) {
+			return new WP_Error( 'nm_cms_not_found', __( 'Not found.', 'ner-michoel-core' ), array( 'status' => 404 ) );
+		}
+		// One in the alumni section stays there: its "Alumni only" tick (or its speaker) decides that.
+		$postarr['post_type'] = $existing->post_type;
 	}
 
 	foreach ( $config['fields'] as $key => $field ) {
@@ -910,6 +945,10 @@ function ner_michoel_cms_save_post( $id, $config, WP_REST_Request $request ) {
 			if ( '_shiur_vimeo_id' === $field['meta'] && function_exists( 'ner_michoel_sanitize_vimeo_meta' ) ) {
 				$sanitized = ner_michoel_sanitize_vimeo_meta( (string) $value );
 			}
+			// A tick box is on ('1') or off (no meta).
+			if ( 'checkbox' === $field['type'] ) {
+				$sanitized = ( '' !== $sanitized && '0' !== $sanitized ) ? '1' : '';
+			}
 			if ( ! empty( $field['maxlength'] ) ) {
 				$sanitized = mb_substr( $sanitized, 0, (int) $field['maxlength'] );
 			}
@@ -1020,7 +1059,7 @@ function ner_michoel_cms_route_delete( WP_REST_Request $request ) {
 	}
 
 	$post = get_post( $id );
-	if ( ! $post || $post->post_type !== $config['post_type'] ) {
+	if ( ! $post || ! ner_michoel_cms_post_fits( $post, $config ) ) {
 		return new WP_Error( 'nm_cms_not_found', __( 'Not found.', 'ner-michoel-core' ), array( 'status' => 404 ) );
 	}
 	$force  = 'nm_submission' === $config['post_type'] || ! empty( $config['force_delete'] );
