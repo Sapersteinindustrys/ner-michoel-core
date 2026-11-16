@@ -361,6 +361,20 @@ function ner_michoel_custom_admin_structure() {
 						'tip'   => __( 'A blocked one is not lost: open “Blocked” at the bottom and press “Bring back”, or delete it for good.', 'ner-michoel-core' ),
 					),
 				),
+				'mazaltovimport' => array(
+					'label'      => __( 'Import Old Mazal Tovs', 'ner-michoel-core' ),
+					'icon'       => 'download',
+					'callback'   => 'ner_michoel_render_mazal_tov_import_page',
+					'capability' => 'edit_others_posts',
+					'desc'       => __( 'Bring the Mazal Tovs from the old site (nermichoel.org) here. Ones already here are skipped.', 'ner-michoel-core' ),
+					'keywords'   => 'simcha import old site nermichoel copy bring mazal tov',
+					'help'       => array(
+						'steps' => array(
+							__( 'Press “Check the old site” to see how many there are and how many are here already.', 'ner-michoel-core' ),
+							__( 'Press “Import them”. They come in the old site’s order, below the ones posted here, and go live straight away.', 'ner-michoel-core' ),
+						),
+					),
+				),
 				'mazaltovorder' => array(
 					'label'      => __( 'Mazal Tov Order', 'ner-michoel-core' ),
 					'icon'       => 'list',

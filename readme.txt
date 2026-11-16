@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.49
+Stable tag: 0.9.50
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,10 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.50 =
+* New: Control Panel > Import Old Mazal Tovs brings the old site's Mazel Tovs here in their order, skipping ones already here
+  (REST ner-michoel/v1/mazal-tov-import, steps fetch / plan / run).
 
 = 0.9.49 =
 * New: Zoom line settings on Control Panel > Home banner: where it shows (every page under the header = default,
