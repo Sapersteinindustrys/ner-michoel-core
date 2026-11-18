@@ -1176,6 +1176,9 @@ function ner_michoel_import_series_for_path( $path ) {
 		return $learned;
 	}
 
+	// After the Series & Topics re-sort, a folder not seen before goes where the plan puts it (series-resort.php).
+	$path = (string) apply_filters( 'ner_michoel_import_series_path', $path );
+
 	$found = ner_michoel_series_find_or_create_path( $path, 0, false );
 	if ( is_array( $found ) ) {
 		return (int) $found['term_id'];
@@ -1311,6 +1314,11 @@ function ner_michoel_import_series_for_row( $row ) {
 		$twin = ner_michoel_import_audio_twin_series( $row->title, $row->speaker );
 		if ( $twin ) {
 			return $twin;
+		}
+		// After the re-sort, where its title says (series-resort.php).
+		$by_title = (int) apply_filters( 'ner_michoel_import_series_by_title', 0, $row );
+		if ( $by_title ) {
+			return $by_title;
 		}
 	}
 	return '' === (string) $row->series ? 0 : ner_michoel_import_series_for_path( $row->series );

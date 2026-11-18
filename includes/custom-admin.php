@@ -267,6 +267,21 @@ function ner_michoel_custom_admin_structure() {
 						),
 					),
 				),
+				'seriesresort' => array(
+					'label'      => __( 'Series & Topics Re-sort', 'ner-michoel-core' ),
+					'icon'       => 'layers',
+					'callback'   => 'ner_michoel_render_series_resort_page',
+					'capability' => 'manage_categories',
+					'desc'       => __( 'A plan to put the old site’s folders into clear sections (Gemara, Parsha, Mishna, Halacha, Moadim, Mussar & Vaadim, Shmuess, Events) and tidy the topics. You look it over and change it; nothing happens until you press Apply, and Undo puts it back.', 'ner-michoel-core' ),
+					'keywords'   => 'resort re-sort reorganize sort sections tidy clean series topics mapping spreadsheet plan perek course',
+					'help'       => array(
+						'steps' => array(
+							__( 'Read “How this works” at the top, then set the options (Perek level, courses).', 'ner-michoel-core' ),
+							__( 'Go through the tabs with “Only rows that need a look” ticked, and change or approve each row. Or download the spreadsheet, change it in Excel and upload it.', 'ner-michoel-core' ),
+							__( 'Press Preview, then Apply. Undo puts everything back.', 'ner-michoel-core' ),
+						),
+					),
+				),
 				'topics'     => array(
 					'label'      => __( 'Topics', 'ner-michoel-core' ),
 					'icon'       => 'tag',

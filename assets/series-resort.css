@@ -1,0 +1,63 @@
+/* Series & Topics Re-sort screen (includes/series-resort-screen.php). */
+
+.nm-resort { max-width: 1500px; }
+.nm-resort h2 { margin: 1.6em 0 0.6em; }
+
+.nm-resort-guide { background: #fff; border: 1px solid #dcdcde; border-radius: 8px; padding: 0 16px; }
+.nm-resort-guide summary { cursor: pointer; font-weight: 600; font-size: 14px; padding: 12px 0; }
+.nm-resort-guide__body { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px 28px; padding-bottom: 12px; }
+.nm-resort-guide h3 { margin: 0.4em 0; font-size: 14px; }
+.nm-resort-guide p, .nm-resort-guide li, .nm-resort-guide dd { font-size: 13px; line-height: 1.55; }
+.nm-resort-guide dt { font-weight: 600; margin-top: 6px; }
+.nm-resort-guide dd { margin: 0 0 4px; }
+
+.nm-resort-state { margin: 14px 0; padding: 10px 14px; border-left: 4px solid #2271b1; background: #f0f6fc; }
+.nm-resort-state.is-applied { border-color: #00a32a; background: #edfaef; }
+
+.nm-resort-settings, .nm-resort-sheet, .nm-resort-go { background: #fff; border: 1px solid #dcdcde; border-radius: 8px; padding: 4px 16px 16px; margin-top: 16px; }
+.nm-resort-settings__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px 24px; }
+.nm-resort-switch, .nm-resort-number { display: flex; gap: 10px; align-items: flex-start; }
+.nm-resort-switch input { margin-top: 3px; }
+.nm-resort-number input { width: 70px; }
+.nm-resort-settings small, .nm-resort-sections small { display: block; color: #50575e; font-size: 12px; line-height: 1.5; margin-top: 2px; }
+.nm-resort-sections { margin-top: 16px; }
+.nm-resort-sections ol { margin: 8px 0 8px 22px; }
+.nm-resort-sections li { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
+.nm-resort-sections li input { width: 220px; }
+
+.nm-resort-tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid #dcdcde; margin-bottom: 10px; }
+.nm-resort-tabs button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 8px 12px; cursor: pointer; font-size: 13px; }
+.nm-resort-tabs button[aria-selected="true"] { border-bottom-color: #2271b1; font-weight: 600; }
+.nm-resort-tabs span { color: #646970; font-weight: 400; }
+.nm-resort-tools { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.nm-resort-tools input[type="search"] { min-width: 240px; }
+.nm-resort-tools__gap { flex: 1; }
+.nm-resort-upload { cursor: pointer; }
+.nm-resort-hint { min-height: 1.4em; margin: 8px 0; color: #2271b1; }
+.nm-resort-hint.is-bad { color: #b32d2e; }
+
+.nm-resort-table-wrap { overflow-x: auto; }
+.nm-resort-table td { vertical-align: middle; font-size: 13px; }
+.nm-resort-table td.num { text-align: right; }
+.nm-resort-name { min-width: 220px; max-width: 360px; }
+.nm-resort-target input { width: 100%; min-width: 260px; }
+.nm-resort-table td input[data-field="add_topics"] { width: 150px; }
+.nm-resort-note { color: #50575e; font-size: 12px !important; max-width: 260px; }
+.nm-resort-table tr.needs-review td:first-child { box-shadow: inset 3px 0 0 #dba617; }
+.nm-resort-table tr.is-approved td:first-child { box-shadow: inset 3px 0 0 #00a32a; }
+.nm-resort-conf { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; }
+.nm-resort-conf.is-high { background: #edfaef; color: #006b1d; }
+.nm-resort-conf.is-medium { background: #fcf9e8; color: #8a6d00; }
+.nm-resort-conf.is-low { background: #fcf0f1; color: #b32d2e; }
+.nm-resort-ok { white-space: nowrap; }
+.nm-resort-pager { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+
+.nm-resort-progress { height: 10px; background: #f0f0f1; border-radius: 5px; overflow: hidden; margin: 10px 0; }
+.nm-resort-progress div { height: 100%; width: 0; background: #2271b1; transition: width 0.4s; }
+.nm-resort-undo { color: #b32d2e !important; border-color: #b32d2e !important; }
+.nm-resort-newlist { columns: 2 320px; font-size: 12px; }
+
+@media (max-width: 782px) {
+	.nm-resort-tools input[type="search"] { min-width: 0; width: 100%; }
+	.nm-resort-target input { min-width: 180px; }
+}

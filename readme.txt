@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.50
+Stable tag: 0.9.51
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,10 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.51 =
+* New: Control Panel > Shiurim > Series & Topics Re-sort: a plan for putting the old folders into sections, editable in place or as a
+  spreadsheet, with Perek / course options, a guide, Preview, Apply in steps with a full backup, and Undo. Nothing changes until Apply.
 
 = 0.9.50 =
 * New: Control Panel > Import Old Mazal Tovs brings the old site's Mazel Tovs here in their order, skipping ones already here

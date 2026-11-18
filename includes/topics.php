@@ -389,7 +389,8 @@ function ner_michoel_topic_names_from_series( $series_name ) {
 			$names[ $key ] = $part;
 		}
 	}
-	return array_values( $names );
+	// After the Series & Topics re-sort, the plan decides which of these stay (series-resort.php).
+	return (array) apply_filters( 'ner_michoel_topic_names_from_series', array_values( $names ), $series_name );
 }
 
 /**
