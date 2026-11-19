@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.52
+Stable tag: 0.9.53
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,11 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.53 =
+* Added: in-house site hardening (includes/site-hardening.php): security headers (nosniff, X-Frame-Options SAMEORIGIN, Referrer-Policy,
+  Permissions-Policy, a minimal Content-Security-Policy, HSTS on https), the dashboard code editors off, and search-engine tags
+  (description, canonical, Open Graph, Twitter card, schema) that take over from Yoast SEO once it is removed.
 
 = 0.9.52 =
 * Changed: the Series & Topics Re-sort plans speaker first by default (Speaker / Gemara, Speaker / Parsha ...; a speaker's Gemara as one series or split
