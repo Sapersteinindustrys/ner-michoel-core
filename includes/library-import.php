@@ -1176,9 +1176,6 @@ function ner_michoel_import_series_for_path( $path ) {
 		return $learned;
 	}
 
-	// After the Series & Topics re-sort, a folder not seen before goes where the plan puts it (series-resort.php).
-	$path = (string) apply_filters( 'ner_michoel_import_series_path', $path );
-
 	$found = ner_michoel_series_find_or_create_path( $path, 0, false );
 	if ( is_array( $found ) ) {
 		return (int) $found['term_id'];
@@ -1310,15 +1307,15 @@ function ner_michoel_import_audio_twin_series( $title, $speaker_name ) {
  * path (ner_michoel_import_series_for_path()).
  */
 function ner_michoel_import_series_for_row( $row ) {
+	// After the Series & Topics re-sort, where the plan puts it: by its folder or title, under its speaker (series-resort.php).
+	$planned = (int) apply_filters( 'ner_michoel_import_series_for_row', 0, $row );
+	if ( $planned ) {
+		return $planned;
+	}
 	if ( 'video' === $row->media_type && ( '' === (string) $row->series || ner_michoel_import_is_video_bucket( $row->series ) ) ) {
 		$twin = ner_michoel_import_audio_twin_series( $row->title, $row->speaker );
 		if ( $twin ) {
 			return $twin;
-		}
-		// After the re-sort, where its title says (series-resort.php).
-		$by_title = (int) apply_filters( 'ner_michoel_import_series_by_title', 0, $row );
-		if ( $by_title ) {
-			return $by_title;
 		}
 	}
 	return '' === (string) $row->series ? 0 : ner_michoel_import_series_for_path( $row->series );

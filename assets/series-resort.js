@@ -306,14 +306,58 @@
 			var key = input.getAttribute( 'data-nm-setting' );
 			if ( 'checkbox' === input.type ) {
 				input.checked = !! data.settings[ key ];
+			} else if ( 'radio' === input.type ) {
+				input.checked = input.value === data.settings[ key ];
 			} else {
 				input.value = data.settings[ key ];
 			}
 			input.disabled = locked();
 		} );
+		showForLayout();
+		drawSpeakerSplit();
 		sectionsFrom = data.settings.sections.slice();
 		drawSections( data.settings.sections.map( function ( s ) { return { from: s, to: s }; } ) );
 	}
+	// The options that only mean something in one layout are shown only with it.
+	function showForLayout() {
+		root.querySelectorAll( '[data-nm-for]' ).forEach( function ( box ) {
+			box.hidden = box.getAttribute( 'data-nm-for' ) !== data.settings.layout;
+		} );
+	}
+	var SPLITS = { '': 'Same as above', one: 'One “Gemara” series', masechta: 'A series per masechta', masechta_year: 'A series per masechta and year' };
+	function drawSpeakerSplit() {
+		var box = $( '[data-nm-speaker-split]' );
+		box.innerHTML = '';
+		var per = data.settings.speaker_split || {};
+		( data.speakers || [] ).map( decode ).filter( function ( name ) {
+			return ! /^\s*[-–]?\s*$|^other$/i.test( name );
+		} ).sort().forEach( function ( name ) {
+			var row = el( 'label', { 'class': 'nm-resort-speaker-row' } );
+			row.appendChild( el( 'span', {}, name ) );
+			var select = el( 'select', { 'data-nm-speaker': name } );
+			Object.keys( SPLITS ).forEach( function ( v ) {
+				var o = el( 'option', { value: v }, SPLITS[ v ] );
+				o.selected = ( per[ name ] || '' ) === v;
+				select.appendChild( o );
+			} );
+			select.disabled = locked();
+			row.appendChild( select );
+			box.appendChild( row );
+		} );
+	}
+	$( '[data-nm-speaker-split]' ).addEventListener( 'change', function () {
+		var per = {};
+		root.querySelectorAll( '[data-nm-speaker]' ).forEach( function ( select ) {
+			if ( select.value ) {
+				per[ select.getAttribute( 'data-nm-speaker' ) ] = select.value;
+			}
+		} );
+		// An empty list still has to reach the server: one key that is not a speaker is dropped there.
+		api( 'settings', { speaker_split: Object.keys( per ).length ? per : { '': 'none' } } ).then( function ( st ) {
+			data.settings = st;
+			hint( 'Saved. Press Preview to see what it changes.' );
+		} ).catch( function ( e ) { hint( e.message, true ); } );
+	} );
 	function drawSections( list ) {
 		var ol = $( '[data-nm-sections]' );
 		ol.innerHTML = '';
@@ -369,10 +413,23 @@
 	root.querySelectorAll( '[data-nm-setting]' ).forEach( function ( input ) {
 		input.addEventListener( 'change', function () {
 			var body = {};
-			body[ input.getAttribute( 'data-nm-setting' ) ] = 'checkbox' === input.type ? input.checked : +input.value;
-			api( 'settings', body ).then( function ( s ) {
-				data.settings = s;
+			var key = input.getAttribute( 'data-nm-setting' );
+			if ( 'checkbox' === input.type ) {
+				body[ key ] = input.checked;
+			} else if ( 'number' === input.type ) {
+				body[ key ] = +input.value;
+			} else {
+				body[ key ] = input.value;
+			}
+			var layoutChanged = 'layout' === key && input.value !== data.settings.layout;
+			if ( layoutChanged ) {
+				hint( 'Changing the layout and making the topic suggestions again…' );
+			}
+			api( 'settings', body ).then( function ( st ) {
+				data.settings = st;
+				showForLayout();
 				hint( 'Setting saved. Press Preview to see what it changes.' );
+				return layoutChanged ? load() : null;
 			} ).catch( function ( e ) { hint( e.message, true ); } );
 		} );
 	} );
@@ -417,6 +474,7 @@
 			out.innerHTML = '';
 			var ul = el( 'ul' );
 			[
+				( 'speaker' === p.layout ? 'Speaker first: ' : 'Subject first: ' ) + p.groups + ' groups at the top, ' + p.series_total + ' series in all (' + Object.keys( p.by_level ).map( function ( k ) { return p.by_level[ k ] + ' on level ' + k; } ).join( ', ' ) + ')',
 				p.moved + ' of ' + p.shiurim + ' shiurim change series',
 				p.topics_changed + ' shiurim change topics',
 				p.speakers + ' shiurim get a speaker',
@@ -427,7 +485,7 @@
 			].filter( Boolean ).forEach( function ( t ) { ul.appendChild( el( 'li', {}, t ) ); } );
 			out.appendChild( ul );
 			var sec = el( 'p' );
-			sec.textContent = 'Shiurim per section: ' + Object.keys( p.sections ).map( function ( k ) { return k + ' ' + p.sections[ k ]; } ).join( ', ' );
+			sec.textContent = ( 'speaker' === p.layout ? 'Shiurim per group: ' : 'Shiurim per section: ' ) + Object.keys( p.sections ).map( function ( k ) { return k + ' ' + p.sections[ k ]; } ).join( ', ' );
 			out.appendChild( sec );
 			if ( p.series_new_list.length ) {
 				var d = el( 'details' );

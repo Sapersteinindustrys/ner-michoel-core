@@ -61,3 +61,22 @@
 	.nm-resort-tools input[type="search"] { min-width: 0; width: 100%; }
 	.nm-resort-target input { min-width: 180px; }
 }
+
+/* Our way vs TorahAnytime, and the layout settings (speaker first, 2026-11-19). */
+.nm-resort-compare { margin-top: 12px; }
+.nm-resort-compare__body { padding-bottom: 14px; max-width: 980px; }
+.nm-resort-compare__body p, .nm-resort-compare__body li { font-size: 13px; line-height: 1.6; }
+.nm-resort-compare__body h3 { margin: 1.2em 0 0.3em; font-size: 14px; }
+.nm-resort-example { display: inline-block; background: #f0f6fc; border-radius: 6px; padding: 4px 10px; font-weight: 600; }
+.nm-resort-compare__table { margin: 10px 0 6px; max-width: 900px; }
+.nm-resort-compare__table th, .nm-resort-compare__table td { font-size: 13px; padding: 8px 10px; }
+.nm-resort-compare__table tbody th { width: 28%; font-weight: 600; }
+.nm-resort-layout { border: 0; padding: 0; margin: 0 0 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px 24px; }
+.nm-resort-layout legend { margin-bottom: 8px; }
+.nm-resort-layout label { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #dcdcde; border-radius: 8px; padding: 10px 12px; cursor: pointer; }
+.nm-resort-layout label:has(input:checked) { border-color: #2271b1; background: #f0f6fc; }
+.nm-resort-layout small { display: block; color: #50575e; font-size: 12px; margin-top: 2px; }
+.nm-resort-number select, .nm-resort-number input[type="text"] { min-width: 200px; }
+.nm-resort-speakers { margin-top: 16px; }
+.nm-resort-speakers small { display: block; color: #50575e; font-size: 12px; margin: 2px 0 8px; }
+.nm-resort-speaker-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; max-width: 560px; padding: 3px 0; border-bottom: 1px solid #f0f0f1; }

@@ -100,19 +100,43 @@ function ner_michoel_resort_default_sections() {
 	return array( 'Gemara', 'Parsha', 'Mishna', 'Halacha', 'Moadim', 'Mussar & Vaadim', 'Shmuess', 'Events' );
 }
 
+/** How a speaker's Gemara can be split: one series, one per masechta, one per masechta and year. */
+function ner_michoel_resort_split_modes() {
+	return array( 'one', 'masechta', 'masechta_year' );
+}
+
 /**
- * keep_perek: Gemara keeps a Perek level under each masechta. courses: Gemara shiurim go into
- * a course per speaker and year under the masechta. min_topic: once applied, the site's topic
- * lists leave out topics with fewer shiurim. sections: the first level, in this order.
+ * layout: 'speaker' (Yoni, 2026-11-19: Speaker / Gemara, Speaker / Parsha ...; the default) or
+ * 'subject' (Gemara / Bava Kamma / Perek 3, like TorahAnytime's topics). general_name: the
+ * group for what has no one speaker (events, CD sets) and for shiurim nobody gave a speaker.
+ * gemara_split: in the speaker layout, a speaker's Gemara as one series or split (never deeper
+ * than Speaker / Gemara / that series); speaker_split: the same per speaker (name => mode).
+ * split_others: the other subjects split by their sefer / parsha / area too.
+ * keep_perek: subject layout: Gemara keeps a Perek level; speaker layout: "Bava Kamma Perek 3"
+ * as a topic. courses: subject layout only: a course per speaker and year under the masechta.
+ * min_topic: once applied, the site's topic lists leave out topics with fewer shiurim.
+ * sections: the subjects, in this order.
  */
 function ner_michoel_resort_settings() {
 	$saved = get_option( 'nm_resort_settings' );
 	$saved = is_array( $saved ) ? $saved : array();
-	$out   = array(
-		'keep_perek' => isset( $saved['keep_perek'] ) ? (bool) $saved['keep_perek'] : true,
-		'courses'    => isset( $saved['courses'] ) ? (bool) $saved['courses'] : false,
-		'min_topic'  => isset( $saved['min_topic'] ) ? max( 0, (int) $saved['min_topic'] ) : 5,
-		'sections'   => ! empty( $saved['sections'] ) && is_array( $saved['sections'] ) ? array_values( $saved['sections'] ) : ner_michoel_resort_default_sections(),
+	$split = isset( $saved['gemara_split'] ) && in_array( $saved['gemara_split'], ner_michoel_resort_split_modes(), true ) ? $saved['gemara_split'] : 'one';
+	$per   = array();
+	foreach ( ( isset( $saved['speaker_split'] ) && is_array( $saved['speaker_split'] ) ? $saved['speaker_split'] : array() ) as $who => $mode ) {
+		if ( in_array( $mode, ner_michoel_resort_split_modes(), true ) ) {
+			$per[ (string) $who ] = $mode;
+		}
+	}
+	$out = array(
+		'layout'        => isset( $saved['layout'] ) && 'subject' === $saved['layout'] ? 'subject' : 'speaker',
+		'general_name'  => isset( $saved['general_name'] ) && '' !== trim( (string) $saved['general_name'] ) ? trim( (string) $saved['general_name'] ) : 'General',
+		'gemara_split'  => $split,
+		'speaker_split' => $per,
+		'split_others'  => ! empty( $saved['split_others'] ),
+		'keep_perek'    => isset( $saved['keep_perek'] ) ? (bool) $saved['keep_perek'] : true,
+		'courses'       => isset( $saved['courses'] ) ? (bool) $saved['courses'] : false,
+		'min_topic'     => isset( $saved['min_topic'] ) ? max( 0, (int) $saved['min_topic'] ) : 5,
+		'sections'      => ! empty( $saved['sections'] ) && is_array( $saved['sections'] ) ? array_values( $saved['sections'] ) : ner_michoel_resort_default_sections(),
 	);
 	return $out;
 }
@@ -564,8 +588,12 @@ function ner_michoel_resort_propose_title( $title ) {
 	return array( array(), $add, 'low', 'Could not tell from the title' );
 }
 
-/** The proposal for a topic: array( action, target, confidence, note ). */
-function ner_michoel_resort_propose_topic( $name ) {
+/**
+ * The proposal for a topic: array( action, target, confidence, note ). In the speaker layout the
+ * masechtos, Sedarim and vaad names stay: they are the filters inside a speaker's series.
+ */
+function ner_michoel_resort_propose_topic( $name, $layout = 'speaker' ) {
+	$by_speaker = 'speaker' === $layout;
 	$name = trim( html_entity_decode( (string) $name, ENT_QUOTES | ENT_HTML5, 'UTF-8' ) );
 	$key  = ner_michoel_resort_key( $name );
 
@@ -575,6 +603,12 @@ function ner_michoel_resort_propose_topic( $name ) {
 	$folders = array( 'gemara', 'mishna', 'mishnayomis', 'moadim', 'halacha', 'weeklyparsha', 'parsha', 'vaadim', 'shiurimvideos', 'videos', 'othershiurim', 'nermichoelcdprojects', 'shiurklali', 'firstyear', 'secondyear', 'thirdyear', 'rabbitwerskyvideos', 'mishnayosbiyun' );
 	if ( in_array( $key, $folders, true ) || preg_match( '/^sefer(bereishis|shemos|vayikra|bamidbar|devarim)$/', $key ) ) {
 		return array( 'drop', '', 'high', 'Only a folder name: the series says it' );
+	}
+	if ( $by_speaker && in_array( $name, ner_michoel_resort_sedarim(), true ) ) {
+		return array( 'keep', '', 'high', 'A Seder: the filter inside a speaker’s Mishna series' );
+	}
+	if ( $by_speaker && '' !== ner_michoel_resort_masechta( $name ) ) {
+		return array( 'keep', '', 'high', 'A masechta: the filter inside a speaker’s Gemara series' );
 	}
 	if ( in_array( $name, ner_michoel_resort_sedarim(), true ) ) {
 		return array( 'drop', '', 'high', 'A Seder of Mishna Yomis: the series says it' );
@@ -606,7 +640,6 @@ function ner_michoel_resort_propose_topic( $name ) {
 		'teshuvalemaaseh'           => 'Teshuva',
 		'sholombayisshovavim5775'   => 'Sholom Bayis',
 		'chinuchvaad'               => 'Chinuch',
-		'shabbos2ndyear'            => 'Shabbos',
 		'yorehdeahissurvheter'      => "Issur V'Heter",
 		'yorehdeahhilchosniddah'    => 'Hilchos Niddah',
 	);
@@ -614,7 +647,7 @@ function ner_michoel_resort_propose_topic( $name ) {
 		return array( 'rename', $rename[ $key ], 'medium', '' );
 	}
 	if ( preg_match( '/^(avreichim vaad|bereishis second year|hamaspik)/i', $name ) ) {
-		return array( 'drop', '', 'medium', 'The name of a vaad: it is a series' );
+		return $by_speaker ? array( 'keep', '', 'medium', 'The name of a vaad: the filter inside a speaker’s Mussar & Vaadim' ) : array( 'drop', '', 'medium', 'The name of a vaad: it is a series' );
 	}
 	if ( ner_michoel_resort_parsha_numbers( $name ) ) {
 		return array( 'keep', '', 'high', 'A parsha: the "This week" box finds shiurim by it' );
@@ -713,7 +746,7 @@ function ner_michoel_resort_generate( $fresh = false ) {
 
 	// Topics.
 	foreach ( get_terms( array( 'taxonomy' => 'topic', 'hide_empty' => false ) ) as $term ) {
-		list( $action, $target, $conf, $note ) = ner_michoel_resort_propose_topic( $term->name );
+		list( $action, $target, $conf, $note ) = ner_michoel_resort_propose_topic( $term->name, ner_michoel_resort_settings()['layout'] );
 		$rows[] = array( 'topic', (int) $term->term_id, html_entity_decode( $term->name, ENT_QUOTES | ENT_HTML5, 'UTF-8' ), (int) $term->count, $action, $target, '', $conf, $note );
 	}
 
@@ -1027,12 +1060,12 @@ function ner_michoel_resort_plan( $reset = false ) {
 }
 
 /** A topic name as it will be after the plan ('' when it goes). */
-function ner_michoel_resort_topic_name_after( $name, $plan ) {
+function ner_michoel_resort_topic_name_after( $name, $plan, $never_drop = false ) {
 	$key = ner_michoel_resort_key( $name );
 	for ( $guard = 0; $guard < 5 && isset( $plan['topicby'][ $key ] ); $guard++ ) {
 		$rule = $plan['topicby'][ $key ];
 		if ( 'drop' === $rule['action'] ) {
-			return '';
+			return $never_drop ? $name : '';
 		}
 		if ( ( 'rename' === $rule['action'] || 'merge' === $rule['action'] ) && '' !== $rule['target'] ) {
 			$name = $rule['target'];
@@ -1056,33 +1089,90 @@ function ner_michoel_resort_shiur_year( $title, $date ) {
 	return '';
 }
 
+/** Words in a path that are only folders, never a topic. */
+function ner_michoel_resort_is_folder_word( $part ) {
+	$key = ner_michoel_resort_key( $part );
+	return (bool) preg_match( '/^(perek\d|sefer(bereishis|shemos|vayikra|bamidbar|devarim)$|weeklyparsha$|moadim$|othershiurim$|mishnayomis$)/', $key );
+}
+
 /**
- * The path a shiur goes to, with the settings: no Perek level when it is off, and a course
+ * Where a shiur lands, with the settings. $parts is its subject path from the plan
+ * ("Gemara / Bava Kamma / Perek 3"). Returns array( 'path' => parts, 'topics' => names ):
+ * the levels the layout leaves out of the path come back as topics, so a series page can
+ * still be filtered by them (Rabbi Klein / Gemara, topic "Bava Kamma").
+ *
+ * Speaker layout (the default): Speaker / Subject, and for Gemara, when split, Speaker /
+ * Gemara / Bava Kamma (or "Bava Kamma 5787"); never deeper. Events go into the General
+ * group (General / Yarchei Kallah / the event), and so do shiurim with no speaker.
+ * Subject layout: the subject path, without the Perek level when it is off, and with a course
  * ("Rabbi Klein: Bava Kamma 5787") under the masechta when courses are on.
  *
  * @param string[] $parts
  */
-function ner_michoel_resort_final_path( array $parts, array $settings, $speaker = '', $title = '', $date = '' ) {
-	if ( ! $parts || 'gemara' !== ner_michoel_resort_key( $parts[0] ) ) {
-		return $parts;
+function ner_michoel_resort_place( array $parts, array $settings, $speaker = '', $title = '', $date = '' ) {
+	$parts = array_values( $parts );
+	if ( ! $parts ) {
+		return array( 'path' => array(), 'topics' => array() );
 	}
-	if ( ! $settings['keep_perek'] ) {
-		$parts = array_values(
-			array_filter(
-				$parts,
-				function ( $part ) {
-					return ! preg_match( '/^perek\b/i', $part );
-				}
-			)
-		);
+	$is_gemara = 'gemara' === ner_michoel_resort_key( $parts[0] );
+	$has_person = '' !== $speaker && ! ner_michoel_resort_is_unknown_speaker( trim( $speaker, " -–" ) );
+
+	if ( 'speaker' !== $settings['layout'] ) {
+		if ( ! $is_gemara ) {
+			return array( 'path' => $parts, 'topics' => array() );
+		}
+		if ( ! $settings['keep_perek'] ) {
+			$parts = array_values(
+				array_filter(
+					$parts,
+					function ( $part ) {
+						return ! preg_match( '/^perek\b/i', $part );
+					}
+				)
+			);
+		}
+		if ( $settings['courses'] && count( $parts ) >= 2 && '' !== ner_michoel_resort_masechta( $parts[1] ) && $has_person ) {
+			$year = ner_michoel_resort_shiur_year( $title, $date );
+			if ( '' !== $year ) {
+				array_splice( $parts, 2, 0, array( $speaker . ': ' . $parts[1] . ' ' . $year ) );
+			}
+		}
+		return array( 'path' => $parts, 'topics' => array() );
 	}
-	if ( $settings['courses'] && count( $parts ) >= 2 && '' !== ner_michoel_resort_masechta( $parts[1] ) && '' !== $speaker && ! ner_michoel_resort_is_unknown_speaker( trim( $speaker, " -–" ) ) ) {
-		$year = ner_michoel_resort_shiur_year( $title, $date );
-		if ( '' !== $year ) {
-			array_splice( $parts, 2, 0, array( $speaker . ': ' . $parts[1] . ' ' . $year ) );
+
+	$section = $parts[0];
+	$rest    = array_slice( $parts, 1 );
+	$topics  = array();
+	foreach ( $rest as $part ) {
+		if ( ! ner_michoel_resort_is_folder_word( $part ) ) {
+			$topics[] = $part;
 		}
 	}
-	return $parts;
+	// Events have no one speaker: General / Yarchei Kallah / the event.
+	if ( 'events' === ner_michoel_resort_key( $section ) ) {
+		$path = array_merge( array( $settings['general_name'] ), array_slice( $rest, 0, 2 ) );
+		return array( 'path' => $path, 'topics' => array_values( array_diff( $topics, $path ) ) );
+	}
+	$path = array( $has_person ? $speaker : $settings['general_name'], $section );
+	if ( $is_gemara ) {
+		$mode = $has_person && isset( $settings['speaker_split'][ $speaker ] ) ? $settings['speaker_split'][ $speaker ] : $settings['gemara_split'];
+		$m    = $rest ? ner_michoel_resort_masechta( $rest[0] ) : '';
+		if ( '' !== $m && 'one' !== $mode ) {
+			$year   = 'masechta_year' === $mode ? ner_michoel_resort_shiur_year( $title, $date ) : '';
+			$path[] = trim( $m . ' ' . $year );
+		}
+		// The perek as a topic of its own masechta ("Bava Kamma Perek 3"): a filter, not a level.
+		if ( $settings['keep_perek'] && '' !== $m && isset( $rest[1] ) && preg_match( '/^perek\s*(\d+)/i', $rest[1], $pm ) ) {
+			$topics[] = $m . ' Perek ' . $pm[1];
+		}
+	} elseif ( $settings['split_others'] && 'shmuess' !== ner_michoel_resort_key( $section ) && $topics ) {
+		// Parsha: the parsha, not the sefer; the others: their sefer, area or vaad.
+		$path[] = 'parsha' === ner_michoel_resort_key( $section ) && count( $topics ) > 0 ? end( $topics ) : $topics[0];
+	}
+	if ( 'shmuess' === ner_michoel_resort_key( $section ) ) {
+		$topics = array(); // "Mashgiach" / "Rosh Yeshiva" is the speaker already.
+	}
+	return array( 'path' => $path, 'topics' => array_values( array_diff( $topics, $path ) ) );
 }
 
 /**
@@ -1113,10 +1203,16 @@ function ner_michoel_resort_shiur_after( $post_id, array $have, $title, $date, a
 
 	$series = array();
 	$add    = array();
+	$levels = array();
 	foreach ( $have['series'] as $sid ) {
 		$rule = isset( $plan['series'][ $sid ] ) ? $plan['series'][ $sid ] : null;
 		if ( $rule && 'by_title' === $rule['action'] ) {
 			$rule = isset( $plan['shiur'][ $post_id ] ) ? $plan['shiur'][ $post_id ] : null;
+		}
+		$by_title = isset( $plan['series'][ $sid ] ) && 'by_title' === $plan['series'][ $sid ]['action'];
+		// Speaker layout: a shiur its title said nothing about goes to its speaker's "Other Shiurim".
+		if ( $by_title && 'speaker' === $settings['layout'] && ( ! $rule || '' === $rule['target'] ) ) {
+			$rule = array( 'action' => 'move', 'target' => 'Other Shiurim', 'add' => $rule ? $rule['add'] : array() );
 		}
 		if ( ! $rule || 'keep' === $rule['action'] || ( 'move' === $rule['action'] && '' === $rule['target'] ) ) {
 			$series[] = (int) $sid;
@@ -1125,8 +1221,10 @@ function ner_michoel_resort_shiur_after( $post_id, array $have, $title, $date, a
 		if ( 'delete' === $rule['action'] ) {
 			continue;
 		}
-		$series[] = ner_michoel_resort_final_path( ner_michoel_series_split_name( $rule['target'] ), $settings, $speaker, $title, $date );
+		$place    = ner_michoel_resort_place( ner_michoel_series_split_name( $rule['target'] ), $settings, $speaker, $title, $date );
+		$series[] = $place['path'];
 		$add      = array_merge( $add, $rule['add'] );
+		$levels   = array_merge( $levels, $place['topics'] );
 	}
 
 	$topics = array();
@@ -1136,6 +1234,14 @@ function ner_michoel_resort_shiur_after( $post_id, array $have, $title, $date, a
 			$topics[] = (int) $tid; // A rename changes the topic itself, not the shiur.
 		} elseif ( 'merge' === $rule['action'] && '' !== $rule['target'] ) {
 			$topics[] = ner_michoel_resort_topic_name_after( $rule['target'], $plan );
+		}
+	}
+	// The levels the layout left out of the path stay as topics even when the plan drops that topic
+	// as a folder word (a masechta in a speaker's one Gemara series); a rename or merge is followed.
+	foreach ( $levels as $name ) {
+		$after = ner_michoel_resort_topic_name_after( $name, $plan, true );
+		if ( '' !== $after ) {
+			$topics[] = $after;
 		}
 	}
 	foreach ( $add as $name ) {
@@ -1285,7 +1391,16 @@ function ner_michoel_resort_preview() {
 	}
 	arsort( $by_sec );
 	ksort( $new );
+	$depth = array();
+	foreach ( array_keys( $used ) as $key ) {
+		$depth[ substr_count( $key, "\x1f" ) + 1 ] = ( isset( $depth[ substr_count( $key, "\x1f" ) + 1 ] ) ? $depth[ substr_count( $key, "\x1f" ) + 1 ] : 0 ) + 1;
+	}
+	ksort( $depth );
 	return array(
+		'layout'         => $plan['settings']['layout'],
+		'groups'         => count( $by_sec ),
+		'series_total'   => count( $used ),
+		'by_level'       => $depth,
 		'shiurim'        => count( $posts ),
 		'moved'          => $moved,
 		'topics_changed' => $topic,
@@ -1494,12 +1609,15 @@ function ner_michoel_resort_apply_steps( array $state, $deadline ) {
 		}
 		// Old series with nothing left in them or under them, deepest first.
 		ner_michoel_resort_delete_empty_series();
-		// The sections in the admin's order on the Shiurim page.
-		$pos = 0;
-		foreach ( $plan['settings']['sections'] as $section ) {
-			$id = ner_michoel_series_find_child( $section, 0 );
-			if ( $id ) {
-				update_term_meta( $id, 'nm_order', ++$pos );
+		// The sections in the admin's order on the Shiurim page: at the top, or inside each speaker.
+		$parents = 'speaker' === $plan['settings']['layout'] ? get_terms( array( 'taxonomy' => 'series', 'parent' => 0, 'hide_empty' => false, 'fields' => 'ids' ) ) : array( 0 );
+		foreach ( (array) $parents as $parent ) {
+			$pos = 0;
+			foreach ( $plan['settings']['sections'] as $section ) {
+				$id = ner_michoel_series_find_child( $section, (int) $parent );
+				if ( $id ) {
+					update_term_meta( $id, 'nm_order', ++$pos );
+				}
 			}
 		}
 		ner_michoel_series_forget_labels();
@@ -1827,7 +1945,24 @@ function ner_michoel_resort_route_settings( WP_REST_Request $request ) {
 		return $locked;
 	}
 	$now  = ner_michoel_resort_settings();
-	$save = array(
+	$layout = null !== $request->get_param( 'layout' ) ? ( 'subject' === $request->get_param( 'layout' ) ? 'subject' : 'speaker' ) : $now['layout'];
+	$split  = (string) $request->get_param( 'gemara_split' );
+	$per    = $now['speaker_split'];
+	if ( is_array( $request->get_param( 'speaker_split' ) ) ) {
+		$per = array();
+		foreach ( $request->get_param( 'speaker_split' ) as $who => $mode ) {
+			if ( in_array( $mode, ner_michoel_resort_split_modes(), true ) ) {
+				$per[ sanitize_text_field( (string) $who ) ] = $mode;
+			}
+		}
+	}
+	$general = null !== $request->get_param( 'general_name' ) ? trim( str_replace( '/', '-', sanitize_text_field( (string) $request->get_param( 'general_name' ) ) ) ) : $now['general_name'];
+	$save    = array(
+		'layout'        => $layout,
+		'general_name'  => '' !== $general ? $general : 'General',
+		'gemara_split'  => in_array( $split, ner_michoel_resort_split_modes(), true ) ? $split : $now['gemara_split'],
+		'speaker_split' => $per,
+		'split_others'  => null !== $request->get_param( 'split_others' ) ? (bool) $request->get_param( 'split_others' ) : $now['split_others'],
 		'keep_perek' => null !== $request->get_param( 'keep_perek' ) ? (bool) $request->get_param( 'keep_perek' ) : $now['keep_perek'],
 		'courses'    => null !== $request->get_param( 'courses' ) ? (bool) $request->get_param( 'courses' ) : $now['courses'],
 		'min_topic'  => null !== $request->get_param( 'min_topic' ) ? min( 100, absint( $request->get_param( 'min_topic' ) ) ) : $now['min_topic'],
@@ -1859,6 +1994,10 @@ function ner_michoel_resort_route_settings( WP_REST_Request $request ) {
 	}
 	update_option( 'nm_resort_settings', $save, false );
 	ner_michoel_resort_plan( true );
+	// The topic suggestions depend on the layout: made again (rows the admin changed stay).
+	if ( $layout !== $now['layout'] ) {
+		ner_michoel_resort_generate( false );
+	}
 	return ner_michoel_resort_settings();
 }
 
@@ -1910,31 +2049,53 @@ function ner_michoel_resort_route_upload( WP_REST_Request $request ) {
  * After Apply: imports and the site follow the plan.
  * ------------------------------------------------------------------ */
 
-/** A new import's old-site folder goes where the plan puts that folder. */
-function ner_michoel_resort_import_path( $path ) {
-	if ( ! ner_michoel_resort_is_applied() || '' === trim( (string) $path ) ) {
-		return $path;
+/** The speaker a new import's name becomes under the plan (renamed or merged speakers followed). */
+function ner_michoel_resort_speaker_after( $name ) {
+	$plan = ner_michoel_resort_plan();
+	$key  = ner_michoel_resort_key( $name );
+	foreach ( $plan['speaker'] as $rule ) {
+		if ( ner_michoel_resort_key( $rule['label'] ) === $key ) {
+			return in_array( $rule['action'], array( 'rename', 'merge' ), true ) && '' !== $rule['target'] ? $rule['target'] : $rule['label'];
+		}
 	}
-	list( $action, $target ) = ner_michoel_resort_propose_series( ner_michoel_series_split_name( html_entity_decode( (string) $path, ENT_QUOTES, 'UTF-8' ) ) );
-	if ( 'by_title' === $action || ! $target ) {
-		return $path;
-	}
-	return implode( ' / ', ner_michoel_resort_final_path( $target, array_merge( ner_michoel_resort_settings(), array( 'courses' => false ) ) ) );
+	return (string) $name;
 }
-add_filter( 'ner_michoel_import_series_path', 'ner_michoel_resort_import_path' );
 
-/** A new video that only has the "Shiurim Videos" folder goes where its title says, when sure enough. */
-function ner_michoel_resort_import_by_title( $series_id, $row ) {
-	if ( $series_id || ! ner_michoel_resort_is_applied() || empty( $row->title ) ) {
+/**
+ * After Apply, a new import goes where the plan would have put it: its old-site folder (or, for a
+ * video that only has "Shiurim Videos", its title) gives the subject, and the layout the place
+ * (Rabbi Klein / Gemara). 0 leaves it to the importer as before.
+ */
+function ner_michoel_resort_import_for_row( $series_id, $row ) {
+	if ( $series_id || ! ner_michoel_resort_is_applied() ) {
 		return $series_id;
 	}
-	list( $target, , $conf ) = ner_michoel_resort_propose_title( $row->title );
-	if ( ! $target || 'low' === $conf ) {
+	$settings = ner_michoel_resort_settings();
+	$path     = trim( (string) ( isset( $row->series ) ? $row->series : '' ) );
+	$parts    = array();
+	if ( '' !== $path ) {
+		list( $action, $target ) = ner_michoel_resort_propose_series( ner_michoel_series_split_name( html_entity_decode( $path, ENT_QUOTES, 'UTF-8' ) ) );
+		if ( 'by_title' !== $action ) {
+			$parts = $target;
+		}
+	}
+	if ( ! $parts && ! empty( $row->title ) ) {
+		list( $target, , $conf ) = ner_michoel_resort_propose_title( $row->title );
+		if ( $target && 'low' !== $conf ) {
+			$parts = $target;
+		} elseif ( 'speaker' === $settings['layout'] && '' !== $path ) {
+			$parts = array( 'Other Shiurim' );
+		}
+	}
+	if ( ! $parts ) {
 		return $series_id;
 	}
-	return ner_michoel_resort_series_id( ner_michoel_resort_final_path( $target, array_merge( ner_michoel_resort_settings(), array( 'courses' => false ) ) ) );
+	$speaker = ner_michoel_resort_speaker_after( isset( $row->speaker ) ? $row->speaker : '' );
+	$date    = isset( $row->shiur_date ) ? (string) $row->shiur_date : '';
+	$place   = ner_michoel_resort_place( $parts, array_merge( $settings, array( 'courses' => false ) ), $speaker, isset( $row->title ) ? $row->title : '', $date );
+	return $place['path'] ? ner_michoel_resort_series_id( $place['path'] ) : $series_id;
 }
-add_filter( 'ner_michoel_import_series_by_title', 'ner_michoel_resort_import_by_title', 10, 2 );
+add_filter( 'ner_michoel_import_series_for_row', 'ner_michoel_resort_import_for_row', 10, 2 );
 
 /** The topics a folder name gives, after the plan: dropped ones left out, merged and renamed ones followed, Yom Tov added. */
 function ner_michoel_resort_import_topics( $names, $series_name ) {
@@ -1942,12 +2103,22 @@ function ner_michoel_resort_import_topics( $names, $series_name ) {
 		return $names;
 	}
 	$plan = ner_michoel_resort_plan();
-	list( , , $add ) = ner_michoel_resort_propose_series( ner_michoel_series_split_name( html_entity_decode( (string) $series_name, ENT_QUOTES, 'UTF-8' ) ) );
+	list( $action, $target, $add ) = ner_michoel_resort_propose_series( ner_michoel_series_split_name( html_entity_decode( (string) $series_name, ENT_QUOTES, 'UTF-8' ) ) );
 	$out = array();
 	foreach ( array_merge( (array) $names, $add ) as $name ) {
 		$after = ner_michoel_resort_topic_name_after( $name, $plan );
 		if ( '' !== $after ) {
 			$out[ ner_michoel_resort_key( $after ) ] = $after;
+		}
+	}
+	// The levels the layout leaves out of the series, as topics (a masechta in a speaker's Gemara).
+	if ( 'by_title' !== $action && $target ) {
+		$place = ner_michoel_resort_place( $target, $plan['settings'], 'Someone' );
+		foreach ( $place['topics'] as $name ) {
+			$after = ner_michoel_resort_topic_name_after( $name, $plan, true );
+			if ( '' !== $after ) {
+				$out[ ner_michoel_resort_key( $after ) ] = $after;
+			}
 		}
 	}
 	return array_values( $out );

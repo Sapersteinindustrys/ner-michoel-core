@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.51
+Stable tag: 0.9.52
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,11 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.52 =
+* Changed: the Series & Topics Re-sort plans speaker first by default (Speaker / Gemara, Speaker / Parsha ...; a speaker's Gemara as one series or split
+  by masechta, never deeper than 3 levels; a General group for events and shiurim with no speaker; the levels left out become topics),
+  with "Our way, TorahAnytime's way, and the other choices" on the screen. Imports after Apply go under their speaker. Still not applied.
 
 = 0.9.51 =
 * New: Control Panel > Shiurim > Series & Topics Re-sort: a plan for putting the old folders into sections, editable in place or as a
