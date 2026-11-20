@@ -41,6 +41,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 define( 'NER_MICHOEL_IMPORT_QUEUE_DB_VERSION', '1.0' );
 define( 'NER_MICHOEL_IMPORT_LISTING_BASE', 'https://nermichoel.org/index/shiur' );
 define( 'NER_MICHOEL_IMPORT_TOTAL_PAGES', 671 ); // From the archive's own "25 of 16756 results" — re-verify if this changes.
+define( 'NER_MICHOEL_IMPORT_REPEAT_DAYS', 14 ); // A repeated title closer than this, by the same speaker, is the same shiur uploaded again.
 define( 'NER_MICHOEL_IMPORT_CHECK_PAGES', 2 ); // The listing is newest first, so page 1 and 2 cover the latest 50 shiurim for the new-shiur check.
 
 function ner_michoel_import_queue_table_name() {
@@ -435,10 +436,13 @@ function ner_michoel_import_existing_post( $post_type, $title, $media_type, $vim
 
 /**
  * A post found by its title is another shiur when the queue shows it was
- * imported from another file on the origin site and on another day. A speaker
- * who learns a masechta again gives the new shiur the old title ("Bava Kamma
- * 54a (night)" in 2017 and in 2026). The same Vimeo video is always the same
- * shiur, and a post with no queue row (made by hand) still counts as this one.
+ * imported from another file on the origin site, and it is at least
+ * NER_MICHOEL_IMPORT_REPEAT_DAYS away or by another speaker. A speaker who
+ * learns a masechta again gives the new shiur the old title ("Bava Kamma 54a
+ * (night)" in 2017 and in 2026); the origin site sometimes has one shiur
+ * uploaded twice a few days apart, and that stays one. The same Vimeo video
+ * is always the same shiur, and a post with no queue row (made by hand) still
+ * counts as this one.
  */
 function ner_michoel_import_is_other_shiur( $post_id, $row, $vimeo_id = '' ) {
 	if ( '' !== (string) $vimeo_id && (string) get_post_meta( $post_id, '_shiur_vimeo_id', true ) === (string) $vimeo_id ) {
@@ -453,7 +457,20 @@ function ner_michoel_import_is_other_shiur( $post_id, $row, $vimeo_id = '' ) {
 		return false;
 	}
 	$post = get_post( $post_id );
-	return $post && $row->shiur_date && substr( $post->post_date, 0, 10 ) !== $row->shiur_date;
+	if ( ! $post || ! $row->shiur_date ) {
+		return false;
+	}
+	$days = abs( strtotime( $row->shiur_date ) - strtotime( substr( $post->post_date, 0, 10 ) ) ) / DAY_IN_SECONDS;
+	if ( $days < 1 ) {
+		return false;
+	}
+	if ( $days >= NER_MICHOEL_IMPORT_REPEAT_DAYS ) {
+		return true;
+	}
+	// Closer than that: the same upload again, unless another speaker gave it.
+	$speaker = ner_michoel_import_speaker_for_name( $row->speaker, false );
+	$on_post = wp_get_object_terms( $post_id, 'speaker', array( 'fields' => 'ids' ) );
+	return $speaker && ! is_wp_error( $on_post ) && $on_post && ! in_array( $speaker, array_map( 'intval', $on_post ), true );
 }
 
 /**

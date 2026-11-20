@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.56
+Stable tag: 0.9.57
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,10 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.57 =
+* Changed: the importer treats a repeated title less than 14 days away, by the same speaker, as the same shiur uploaded again
+  (the origin site sometimes has one shiur twice). Further apart, or by another speaker, it is still imported as its own shiur.
 
 = 0.9.56 =
 * Added: "Other Tomo Projects" in the admin menu (admins only): cards for Toras Moshe Giving, Toras Moshe Dinner, Shiur Listen & Correct
