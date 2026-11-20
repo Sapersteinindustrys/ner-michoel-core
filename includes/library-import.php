@@ -360,12 +360,12 @@ function ner_michoel_extract_shiur_detail( $html ) {
  *
  * Returns an array with the post ID, or an empty array.
  */
-function ner_michoel_import_existing_post( $post_type, $title, $media_type, $vimeo_id = '' ) {
+function ner_michoel_import_existing_post( $post_type, $title, $media_type, $vimeo_id = '', $limit = 1 ) {
 	$args = array(
 		'post_type'   => $post_type,
 		'title'       => $title,
 		'post_status' => 'any',
-		'numberposts' => 1,
+		'numberposts' => $limit,
 		'fields'      => 'ids',
 	);
 
@@ -432,6 +432,68 @@ function ner_michoel_import_existing_post( $post_type, $title, $media_type, $vim
 	}
 	return $found;
 }
+
+/**
+ * A post found by its title is another shiur when the queue shows it was
+ * imported from another file on the origin site and on another day. A speaker
+ * who learns a masechta again gives the new shiur the old title ("Bava Kamma
+ * 54a (night)" in 2017 and in 2026). The same Vimeo video is always the same
+ * shiur, and a post with no queue row (made by hand) still counts as this one.
+ */
+function ner_michoel_import_is_other_shiur( $post_id, $row, $vimeo_id = '' ) {
+	if ( '' !== (string) $vimeo_id && (string) get_post_meta( $post_id, '_shiur_vimeo_id', true ) === (string) $vimeo_id ) {
+		return false;
+	}
+	global $wpdb;
+	$table  = ner_michoel_import_queue_table_name();
+	$source = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$wpdb->prepare( "SELECT source_url FROM {$table} WHERE created_post_id = %d AND status = 'imported' AND id <> %d ORDER BY id LIMIT 1", $post_id, $row->id ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	);
+	if ( ! $source || $source === $row->source_url ) {
+		return false;
+	}
+	$post = get_post( $post_id );
+	return $post && $row->shiur_date && substr( $post->post_date, 0, 10 ) !== $row->shiur_date;
+}
+
+/**
+ * Rows skipped as "already exists" against a post imported from another file
+ * go back in the queue, once, so the processor looks again with
+ * ner_michoel_import_is_other_shiur(). The ones that are the same shiur are
+ * skipped again. Runs from wp-admin and from the 15-minute check, so it does
+ * not wait for someone to open the dashboard.
+ */
+function ner_michoel_requeue_repeat_title_rows() {
+	if ( get_option( 'nm_import_repeat_requeue_v1' ) ) {
+		return;
+	}
+	if ( get_option( 'nm_import_queue_db_version' ) !== NER_MICHOEL_IMPORT_QUEUE_DB_VERSION ) {
+		return;
+	}
+
+	global $wpdb;
+	$table = ner_michoel_import_queue_table_name();
+
+	// The other row has to be a different one: a self-join on the post it points at.
+	$ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$wpdb->prepare(
+			"SELECT DISTINCT s.id FROM {$table} s INNER JOIN {$table} o ON o.created_post_id = s.created_post_id AND o.status = 'imported' AND o.id <> s.id AND o.source_url <> s.source_url WHERE s.status = 'skipped' AND s.error_message = %s AND s.created_post_id > 0", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'A post with this title already exists'
+		)
+	);
+	$count = 0;
+	foreach ( array_chunk( array_map( 'intval', $ids ), 200 ) as $chunk ) {
+		$count += (int) $wpdb->query( "UPDATE {$table} SET status = 'discovered', attempts = 0, error_message = NULL, processed_at = NULL, created_post_id = NULL WHERE id IN (" . implode( ',', $chunk ) . ')' ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	}
+
+	update_option( 'nm_import_repeat_requeue_v1', array( 'requeued' => $count, 'time' => time() ), false );
+
+	if ( $count && ner_michoel_import_is_running() && ! wp_next_scheduled( 'nm_import_process_batch' ) ) {
+		wp_schedule_single_event( time() + 5, 'nm_import_process_batch' );
+	}
+}
+add_action( 'admin_init', 'ner_michoel_requeue_repeat_title_rows', 22 );
+add_action( 'nm_import_check_new', 'ner_michoel_requeue_repeat_title_rows', 5 );
 
 /**
  * Rows skipped as "already exists" only because the existing post was the
@@ -524,7 +586,16 @@ function ner_michoel_process_queue_row( $row ) {
 	// Idempotency across retries/reprocessing: a post of the same kind with
 	// this title (ner_michoel_import_existing_post()). The audio and the video
 	// of one shiur share a title on the origin site, so the kind matters.
-	$existing = ner_michoel_import_existing_post( $post_type, $row->title, $media_type, $vimeo_id );
+	// Every post with the title is looked at: one that is another shiur (a speaker learning the masechta
+	// again) does not count, any other one does.
+	$existing = array_values(
+		array_filter(
+			ner_michoel_import_existing_post( $post_type, $row->title, $media_type, $vimeo_id, -1 ),
+			function ( $id ) use ( $row, $vimeo_id ) {
+				return ! ner_michoel_import_is_other_shiur( $id, $row, $vimeo_id );
+			}
+		)
+	);
 	if ( $existing ) {
 		ner_michoel_mark_queue_row( $row->id, 'skipped', 'A post with this title already exists', $existing[0] );
 		return;
