@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.54
+Stable tag: 0.9.55
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,10 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.55 =
+* Added: "Our other sites" (Fundraising site, Dinner site; open in a new tab) on the Site Control Panel home and as a WordPress
+  dashboard widget, for admins only (includes/other-sites.php).
 
 = 0.9.54 =
 * Fixed: the importer skipped a new shiur whose title repeats an older one (a speaker learning a masechta again). A same-title post

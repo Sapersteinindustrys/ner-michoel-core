@@ -1461,6 +1461,8 @@ function ner_michoel_render_custom_admin_overview() {
 				</section>
 			<?php endif; ?>
 
+			<?php if ( function_exists( 'ner_michoel_other_sites_card' ) ) { ner_michoel_other_sites_card(); } ?>
+
 			<aside class="nm-tip-card">
 				<span class="nm-tip-card__icon"><?php echo ner_michoel_admin_icon( 'bulb' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
 				<div>
