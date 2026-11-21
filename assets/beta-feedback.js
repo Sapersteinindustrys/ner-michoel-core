@@ -171,6 +171,30 @@
 			}
 		} );
 
+		/**
+		 * The host's bot screen (Bluehost) can answer a first post with a tiny
+		 * page that only sets a "humans_..." cookie and reloads. A fetch never
+		 * runs that page, so set the cookie here and send once more. The host
+		 * stops it before WordPress, so the browser check isn't used up yet.
+		 */
+		function post( data, tries ) {
+			return fetch( cfg.url, { method: 'POST', body: data, credentials: 'same-origin' } )
+				.then( function ( res ) {
+					return res.text().then( function ( text ) {
+						var cookie = /document\.cookie\s*=\s*["']([A-Za-z0-9_]+=[^"';]*)/.exec( text );
+						if ( cookie && tries < 2 ) {
+							document.cookie = cookie[ 1 ] + '; path=/';
+							return post( data, tries + 1 );
+						}
+						try {
+							return JSON.parse( text );
+						} catch ( e ) {
+							return { success: false };
+						}
+					} );
+				} );
+		}
+
 		var sending = false;
 		form.addEventListener( 'submit', function ( e ) {
 			e.preventDefault();
@@ -200,12 +224,7 @@
 			send.disabled = true;
 			say( cfg.sending );
 
-			fetch( cfg.url, { method: 'POST', body: data, credentials: 'same-origin' } )
-				.then( function ( res ) {
-					return res.json().catch( function () {
-						return { success: false };
-					} );
-				} )
+			post( data, 0 )
 				.then( function ( json ) {
 					if ( json && json.success ) {
 						form.elements.message.value = '';
