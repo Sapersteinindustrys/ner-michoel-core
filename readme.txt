@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.57
+Stable tag: 0.9.61
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,14 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.61 =
+* Added: Beta testing mode: a site-wide "Beta" banner with a "Report a problem" pop-up form (name required; logs page, time,
+  device / browser, screen, script errors). wp-admin > Beta reports (admins): on/off switch, banner text, optional email,
+  New / Fixed / Spam, notes, CSV. Spam protection through the form guard (new form key `bugreport`), a trap field and link checks.
+* Added: wp-admin > Experiments (admins) with Shiur audio cleanup: upload a recording (or 2 Sony tracks, the better one is picked)
+  or pick a shiur, clean it (DeepFilterNet 3 + even volume, mono MP3) on Kaggle or a PC helper (`tools/audio-cleanup-helper.py`),
+  compare Before / After. Automatic cleanup of new shiurim is built but OFF by default.
 
 = 0.9.57 =
 * Changed: the importer treats a repeated title less than 14 days away, by the same speaker, as the same shiur uploaded again

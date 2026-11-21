@@ -1,0 +1,56 @@
+/* Experiments admin page (experiments.php) + Shiur audio cleanup (audio-cleanup.js). */
+.nm-exp { max-width: 1100px; }
+.nm-exp__intro { font-size: 14px; color: #50575e; max-width: 760px; }
+.nm-exp__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin: 16px 0; }
+.nm-exp__pick { display: block; padding: 14px 16px; background: #fff; border: 1px solid #dcdcde; border-radius: 8px; text-decoration: none; color: #1d2327; }
+.nm-exp__pick span { display: block; color: #50575e; margin-top: 4px; }
+.nm-exp__pick.is-current, .nm-exp__pick:hover, .nm-exp__pick:focus { border-color: #2271b1; box-shadow: 0 0 0 1px #2271b1; }
+.nm-exp__title { margin-top: 24px; font-size: 20px; }
+.nm-exp__badge { display: inline-block; vertical-align: middle; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; background: #fcf0d6; color: #7a4f01; border-radius: 10px; padding: 2px 8px; margin-left: 6px; }
+.nm-exp__desc { color: #50575e; max-width: 760px; }
+
+.nm-ac__box { background: #fff; border: 1px solid #dcdcde; border-radius: 8px; padding: 18px 20px; margin: 16px 0; }
+.nm-ac__box h3 { margin-top: 0; }
+.nm-ac__source { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.nm-ac__choice { display: block; border: 1px solid #dcdcde; border-radius: 6px; padding: 10px 12px; cursor: pointer; }
+.nm-ac__choice span { display: block; color: #50575e; margin: 4px 0 0 24px; }
+.nm-ac__choice:has(input:checked) { border-color: #2271b1; background: #f0f6fc; }
+.nm-ac__files, .nm-ac__shiurim { margin: 10px 0; max-width: 700px; }
+.nm-ac__files li { display: flex; gap: 10px; align-items: baseline; }
+.nm-ac__shiurim { max-height: 300px; overflow: auto; border: 1px solid #dcdcde; border-radius: 6px; }
+.nm-ac__shiurim li { margin: 0; padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f0f0f1; }
+.nm-ac__shiurim li span { display: block; color: #646970; font-size: 12px; }
+.nm-ac__shiurim li[aria-selected="true"] { background: #2271b1; color: #fff; }
+.nm-ac__shiurim li[aria-selected="true"] span { color: #e5eff8; }
+.nm-ac__shiurim li:focus { outline: 2px solid #2271b1; outline-offset: -2px; }
+.nm-ac__opts { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; margin: 14px 0; }
+.nm-ac__opts select { margin-left: 4px; max-width: 100%; }
+.nm-ac__hint, .nm-ac__note, .nm-ac__empty { color: #646970; }
+.nm-ac__runner:empty { display: none; }
+.nm-ac__runner { background: #f0f6fc; border-left: 4px solid #2271b1; padding: 8px 12px; }
+
+.nm-ac__job { border: 1px solid #dcdcde; border-radius: 6px; padding: 12px 14px; margin: 10px 0; }
+.nm-ac__head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.nm-ac__meta { color: #646970; font-size: 12px; }
+.nm-ac__pill { font-size: 11px; font-weight: 600; border-radius: 10px; padding: 2px 8px; background: #f0f0f1; color: #3c434a; }
+.nm-ac__pill.is-working { background: #fcf0d6; color: #7a4f01; }
+.nm-ac__pill.is-done { background: #e7f5ea; color: #00651d; }
+.nm-ac__pill.is-failed { background: #fcebec; color: #8a1f24; }
+.nm-ac__compare { margin-top: 10px; }
+.nm-ac__ab { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.nm-ac__ab input[type="range"] { flex: 1 1 200px; min-width: 140px; }
+.nm-ac__switch .button { margin-right: -1px; }
+.nm-ac__play { min-width: 90px; }
+.nm-ac__time { font-variant-numeric: tabular-nums; color: #50575e; }
+.nm-ac__two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 8px; }
+.nm-ac__two audio { width: 100%; margin-top: 4px; }
+.nm-ac__report { margin: 10px 0 0 18px; list-style: disc; color: #3c434a; }
+.nm-ac__error { color: #8a1f24; white-space: pre-wrap; }
+.nm-ac__live { color: #00651d; font-weight: 600; }
+.nm-ac__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 0; }
+.nm-ac__auto label { display: block; margin: 6px 0; }
+.nm-ac__auto label span { color: #646970; }
+.nm-ac__where { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+.nm-ac__where h4 { margin: 0 0 8px; }
+.nm-ac__check { display: inline-flex; gap: 6px; align-items: center; }
+.nm-ac__cmd { background: #1d2327; color: #f0f0f1; padding: 10px 12px; border-radius: 6px; white-space: pre-wrap; word-break: break-all; }
