@@ -228,8 +228,8 @@ function ner_michoel_beta_banner_html() {
 		<div class="nm-beta-bar__inner">
 			<span class="nm-beta-bar__tag"><?php esc_html_e( 'Beta', 'ner-michoel-core' ); ?></span>
 			<span class="nm-beta-bar__text"><?php echo esc_html( $s['message'] ); ?></span>
+			<span class="nm-beta-bar__short"><?php esc_html_e( 'Testing the new site. Spotted a problem?', 'ner-michoel-core' ); ?></span>
 			<button type="button" class="nm-beta-bar__report" data-nm-beta-open><?php echo esc_html( $s['button'] ); ?></button>
-			<button type="button" class="nm-beta-bar__close" data-nm-beta-hide aria-label="<?php esc_attr_e( 'Hide this message', 'ner-michoel-core' ); ?>">&times;</button>
 		</div>
 	</div>
 	<?php

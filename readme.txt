@@ -3,7 +3,7 @@ Contributors: tomo
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.9.62
+Stable tag: 0.9.63
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,10 @@ change.
    Astra as the parent theme).
 
 == Changelog ==
+
+= 0.9.63 =
+* Changed: Beta banner stays pinned at the top while scrolling and can no longer be closed; theme-proof close button on the report form; one short line of text on phones
+* Changed: "Email a Magid Shiur" is for logged-in alumni only (others are refused); the "Which shiur is this about?" picker is hidden for now (filters ner_michoel_magid_form_open / ner_michoel_magid_shiur_picker bring them back)
 
 = 0.9.62 =
 * Fixed: Beta report form: retry once through the host's bot-check cookie

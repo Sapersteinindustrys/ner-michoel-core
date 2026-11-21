@@ -92,6 +92,28 @@ add_action( 'admin_post_nm_contact_submit', 'ner_michoel_handle_contact_submit' 
 add_action( 'admin_post_nopriv_nm_contact_submit', 'ner_michoel_handle_contact_submit' );
 
 /**
+ * Who may use "Email a Magid Shiur": logged-in alumni only (Yoni, 2026-11-21),
+ * the same people who can open the Alumni section (an approved / matched
+ * alumnus, an account given alumni access, or a site editor). The Contact page
+ * shows the form only to them and the handler below refuses anyone else.
+ * To open it to everyone again: add_filter( 'ner_michoel_magid_form_open', '__return_true' );
+ */
+function ner_michoel_magid_form_open( $user_id = null ) {
+	$user_id = null === $user_id ? get_current_user_id() : (int) $user_id;
+	$open    = $user_id && function_exists( 'ner_michoel_alumni_can_view' ) && ner_michoel_alumni_can_view( $user_id );
+	return (bool) apply_filters( 'ner_michoel_magid_form_open', $open, $user_id );
+}
+
+/**
+ * The form's optional "Which shiur is this about?" picker: off for now (Yoni,
+ * 2026-11-21). While off, the form doesn't show it and the handler ignores any
+ * nm_shiur_id sent. To bring it back: add_filter( 'ner_michoel_magid_shiur_picker', '__return_true' );
+ */
+function ner_michoel_magid_shiur_picker_on() {
+	return (bool) apply_filters( 'ner_michoel_magid_shiur_picker', false );
+}
+
+/**
  * "Email a Magid Shiur" submission — posts to
  * admin-post.php?action=nm_email_magid_submit (see
  * page-templates/email-magid-shiur.php in the theme). Sent to the
@@ -103,6 +125,12 @@ function ner_michoel_handle_email_magid_submit() {
 	$redirect = wp_get_referer() ? wp_get_referer() : home_url( '/' );
 
 	if ( ! isset( $_POST['nm_email_magid_nonce'] ) || ! wp_verify_nonce( $_POST['nm_email_magid_nonce'], 'nm_email_magid_submit' ) ) {
+		wp_safe_redirect( esc_url_raw( add_query_arg( 'nm_magid', 'error', $redirect ) ) );
+		exit;
+	}
+
+	// Alumni only: anyone else is turned away before anything is checked or sent.
+	if ( ! ner_michoel_magid_form_open() ) {
 		wp_safe_redirect( esc_url_raw( add_query_arg( 'nm_magid', 'error', $redirect ) ) );
 		exit;
 	}
@@ -124,7 +152,7 @@ function ner_michoel_handle_email_magid_submit() {
 	$name       = isset( $_POST['nm_name'] ) ? sanitize_text_field( wp_unslash( $_POST['nm_name'] ) ) : '';
 	$email      = isset( $_POST['nm_email'] ) ? sanitize_email( wp_unslash( $_POST['nm_email'] ) ) : '';
 	$message    = isset( $_POST['nm_message'] ) ? sanitize_textarea_field( wp_unslash( $_POST['nm_message'] ) ) : '';
-	$shiur_id   = isset( $_POST['nm_shiur_id'] ) ? absint( $_POST['nm_shiur_id'] ) : 0;
+	$shiur_id   = ( ner_michoel_magid_shiur_picker_on() && isset( $_POST['nm_shiur_id'] ) ) ? absint( $_POST['nm_shiur_id'] ) : 0;
 
 	$speaker = $speaker_id ? get_term( $speaker_id, 'speaker' ) : null;
 

@@ -58,7 +58,8 @@
 			}
 			document.documentElement.classList.toggle( 'nm-beta-on', !! show );
 		}
-		showBar( '1' !== store( HIDE_KEY ) );
+		// The banner can't be closed: it stays on every page while beta mode is on.
+		showBar( true );
 
 		function say( text, isError ) {
 			status.textContent = text || '';
